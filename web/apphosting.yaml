@@ -1,0 +1,47 @@
+runConfig:
+  minInstances: 0
+  maxInstances: 5
+  concurrency: 80
+  cpu: 1
+  memoryMiB: 512
+
+env:
+  - variable: CUE_BIGQUERY_DATASET
+    value: cuckoo_cue
+    availability:
+      - RUNTIME
+
+  - variable: CUE_BIGQUERY_TABLE
+    value: task_list_entries
+    availability:
+      - RUNTIME
+
+  - variable: CUE_MEMORY_BANK_STREAM_ID
+    value: cuckoo-cue-user-profile
+    availability:
+      - RUNTIME
+
+  - variable: CUE_MEMORY_PROFILE_SCHEMA_ID
+    value: cuckoo-user-profile
+    availability:
+      - RUNTIME
+
+  - variable: GOOGLE_CLOUD_AGENT_ENGINE_ID
+    value: "4749190942597054464"
+    availability:
+      - RUNTIME
+
+  - variable: GOOGLE_CLOUD_LOCATION
+    value: asia-northeast1
+    availability:
+      - RUNTIME
+
+  - variable: CUE_LLM_MODEL
+    value: gemini-2.5-flash
+    availability:
+      - RUNTIME
+
+  - variable: CUE_EMBEDDING_MODEL
+    value: text-multilingual-embedding-002
+    availability:
+      - RUNTIME

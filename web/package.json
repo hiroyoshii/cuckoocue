@@ -1,0 +1,35 @@
+{
+  "name": "web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint src scripts",
+    "bq:init": "node scripts/create-bq-table.mjs",
+    "bq:reset": "node scripts/reset-bq-table.mjs",
+    "memory-bank:create": "python3 scripts/create-memory-bank.py",
+    "scenario:moving": "node scripts/run-moving-scenario.mjs",
+    "scenario:moving-comparison": "node scripts/run-moving-comparison-scenario.mjs"
+  },
+  "dependencies": {
+    "@google-cloud/bigquery": "^9.0.3",
+    "firebase": "^12.18.0",
+    "firebase-admin": "^14.3.0",
+    "google-auth-library": "^11.0.2",
+    "lucide-react": "^1.37.0",
+    "next": "16.3.3",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "zod": "^4.5.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.3",
+    "typescript": "^5"
+  }
+}
