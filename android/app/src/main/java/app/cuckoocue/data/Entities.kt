@@ -6,15 +6,17 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
-object TaskStatus {
-    const val Pending = "pending"
-    const val Completed = "completed"
-}
-
-@Entity(tableName = "runs")
+@Entity(
+    tableName = "runs",
+    indices = [
+        Index("archived_at", "sort_order", "created_at"),
+    ],
+)
 data class RunEntity(
     @PrimaryKey val id: String,
     val title: String,
+    @ColumnInfo(name = "sort_order") val sortOrder: Int = 0,
+    @ColumnInfo(name = "archived_at") val archivedAt: Long? = null,
     @ColumnInfo(name = "created_at") val createdAt: Long,
     @ColumnInfo(name = "updated_at") val updatedAt: Long,
 )
@@ -29,18 +31,17 @@ data class RunEntity(
             onDelete = ForeignKey.CASCADE,
         ),
     ],
-    indices = [Index("run_id")],
+    indices = [
+        Index("run_id", "completed_at", "sort_order", "created_at"),
+        Index("completed_at"),
+    ],
 )
 data class RunTaskEntity(
     @PrimaryKey val id: String,
     @ColumnInfo(name = "run_id") val runId: String,
     val title: String,
-    val status: String = TaskStatus.Pending,
-    val version: Long = 0,
-    val priority: Int = 2,
-    @ColumnInfo(name = "category_key") val categoryKey: String = "focus",
-    @ColumnInfo(name = "category_label") val categoryLabel: String = "Focus",
-    @ColumnInfo(name = "category_color_key") val categoryColorKey: String = "teal",
+    @ColumnInfo(name = "user_priority") val userPriority: Int? = null,
+    @ColumnInfo(name = "due_at") val dueAt: Long? = null,
     @ColumnInfo(name = "sort_order") val sortOrder: Int,
     @ColumnInfo(name = "completed_at") val completedAt: Long? = null,
     @ColumnInfo(name = "created_at") val createdAt: Long,
@@ -48,7 +49,7 @@ data class RunTaskEntity(
 )
 
 @Entity(
-    tableName = "focus_assignments",
+    tableName = "widget_cues",
     foreignKeys = [
         ForeignKey(
             entity = RunTaskEntity::class,
@@ -58,32 +59,37 @@ data class RunTaskEntity(
         ),
     ],
     indices = [
-        Index(value = ["task_id"], unique = true),
-        Index(value = ["slot"], unique = true),
+        Index("run_id"),
+        Index("priority"),
     ],
 )
-data class FocusAssignmentEntity(
-    @PrimaryKey val id: String,
+data class WidgetCueEntity(
+    @PrimaryKey
     @ColumnInfo(name = "task_id") val taskId: String,
-    val slot: Int,
+    @ColumnInfo(name = "run_id") val runId: String,
+    val priority: Int,
     @ColumnInfo(name = "created_at") val createdAt: Long,
     @ColumnInfo(name = "updated_at") val updatedAt: Long,
-) {
-    init {
-        require(slot >= 0) { "Focus slot must be zero or greater." }
-    }
-}
+)
 
-data class FocusCue(
-    val assignmentId: String,
+data class WidgetCue(
+    val runId: String,
     val taskId: String,
-    val slot: Int,
     val title: String,
-    val status: String,
-    val version: Long,
     val priority: Int,
-    val categoryKey: String,
-    val categoryLabel: String,
-    val categoryColorKey: String,
+    val dueAt: Long?,
     val completedAt: Long?,
+)
+
+data class CompleteMutationResult(
+    val completed: Boolean,
+    val removedFromWidget: Boolean,
+)
+
+data class WidgetCueCandidate(
+    val runId: String,
+    val taskId: String,
+    val title: String,
+    val userPriority: Int?,
+    val dueAt: Long?,
 )

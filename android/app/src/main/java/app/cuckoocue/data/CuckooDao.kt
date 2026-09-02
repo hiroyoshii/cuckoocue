@@ -12,6 +12,18 @@ interface CuckooDao {
     @Query("select count(*) from runs")
     suspend fun runCount(): Int
 
+    @Query("select count(*) from runs where archived_at is null")
+    suspend fun activeRunCount(): Int
+
+    @Query("select count(*) from run_tasks")
+    suspend fun taskCount(): Int
+
+    @Query("select count(*) from widget_cues")
+    suspend fun widgetCueCount(): Int
+
+    @Query("select max(sort_order) from runs")
+    suspend fun maxRunSortOrder(): Int?
+
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertRun(run: RunEntity)
 
@@ -19,120 +31,469 @@ interface CuckooDao {
     suspend fun insertTask(task: RunTaskEntity)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsertFocusAssignment(assignment: FocusAssignmentEntity)
+    suspend fun upsertWidgetCue(cue: WidgetCueEntity)
 
     @Query("select * from runs order by created_at limit 1")
     fun observeFirstRun(): Flow<RunEntity?>
 
+    @Query("select * from runs where archived_at is null order by sort_order, created_at")
+    fun observeRuns(): Flow<List<RunEntity>>
+
     @Query("select * from run_tasks where run_id = :runId order by sort_order, created_at")
     fun observeTasks(runId: String): Flow<List<RunTaskEntity>>
+
+    @Query(
+        """
+        select * from run_tasks
+        where run_id = :runId
+          and completed_at is null
+          and title != ''
+        order by sort_order, created_at
+        limit :limit
+        """,
+    )
+    fun observeTaskPreview(runId: String, limit: Int): Flow<List<RunTaskEntity>>
+
+    @Query("select * from run_tasks where run_id = :runId and completed_at is null order by sort_order, created_at")
+    suspend fun pendingTasks(runId: String): List<RunTaskEntity>
+
+    @Query("select * from run_tasks where completed_at is not null order by completed_at desc limit 1")
+    suspend fun firstCompletedTask(): RunTaskEntity?
 
     @Query("select max(sort_order) from run_tasks where run_id = :runId")
     suspend fun maxSortOrder(runId: String): Int?
 
     @Query(
         """
-        select
-            focus_assignments.id as assignmentId,
-            run_tasks.id as taskId,
-            focus_assignments.slot as slot,
-            run_tasks.title as title,
-            run_tasks.status as status,
-            run_tasks.version as version,
-            run_tasks.priority as priority,
-            run_tasks.category_key as categoryKey,
-            run_tasks.category_label as categoryLabel,
-            run_tasks.category_color_key as categoryColorKey,
-            run_tasks.completed_at as completedAt
-        from focus_assignments
-        inner join run_tasks on run_tasks.id = focus_assignments.task_id
-        order by focus_assignments.slot
+        update run_tasks
+        set sort_order = sort_order + 1,
+            updated_at = :now
+        where run_id = :runId
+          and sort_order >= :sortOrder
         """,
     )
-    fun observeFocusCues(): Flow<List<FocusCue>>
+    suspend fun shiftTaskSortOrdersFrom(runId: String, sortOrder: Int, now: Long): Int
 
     @Query(
         """
         select
-            focus_assignments.id as assignmentId,
-            run_tasks.id as taskId,
-            focus_assignments.slot as slot,
+            widget_cues.run_id as runId,
+            widget_cues.task_id as taskId,
             run_tasks.title as title,
-            run_tasks.status as status,
-            run_tasks.version as version,
-            run_tasks.priority as priority,
-            run_tasks.category_key as categoryKey,
-            run_tasks.category_label as categoryLabel,
-            run_tasks.category_color_key as categoryColorKey,
+            widget_cues.priority as priority,
+            run_tasks.due_at as dueAt,
             run_tasks.completed_at as completedAt
-        from focus_assignments
-        inner join run_tasks on run_tasks.id = focus_assignments.task_id
-        order by focus_assignments.slot
+        from widget_cues
+        inner join run_tasks on run_tasks.id = widget_cues.task_id
+        inner join runs on runs.id = widget_cues.run_id
+        where run_tasks.completed_at is null
+          and runs.archived_at is null
+        order by
+            widget_cues.priority,
+            run_tasks.due_at is null,
+            run_tasks.due_at,
+            runs.sort_order,
+            run_tasks.sort_order,
+            run_tasks.created_at
+        limit 50
         """,
     )
-    suspend fun getFocusCues(): List<FocusCue>
+    fun observeWidgetCues(): Flow<List<WidgetCue>>
 
-    @Query("select count(*) from focus_assignments where task_id = :taskId")
-    suspend fun isFocused(taskId: String): Int
+    @Query(
+        """
+        select
+            widget_cues.run_id as runId,
+            widget_cues.task_id as taskId,
+            run_tasks.title as title,
+            widget_cues.priority as priority,
+            run_tasks.due_at as dueAt,
+            run_tasks.completed_at as completedAt
+        from widget_cues
+        inner join run_tasks on run_tasks.id = widget_cues.task_id
+        inner join runs on runs.id = widget_cues.run_id
+        where widget_cues.run_id = :runId
+          and run_tasks.completed_at is null
+          and runs.archived_at is null
+        order by
+            widget_cues.priority,
+            run_tasks.due_at is null,
+            run_tasks.due_at,
+            run_tasks.sort_order,
+            run_tasks.created_at
+        limit 50
+        """,
+    )
+    fun observeWidgetCuesForRun(runId: String): Flow<List<WidgetCue>>
 
-    @Query("select count(*) from focus_assignments where slot = :slot")
-    suspend fun isSlotUsed(slot: Int): Int
+    @Query(
+        """
+        select
+            widget_cues.run_id as runId,
+            widget_cues.task_id as taskId,
+            run_tasks.title as title,
+            widget_cues.priority as priority,
+            run_tasks.due_at as dueAt,
+            run_tasks.completed_at as completedAt
+        from widget_cues
+        inner join run_tasks on run_tasks.id = widget_cues.task_id
+        inner join runs on runs.id = widget_cues.run_id
+        where run_tasks.completed_at is null
+          and runs.archived_at is null
+        order by
+            widget_cues.priority,
+            run_tasks.due_at is null,
+            run_tasks.due_at,
+            runs.sort_order,
+            run_tasks.sort_order,
+            run_tasks.created_at
+        limit 50
+        """,
+    )
+    suspend fun getWidgetCues(): List<WidgetCue>
 
-    @Query("delete from focus_assignments where task_id = :taskId")
-    suspend fun removeFocusAssignmentForTask(taskId: String)
+    @Query("select count(*) from widget_cues where task_id = :taskId")
+    suspend fun isWidgetCue(taskId: String): Int
 
-    @Query("delete from focus_assignments where slot = :slot")
-    suspend fun clearSlot(slot: Int)
+    @Query("delete from widget_cues where task_id = :taskId")
+    suspend fun removeWidgetCueForTask(taskId: String)
+
+    @Query("delete from widget_cues where run_id = :runId")
+    suspend fun removeWidgetCuesForRun(runId: String)
+
+    @Query("delete from widget_cues")
+    suspend fun deleteAllWidgetCues()
 
     @Query("delete from runs")
     suspend fun deleteAllRuns()
 
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertWidgetCues(cues: List<WidgetCueEntity>)
+
+    @Query("delete from run_tasks where id = :taskId")
+    suspend fun deleteTask(taskId: String)
+
     @Query(
         """
-        update run_tasks
-        set status = 'completed',
-            completed_at = :now,
-            updated_at = :now,
-            version = version + 1
-        where id = :taskId
-          and status = 'pending'
-          and version = :expectedVersion
+        update runs
+        set title = :title,
+            updated_at = :now
+        where id = :runId
         """,
     )
-    suspend fun completeTask(taskId: String, expectedVersion: Long, now: Long): Int
+    suspend fun updateRunTitle(runId: String, title: String, now: Long): Int
 
     @Query(
         """
         update run_tasks
-        set status = 'pending',
-            completed_at = null,
-            updated_at = :now,
-            version = version + 1
+        set title = :title,
+            due_at = :dueAt,
+            user_priority = :userPriority,
+            updated_at = :now
         where id = :taskId
-          and status = 'completed'
-          and version = :expectedVersion
         """,
     )
-    suspend fun undoCompleteTask(taskId: String, expectedVersion: Long, now: Long): Int
+    suspend fun updateTaskDetails(
+        taskId: String,
+        title: String,
+        dueAt: Long?,
+        userPriority: Int?,
+        now: Long,
+    ): Int
+
+    @Query(
+        """
+        update run_tasks
+        set sort_order = :sortOrder,
+            updated_at = :now
+        where id = :taskId
+        """,
+    )
+    suspend fun updateTaskSortOrder(taskId: String, sortOrder: Int, now: Long): Int
+
+    @Query(
+        """
+        update run_tasks
+        set sort_order = :sortOrder,
+            user_priority = :userPriority,
+            updated_at = :now
+        where id = :taskId
+        """,
+    )
+    suspend fun updateMovedTaskSortOrderAndPriority(
+        taskId: String,
+        sortOrder: Int,
+        userPriority: Int,
+        now: Long,
+    ): Int
+
+    @Query(
+        """
+        update run_tasks
+        set sort_order = sort_order + 1,
+            updated_at = :now
+        where run_id = :runId
+          and completed_at is null
+          and sort_order >= :toSortOrder
+          and sort_order < :fromSortOrder
+        """,
+    )
+    suspend fun shiftPendingSortOrdersDownForMove(
+        runId: String,
+        fromSortOrder: Int,
+        toSortOrder: Int,
+        now: Long,
+    ): Int
+
+    @Query(
+        """
+        update run_tasks
+        set sort_order = sort_order - 1,
+            updated_at = :now
+        where run_id = :runId
+          and completed_at is null
+          and sort_order > :fromSortOrder
+          and sort_order <= :toSortOrder
+        """,
+    )
+    suspend fun shiftPendingSortOrdersUpForMove(
+        runId: String,
+        fromSortOrder: Int,
+        toSortOrder: Int,
+        now: Long,
+    ): Int
+
+    @Query(
+        """
+        update runs
+        set archived_at = :now,
+            updated_at = :now
+        where id = :runId
+          and archived_at is null
+        """,
+    )
+    suspend fun archiveRun(runId: String, now: Long): Int
+
+    @Query(
+        """
+        update run_tasks
+        set completed_at = :now,
+            updated_at = :now
+        where id = :taskId
+          and completed_at is null
+        """,
+    )
+    suspend fun completeTask(taskId: String, now: Long): Int
+
+    @Query(
+        """
+        update run_tasks
+        set completed_at = null,
+            updated_at = :now
+        where id = :taskId
+          and completed_at is not null
+        """,
+    )
+    suspend fun undoCompleteTask(taskId: String, now: Long): Int
 
     @Transaction
-    suspend fun setFocus(taskId: String, slot: Int, now: Long, assignmentId: String) {
-        require(slot >= 0)
-        clearSlot(slot)
-        removeFocusAssignmentForTask(taskId)
-        upsertFocusAssignment(
-            FocusAssignmentEntity(
-                id = assignmentId,
-                taskId = taskId,
-                slot = slot,
-                createdAt = now,
-                updatedAt = now,
-            ),
+    suspend fun completeTaskAndRemoveWidgetCue(
+        taskId: String,
+        now: Long,
+    ): CompleteMutationResult {
+        val removedFromWidget = isWidgetCue(taskId) > 0
+        val changed = completeTask(taskId, now)
+        if (changed == 1) {
+            removeWidgetCueForTask(taskId)
+        }
+        return CompleteMutationResult(
+            completed = changed == 1,
+            removedFromWidget = changed == 1 && removedFromWidget,
         )
+    }
+
+    @Transaction
+    suspend fun undoCompleteTaskAndRestoreWidgetCue(
+        taskId: String,
+        now: Long,
+        priority: Int?,
+    ): Int {
+        val changed = undoCompleteTask(taskId, now)
+        val task = taskById(taskId)
+        if (changed == 1 && task != null && priority != null && priority != PriorityExposure.Quiet && isWidgetCue(taskId) == 0) {
+            upsertWidgetCue(
+                WidgetCueEntity(
+                    taskId = taskId,
+                    runId = task.runId,
+                    priority = priority,
+                    createdAt = now,
+                    updatedAt = now,
+                ),
+            )
+        }
+        return changed
+    }
+
+    @Query("select * from run_tasks where id = :taskId")
+    suspend fun taskById(taskId: String): RunTaskEntity?
+
+    @Query(
+        """
+        select
+            run_tasks.run_id as runId,
+            run_tasks.id as taskId,
+            run_tasks.title as title,
+            run_tasks.user_priority as userPriority,
+            run_tasks.due_at as dueAt
+        from run_tasks
+        inner join runs on runs.id = run_tasks.run_id
+        where run_tasks.id = :taskId
+          and run_tasks.completed_at is null
+          and runs.archived_at is null
+        """,
+    )
+    suspend fun widgetCueCandidateByTaskId(taskId: String): WidgetCueCandidate?
+
+    @Transaction
+    suspend fun insertTaskAndRefreshWidgetCue(task: RunTaskEntity, now: Long) {
+        insertTask(task)
+        refreshWidgetCueForTask(task.id, now)
+    }
+
+    @Transaction
+    suspend fun updateTaskDetailsAndRefreshWidgetCue(
+        taskId: String,
+        title: String,
+        dueAt: Long?,
+        userPriority: Int?,
+        now: Long,
+    ): Int {
+        val changed = updateTaskDetails(taskId, title, dueAt, userPriority, now)
+        if (changed == 1) {
+            refreshWidgetCueForTask(taskId, now)
+        }
+        return changed
+    }
+
+    @Transaction
+    suspend fun deleteTaskAndRemoveWidgetCue(taskId: String) {
+        removeWidgetCueForTask(taskId)
+        deleteTask(taskId)
+    }
+
+    @Transaction
+    suspend fun archiveRunAndRemoveWidgetCues(runId: String, now: Long): Int {
+        val changed = archiveRun(runId, now)
+        if (changed == 1) {
+            removeWidgetCuesForRun(runId)
+        }
+        return changed
+    }
+
+    @Transaction
+    suspend fun movePendingTaskAndRefreshMovedWidgetCue(
+        runId: String,
+        taskId: String,
+        delta: Int,
+        now: Long,
+    ): Boolean {
+        val changed = movePendingTask(runId, taskId, delta, now)
+        if (changed) {
+            refreshWidgetCueForTask(taskId, now)
+        }
+        return changed
+    }
+
+    @Transaction
+    suspend fun refreshWidgetCueForTask(taskId: String, now: Long) {
+        val cue = widgetCueCandidateByTaskId(taskId)?.toWidgetCueEntity(now)
+        if (cue == null) {
+            removeWidgetCueForTask(taskId)
+        } else {
+            upsertWidgetCue(cue)
+        }
+    }
+
+    @Transaction
+    suspend fun replaceWidgetCues(cues: List<WidgetCueEntity>) {
+        deleteAllWidgetCues()
+        if (cues.isNotEmpty()) {
+            insertWidgetCues(cues)
+        }
     }
 
     @Transaction
     suspend fun resetSeedData() {
         deleteAllRuns()
     }
+
+    @Transaction
+    suspend fun movePendingTask(runId: String, taskId: String, delta: Int, now: Long): Boolean {
+        if (delta == 0) return false
+        val current = pendingTasks(runId)
+        val fromIndex = current.indexOfFirst { it.id == taskId }
+        if (fromIndex < 0) return false
+        val toIndex = (fromIndex + delta).coerceIn(0, current.lastIndex)
+        if (fromIndex == toIndex) return false
+
+        val reordered = current.toMutableList()
+        val moved = reordered.removeAt(fromIndex)
+        reordered.add(toIndex, moved)
+        val movedPriority = if (toIndex == 0) {
+            PriorityExposure.Strong
+        } else {
+            reordered[toIndex - 1].effectivePriority(now)
+        }
+
+        val fromSortOrder = current[fromIndex].sortOrder
+        val toSortOrder = current[toIndex].sortOrder
+        if (toIndex < fromIndex) {
+            shiftPendingSortOrdersDownForMove(runId, fromSortOrder, toSortOrder, now)
+        } else {
+            shiftPendingSortOrdersUpForMove(runId, fromSortOrder, toSortOrder, now)
+        }
+        updateMovedTaskSortOrderAndPriority(taskId, toSortOrder, movedPriority, now)
+        return true
+    }
+
+    @Transaction
+    suspend fun insertTaskAtSortOrder(task: RunTaskEntity, now: Long) {
+        shiftTaskSortOrdersFrom(task.runId, task.sortOrder, now)
+        insertTask(task)
+        refreshWidgetCueForTask(task.id, now)
+    }
+
+    @Query(
+        """
+        select
+            run_tasks.run_id as runId,
+            run_tasks.id as taskId,
+            run_tasks.title as title,
+            run_tasks.user_priority as userPriority,
+            run_tasks.due_at as dueAt
+        from run_tasks
+        inner join runs on runs.id = run_tasks.run_id
+        where run_tasks.completed_at is null
+          and runs.archived_at is null
+        """,
+    )
+    suspend fun widgetCueCandidates(): List<WidgetCueCandidate>
+}
+
+private fun RunTaskEntity.effectivePriority(now: Long): Int =
+    userPriority?.let { PriorityExposure.normalize(it) } ?: PriorityExposure.compute(dueAt, now)
+
+private fun WidgetCueCandidate.effectivePriority(now: Long): Int =
+    userPriority?.let { PriorityExposure.normalize(it) } ?: PriorityExposure.compute(dueAt, now)
+
+private fun WidgetCueCandidate.toWidgetCueEntity(now: Long): WidgetCueEntity? {
+    val priority = effectivePriority(now)
+    if (title.isBlank() || priority == PriorityExposure.Quiet) return null
+    return WidgetCueEntity(
+        taskId = taskId,
+        runId = runId,
+        priority = priority,
+        createdAt = now,
+        updatedAt = now,
+    )
 }

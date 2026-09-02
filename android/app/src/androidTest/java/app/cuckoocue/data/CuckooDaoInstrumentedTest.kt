@@ -1,12 +1,12 @@
 package app.cuckoocue.data
 
 import android.content.Context
-import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteFullException
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import java.lang.reflect.Proxy
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -34,123 +34,196 @@ class CuckooDaoInstrumentedTest {
     }
 
     @Test
-    fun completeUsesVersionCasAndKeepsFocusSlot() = runTest {
-        seedOneFocusedTask(version = 0)
+    fun repositoryCreatesWidgetCueCacheForVisiblePriorityTasks() = runTest {
+        seedRun()
+        val repository = repository()
 
-        val changed = dao.completeTask("task-1", expectedVersion = 0, now = 20)
-        val staleChanged = dao.completeTask("task-1", expectedVersion = 0, now = 21)
-        val cue = dao.getFocusCues().single()
+        repository.addTask("run-1", "強いCue", priority = PriorityExposure.Strong, clock = { 100 })
+        repository.addTask("run-1", "静かなTask", priority = PriorityExposure.Quiet, clock = { 101 })
 
-        assertEquals(1, changed)
-        assertEquals(0, staleChanged)
-        assertEquals("task-1", cue.taskId)
-        assertEquals(1, cue.slot)
-        assertEquals(TaskStatus.Completed, cue.status)
-        assertEquals(1, cue.version)
+        val tasks = dao.observeTasks("run-1").first()
+        val cues = dao.getWidgetCues()
+
+        assertEquals(2, tasks.size)
+        assertEquals(listOf("強いCue"), cues.map { it.title })
+        assertEquals(listOf(PriorityExposure.Strong), cues.map { it.priority })
+        assertEquals(listOf("run-1"), cues.map { it.runId })
     }
 
     @Test
-    fun undoUsesVersionCasAndKeepsFocusSlot() = runTest {
-        seedOneFocusedTask(version = 0)
-        dao.completeTask("task-1", expectedVersion = 0, now = 20)
+    fun repositoryUpdatesWidgetCueCacheWhenTaskTitleOrPriorityChanges() = runTest {
+        seedRun()
+        val repository = repository()
+        repository.addTask("run-1", "古い表示", priority = PriorityExposure.Strong, clock = { 100 })
+        val task = dao.observeTasks("run-1").first().single()
 
-        val changed = dao.undoCompleteTask("task-1", expectedVersion = 1, now = 30)
-        val staleChanged = dao.undoCompleteTask("task-1", expectedVersion = 1, now = 31)
-        val cue = dao.getFocusCues().single()
-
-        assertEquals(1, changed)
-        assertEquals(0, staleChanged)
-        assertEquals("task-1", cue.taskId)
-        assertEquals(1, cue.slot)
-        assertEquals(TaskStatus.Pending, cue.status)
-        assertEquals(2, cue.version)
-    }
-
-    @Test
-    fun focusAssignmentsAreNotLimitedToThreeSlots() = runTest {
-        dao.insertRun(
-            RunEntity(
-                id = "run-1",
-                title = "Run",
-                createdAt = 10,
-                updatedAt = 10,
-            ),
+        repository.updateTask(
+            taskId = task.id,
+            title = "新しい表示",
+            dueAt = null,
+            priority = PriorityExposure.Medium,
+            clock = { 200 },
         )
 
+        val cue = dao.getWidgetCues().single()
+
+        assertEquals(task.id, cue.taskId)
+        assertEquals("新しい表示", cue.title)
+        assertEquals(PriorityExposure.Medium, cue.priority)
+    }
+
+    @Test
+    fun repositoryRemovesWidgetCueCacheWhenPriorityBecomesQuiet() = runTest {
+        seedRun()
+        val repository = repository()
+        repository.addTask("run-1", "Widgetから外す", priority = PriorityExposure.Strong, clock = { 100 })
+        val task = dao.observeTasks("run-1").first().single()
+
+        repository.updateTask(
+            taskId = task.id,
+            title = task.title,
+            dueAt = null,
+            priority = PriorityExposure.Quiet,
+            clock = { 200 },
+        )
+
+        assertEquals(0, dao.getWidgetCues().size)
+    }
+
+    @Test
+    fun widgetCuesAreNotLimitedToThreeRows() = runTest {
+        seedRun()
+
         repeat(6) { index ->
-            val taskId = "task-$index"
-            dao.insertTask(
-                RunTaskEntity(
-                    id = taskId,
-                    runId = "run-1",
-                    title = "Task $index",
-                    sortOrder = index,
-                    createdAt = 10L + index,
-                    updatedAt = 10L + index,
-                ),
-            )
-            dao.upsertFocusAssignment(
-                FocusAssignmentEntity(
-                    id = "focus-$index",
-                    taskId = taskId,
-                    slot = index,
-                    createdAt = 20L + index,
-                    updatedAt = 20L + index,
-                ),
+            seedTaskAndWidgetCue(
+                runId = "run-1",
+                taskId = "task-$index",
+                title = "Task $index",
+                priority = PriorityExposure.Strong,
+                sortOrder = index,
             )
         }
 
-        val cues = dao.getFocusCues()
+        val cues = dao.getWidgetCues()
 
         assertEquals(6, cues.size)
-        assertEquals((0..5).toList(), cues.map { it.slot })
+        assertEquals((0..5).toList(), cues.map { it.taskId.removePrefix("task-").toInt() })
     }
 
     @Test
-    fun focusCueProjectionIncludesPriorityAndCategory() = runTest {
-        seedOneFocusedTask(
-            version = 0,
-            priority = 0,
-            categoryKey = "payment",
-            categoryLabel = "支払い確認まわりと請求書整理",
-            categoryColorKey = "gold",
+    fun widgetCueCacheCanBeReadByRunOrAcrossRuns() = runTest {
+        seedRun(id = "run-a", title = "朝", now = 10)
+        seedRun(id = "run-b", title = "夜", now = 11)
+        seedTaskAndWidgetCue("run-a", "task-a", "朝のCue", PriorityExposure.Strong, sortOrder = 0)
+        seedTaskAndWidgetCue("run-b", "task-b", "夜のCue", PriorityExposure.Medium, sortOrder = 1)
+
+        val runA = dao.observeWidgetCuesForRun("run-a").first()
+        val runB = dao.observeWidgetCuesForRun("run-b").first()
+        val all = dao.getWidgetCues()
+
+        assertEquals(listOf("task-a"), runA.map { it.taskId })
+        assertEquals(listOf("task-b"), runB.map { it.taskId })
+        assertEquals(listOf("task-a", "task-b"), all.map { it.taskId })
+    }
+
+    @Test
+    fun movingTaskCopiesPriorityFromTheRowAbove() = runTest {
+        seedRun()
+        seedTask("run-1", "task-a", "上の強い項目", PriorityExposure.Strong, sortOrder = 0)
+        seedTask("run-1", "task-b", "中くらいの項目", PriorityExposure.Medium, sortOrder = 1)
+        seedTask("run-1", "task-c", "下の静かな項目", PriorityExposure.Quiet, sortOrder = 2)
+        val repository = repository()
+        repository.rebuildWidgetCues(now = 100)
+
+        repository.movePendingTask("run-1", "task-c", -2)
+
+        val tasks = dao.observeTasks("run-1").first()
+        val moved = tasks.first { it.id == "task-c" }
+        val cues = dao.getWidgetCues()
+
+        assertEquals(listOf("task-c", "task-a", "task-b"), tasks.map { it.id })
+        assertEquals(PriorityExposure.Strong, moved.userPriority)
+        assertEquals(listOf("task-c", "task-a", "task-b"), cues.map { it.taskId })
+    }
+
+    @Test
+    fun addingTaskAfterExistingTaskInsertsDirectlyBelowIt() = runTest {
+        seedRun()
+        seedTask("run-1", "task-a", "上の項目", PriorityExposure.Strong, sortOrder = 0)
+        seedTask("run-1", "task-b", "下の項目", PriorityExposure.Medium, sortOrder = 1)
+        val repository = repository()
+
+        val insertedTaskId = repository.addTaskAfter(
+            afterTaskId = "task-a",
+            title = "直下に追加した項目",
+            priority = PriorityExposure.Strong,
+            clock = { 100 },
         )
 
-        val cue = dao.getFocusCues().single()
+        val tasks = dao.observeTasks("run-1").first()
+        val inserted = tasks.first { it.id == insertedTaskId }
 
-        assertEquals(0, cue.priority)
-        assertEquals("payment", cue.categoryKey)
-        assertEquals("支払い確認まわりと請求書整理", cue.categoryLabel)
-        assertEquals("gold", cue.categoryColorKey)
+        assertEquals(listOf("task-a", insertedTaskId, "task-b"), tasks.map { it.id })
+        assertEquals(1, inserted.sortOrder)
+        assertEquals(2, tasks.first { it.id == "task-b" }.sortOrder)
     }
 
     @Test
-    fun completeUndoCompleteSequenceUsesCas() = runTest {
-        seedOneFocusedTask(version = 0)
+    fun blankTaskCanBeSavedButIsExcludedFromWidgetCueCache() = runTest {
+        seedRun()
+        seedTaskAndWidgetCue("run-1", "task-a", "上の項目", PriorityExposure.Strong, sortOrder = 0)
+        val repository = repository()
 
-        assertEquals(1, dao.completeTask("task-1", expectedVersion = 0, now = 20))
-        assertEquals(1, dao.undoCompleteTask("task-1", expectedVersion = 1, now = 21))
-        assertEquals(1, dao.completeTask("task-1", expectedVersion = 2, now = 22))
-        assertEquals(0, dao.undoCompleteTask("task-1", expectedVersion = 1, now = 23))
+        val blankTaskId = repository.addTaskAfter(
+            afterTaskId = "task-a",
+            title = "",
+            priority = PriorityExposure.Strong,
+            clock = { 100 },
+        )
 
-        val cue = dao.getFocusCues().single()
-        assertEquals(TaskStatus.Completed, cue.status)
-        assertEquals(3, cue.version)
+        val tasks = dao.observeTasks("run-1").first()
+        val blankTask = tasks.first { it.id == blankTaskId }
+        val cues = dao.getWidgetCues()
+
+        assertEquals("", blankTask.title)
+        assertEquals(listOf("task-a"), cues.map { it.taskId })
     }
 
     @Test
-    fun repositoryCompletePersistsBeforeWidgetRedraw() = runTest {
-        seedOneFocusedTask(version = 0)
-        val repository = CuckooRepository(dao)
+    fun completeRemovesWidgetCueCacheAndUndoRestoresIt() = runTest {
+        seedRun()
+        seedTaskAndWidgetCue("run-1", "task-1", "戻せるCue", PriorityExposure.Strong, sortOrder = 1)
+        val repository = repository()
 
-        val completed = repository.completeTask("task-1", expectedVersion = 0)
-        val cue = dao.getFocusCues().single()
+        val result = repository.completeTask("task-1")
+        assertEquals(true, result.completed)
+        assertEquals(true, result.removedFromWidget)
+        assertEquals(0, dao.getWidgetCues().size)
 
-        assertEquals(true, completed)
-        assertEquals(TaskStatus.Completed, cue.status)
-        assertEquals(1, cue.version)
+        val changed = repository.undoCompleteTask("task-1")
+        val cue = dao.getWidgetCues().single()
+
+        assertEquals(true, changed)
         assertEquals("task-1", cue.taskId)
-        assertEquals(1, cue.slot)
+        assertEquals("戻せるCue", cue.title)
+    }
+
+    @Test
+    fun completeUndoCompleteSequenceIsIdempotentByState() = runTest {
+        seedRun()
+        seedTaskAndWidgetCue("run-1", "task-1", "Cue", PriorityExposure.Strong, sortOrder = 0)
+        val repository = repository()
+
+        val firstComplete = repository.completeTask("task-1")
+        val duplicateComplete = repository.completeTask("task-1")
+        val undo = repository.undoCompleteTask("task-1")
+        val secondComplete = repository.completeTask("task-1")
+
+        assertEquals(true, firstComplete.completed)
+        assertEquals(false, duplicateComplete.completed)
+        assertEquals(true, undo)
+        assertEquals(true, secondComplete.completed)
+        assertEquals(0, dao.isWidgetCue("task-1"))
     }
 
     @Test
@@ -158,96 +231,8 @@ class CuckooDaoInstrumentedTest {
         val failingDao = failingWriteDao()
         val repository = CuckooRepository(failingDao)
 
-        assertEquals(false, repository.completeTask("task-1", expectedVersion = 0))
-        assertEquals(false, repository.undoCompleteTask("task-1", expectedVersion = 1))
-    }
-
-    @Test
-    fun migrationFromOneToTwoAddsWidgetProjectionColumns() {
-        val databaseName = "migration-one-two"
-        val context = ApplicationProvider.getApplicationContext<Context>()
-        context.deleteDatabase(databaseName)
-
-        SQLiteDatabase.openOrCreateDatabase(context.getDatabasePath(databaseName), null).apply {
-            execSQL(
-                """
-                create table runs(
-                    id text not null primary key,
-                    title text not null,
-                    created_at integer not null,
-                    updated_at integer not null
-                )
-                """.trimIndent(),
-            )
-            execSQL(
-                """
-                create table run_tasks(
-                    id text not null primary key,
-                    run_id text not null,
-                    title text not null,
-                    status text not null,
-                    version integer not null,
-                    sort_order integer not null,
-                    completed_at integer,
-                    created_at integer not null,
-                    updated_at integer not null,
-                    foreign key(run_id) references runs(id) on delete cascade
-                )
-                """.trimIndent(),
-            )
-            execSQL("create index index_run_tasks_run_id on run_tasks(run_id)")
-            execSQL(
-                """
-                create table focus_assignments(
-                    id text not null primary key,
-                    task_id text not null,
-                    slot integer not null,
-                    created_at integer not null,
-                    updated_at integer not null,
-                    foreign key(task_id) references run_tasks(id) on delete cascade
-                )
-                """.trimIndent(),
-            )
-            execSQL("create unique index index_focus_assignments_task_id on focus_assignments(task_id)")
-            execSQL("create unique index index_focus_assignments_slot on focus_assignments(slot)")
-            execSQL(
-                """
-                insert into runs(id, title, created_at, updated_at)
-                values('run-1', 'Run', 10, 10)
-                """.trimIndent(),
-            )
-            execSQL(
-                """
-                insert into run_tasks(
-                    id, run_id, title, status, version, sort_order, completed_at, created_at, updated_at
-                ) values('task-1', 'run-1', 'Task', 'pending', 0, 0, null, 10, 10)
-                """.trimIndent(),
-            )
-            version = 1
-            close()
-        }
-
-        val migratedDatabase = Room.databaseBuilder(context, CuckooDatabase::class.java, databaseName)
-            .addMigrations(CuckooDatabase.MIGRATION_1_2)
-            .allowMainThreadQueries()
-            .build()
-
-        try {
-            migratedDatabase.openHelper.readableDatabase.query(
-                """
-                select priority, category_key, category_label, category_color_key
-                from run_tasks where id = 'task-1'
-                """.trimIndent(),
-            ).use { cursor ->
-                cursor.moveToFirst()
-                assertEquals(2, cursor.getInt(0))
-                assertEquals("focus", cursor.getString(1))
-                assertEquals("Focus", cursor.getString(2))
-                assertEquals("teal", cursor.getString(3))
-            }
-        } finally {
-            migratedDatabase.close()
-        }
+        assertEquals(false, repository.completeTask("task-1").completed)
+        assertEquals(false, repository.undoCompleteTask("task-1"))
     }
 
     private fun failingWriteDao(): CuckooDao {
@@ -256,50 +241,65 @@ class CuckooDaoInstrumentedTest {
             arrayOf(CuckooDao::class.java),
         ) { _, method, _ ->
             when (method.name) {
-                "completeTask", "undoCompleteTask" -> throw SQLiteFullException("simulated full database")
+                "completeTaskAndRemoveWidgetCue", "taskById", "undoCompleteTaskAndRestoreWidgetCue" ->
+                    throw SQLiteFullException("simulated full database")
                 else -> error("Unexpected DAO call in failure test: ${method.name}")
             }
         } as CuckooDao
     }
 
-    private suspend fun seedOneFocusedTask(
-        version: Long,
-        priority: Int = 2,
-        categoryKey: String = "account",
-        categoryLabel: String = "アカウント復旧",
-        categoryColorKey: String = "teal",
+    private fun repository() = CuckooRepository(dao)
+
+    private suspend fun seedRun(
+        id: String = "run-1",
+        title: String = "Run",
+        now: Long = 10,
     ) {
         dao.insertRun(
             RunEntity(
-                id = "run-1",
-                title = "Run",
-                createdAt = 10,
-                updatedAt = 10,
+                id = id,
+                title = title,
+                createdAt = now,
+                updatedAt = now,
             ),
         )
+    }
+
+    private suspend fun seedTaskAndWidgetCue(
+        runId: String,
+        taskId: String,
+        title: String,
+        priority: Int,
+        sortOrder: Int,
+    ) {
+        seedTask(runId, taskId, title, priority, sortOrder)
+        dao.upsertWidgetCue(
+            WidgetCueEntity(
+                runId = runId,
+                taskId = taskId,
+                priority = priority,
+                createdAt = 30L + sortOrder,
+                updatedAt = 30L + sortOrder,
+            ),
+        )
+    }
+
+    private suspend fun seedTask(
+        runId: String,
+        taskId: String,
+        title: String,
+        priority: Int,
+        sortOrder: Int,
+    ) {
         dao.insertTask(
             RunTaskEntity(
-                id = "task-1",
-                runId = "run-1",
-                title = "2段階認証の復旧手段を確認",
-                status = TaskStatus.Pending,
-                version = version,
-                priority = priority,
-                categoryKey = categoryKey,
-                categoryLabel = categoryLabel,
-                categoryColorKey = categoryColorKey,
-                sortOrder = 0,
-                createdAt = 10,
-                updatedAt = 10,
-            ),
-        )
-        dao.upsertFocusAssignment(
-            FocusAssignmentEntity(
-                id = "focus-1",
-                taskId = "task-1",
-                slot = 1,
-                createdAt = 10,
-                updatedAt = 10,
+                id = taskId,
+                runId = runId,
+                title = title,
+                userPriority = priority,
+                sortOrder = sortOrder,
+                createdAt = 20L + sortOrder,
+                updatedAt = 20L + sortOrder,
             ),
         )
     }

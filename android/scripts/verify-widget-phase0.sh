@@ -422,6 +422,7 @@ run_screen_profile() {
   start_app
   wait_home 3
   home
+  show_widget_page || true
   screenshot "resize-$label-before-scroll"
   swipe_widget
   screenshot "resize-$label-after-scroll"
@@ -431,7 +432,8 @@ echo "== Build, install, and run instrumentation checks =="
 (
   cd "$ROOT_DIR"
   if [ "${RUN_INSTRUMENTATION:-1}" = "1" ]; then
-    ./gradlew installDebug connectedDebugAndroidTest
+    ./gradlew installDebug installDebugAndroidTest
+    "$ADB" shell am instrument -w "$PACKAGE.test/androidx.test.runner.AndroidJUnitRunner"
   fi
   ./gradlew installDebug
 )

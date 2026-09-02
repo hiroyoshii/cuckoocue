@@ -8,7 +8,6 @@ import app.cuckoocue.appearance.AppThemeMode
 import app.cuckoocue.appearance.WidgetTextScale
 import app.cuckoocue.appearance.WidgetThemeMode
 import app.cuckoocue.data.CuckooRepository
-import app.cuckoocue.data.TaskStatus
 import app.cuckoocue.widget.CuckooCueWidgetUpdater
 import kotlinx.coroutines.runBlocking
 
@@ -17,21 +16,20 @@ class VerificationReceiver : BroadcastReceiver() {
         runBlocking {
             val repository = CuckooRepository.getInstance(context)
             when (intent.action) {
-                ACTION_RESET_SEED -> repository.resetToSeedData()
+                ACTION_RESET_SEED -> resetToDebugSeedData(context)
+                ACTION_RESET_MANY_RUNS -> resetToManyRunsDebugSeedData(context)
+                ACTION_RESET_ARCHIVED_RUNS -> resetToArchivedRunsDebugSeedData(context)
                 ACTION_COMPLETE_FIRST_PENDING -> {
-                    val cue = repository.getFocusCues()
-                        .sortedBy { it.slot }
-                        .firstOrNull { it.status == TaskStatus.Pending }
+                    val cue = repository.getWidgetCues()
+                        .firstOrNull()
                     if (cue != null) {
-                        repository.completeTask(cue.taskId, cue.version)
+                        repository.completeTask(cue.taskId)
                     }
                 }
                 ACTION_UNDO_FIRST_COMPLETED -> {
-                    val cue = repository.getFocusCues()
-                        .sortedBy { it.slot }
-                        .firstOrNull { it.status == TaskStatus.Completed }
-                    if (cue != null) {
-                        repository.undoCompleteTask(cue.taskId, cue.version)
+                    val task = repository.getFirstCompletedTask()
+                    if (task != null) {
+                        repository.undoCompleteTask(task.id)
                     }
                 }
                 ACTION_SET_APPEARANCE -> {
@@ -54,6 +52,8 @@ class VerificationReceiver : BroadcastReceiver() {
 
     companion object {
         const val ACTION_RESET_SEED = "app.cuckoocue.debug.RESET_SEED"
+        const val ACTION_RESET_MANY_RUNS = "app.cuckoocue.debug.RESET_MANY_RUNS"
+        const val ACTION_RESET_ARCHIVED_RUNS = "app.cuckoocue.debug.RESET_ARCHIVED_RUNS"
         const val ACTION_COMPLETE_FIRST_PENDING = "app.cuckoocue.debug.COMPLETE_FIRST_PENDING"
         const val ACTION_UNDO_FIRST_COMPLETED = "app.cuckoocue.debug.UNDO_FIRST_COMPLETED"
         const val ACTION_SET_APPEARANCE = "app.cuckoocue.debug.SET_APPEARANCE"

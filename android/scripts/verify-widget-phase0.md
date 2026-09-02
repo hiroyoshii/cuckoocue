@@ -18,10 +18,11 @@ behavior:
 
 - fresh seed app data through the debug-only reset receiver, without removing
   launcher widget placement
-- Room instrumentation tests, including CAS and v1 -> v2 migration
+- Room instrumentation tests, including widget cue cache updates, undo restore,
+  state-idempotent complete, and current schema contract
 - repository failure checks: committed Room state remains correct even if redraw
   has not happened yet, and SQLite write failures are not reported as completed
-  widget actions
+  widget taps
 - row-level widget complete tap
 - transient undo display and undo restore
 - transient undo clearing on later widget interaction

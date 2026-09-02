@@ -43,10 +43,8 @@ import androidx.glance.unit.ColorProvider
 import androidx.glance.state.GlanceStateDefinition
 import androidx.glance.state.PreferencesGlanceStateDefinition
 import app.cuckoocue.data.CuckooRepository
-import app.cuckoocue.data.FocusCue
-import app.cuckoocue.data.TaskStatus
+import app.cuckoocue.data.WidgetCue
 import androidx.datastore.preferences.core.intPreferencesKey
-import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import app.cuckoocue.appearance.AppearanceRepository
@@ -54,22 +52,21 @@ import app.cuckoocue.appearance.AppearanceSettings
 import app.cuckoocue.appearance.AppThemeMode
 import app.cuckoocue.appearance.WidgetTextScale
 import app.cuckoocue.appearance.WidgetThemeMode
-import kotlinx.coroutines.runBlocking
 
-private val FooterCategoryGap = 6.dp
-private const val FooterCategoryMinWidthDp = 44
-private const val FooterCategoryMaxWidthDp = 100
-private const val EstimatedCategoryGlyphWidthDp = 11
-private const val MaxCategoryLabelChars = 10
+private val FooterTipGap = 6.dp
+private const val FooterTipMinWidthDp = 44
+private const val FooterTipMaxWidthDp = 100
+private const val EstimatedFooterTipGlyphWidthDp = 11
+private const val MaxFooterTipLabelChars = 10
 private const val MaxUndoTitleChars = 12
 
 private val TaskIdKey = ActionParameters.Key<String>("task_id")
-private val VersionKey = ActionParameters.Key<Long>("version")
-private val CategoryKey = ActionParameters.Key<String>("category_key")
-private val CategoryStripOffsetPreferenceKey = intPreferencesKey("category_strip_offset")
-private val SelectedCategoryKeyPreferenceKey = stringPreferencesKey("selected_category_key")
+private val TaskTitleKey = ActionParameters.Key<String>("task_title")
+private val FooterTipKey = ActionParameters.Key<String>("footer_tip_key")
+private val FooterTipStripOffsetPreferenceKey = intPreferencesKey("footer_tip_strip_offset")
+private val SelectedFooterTipKeyPreferenceKey = stringPreferencesKey("selected_footer_tip_key")
 private val LastUndoTaskIdPreferenceKey = stringPreferencesKey("last_undo_task_id")
-private val LastUndoVersionPreferenceKey = longPreferencesKey("last_undo_version")
+private val LastUndoTitlePreferenceKey = stringPreferencesKey("last_undo_title")
 
 private val Ink = ColorProvider(Color(0xFF172126))
 private val Muted = ColorProvider(Color(0xFF647174))
@@ -104,8 +101,13 @@ private data class WidgetMetrics(
     val singleLineTitleChars: Int,
     val maxTaskTitleChars: Int,
     val prioritySizes: List<androidx.compose.ui.unit.TextUnit>,
-    val categoryRailSize: androidx.compose.ui.unit.TextUnit,
-    val categoryMarkWidth: androidx.compose.ui.unit.Dp,
+    val contextRailSize: androidx.compose.ui.unit.TextUnit,
+    val footerMarkWidth: androidx.compose.ui.unit.Dp,
+)
+
+private data class UndoCueUi(
+    val taskId: String,
+    val title: String,
 )
 
 class CuckooCueWidgetReceiver : GlanceAppWidgetReceiver() {
@@ -124,31 +126,33 @@ class CuckooCueWidget : GlanceAppWidget() {
         val colors = widgetColors(widgetDark)
         val metrics = widgetMetrics(appearanceSettings.widgetTextScale)
 
-        repository.ensureSeedData()
-
         provideContent {
-            val cues by repository.focusCues.collectAsState(initial = emptyList())
-            val categoryStripOffset = currentState(CategoryStripOffsetPreferenceKey) ?: 0
-            val selectedCategoryKey = currentState(SelectedCategoryKeyPreferenceKey)
+            val cues by repository.widgetCues.collectAsState(initial = emptyList())
+            val footerTipStripOffset = currentState(FooterTipStripOffsetPreferenceKey) ?: 0
+            val selectedFooterTipKey = currentState(SelectedFooterTipKeyPreferenceKey)
             val lastUndoTaskId = currentState(LastUndoTaskIdPreferenceKey)
-            val lastUndoVersion = currentState(LastUndoVersionPreferenceKey)
-            val lastUndoCue = cues.firstOrNull {
-                it.taskId == lastUndoTaskId &&
-                    it.version == lastUndoVersion &&
-                    it.status == TaskStatus.Completed
+            val lastUndoTitle = currentState(LastUndoTitlePreferenceKey)
+            val lastUndoCue = if (
+                lastUndoTaskId != null &&
+                lastUndoTitle != null
+            ) {
+                UndoCueUi(
+                    taskId = lastUndoTaskId,
+                    title = lastUndoTitle,
+                )
+            } else {
+                null
             }
             val pendingCues = cues
-                .filter { it.status == TaskStatus.Pending }
                 .filter {
-                    selectedCategoryKey == null ||
-                        it.categoryKey == selectedCategoryKey
+                    selectedFooterTipKey == null ||
+                        it.taskId == selectedFooterTipKey
                 }
-                .sortedBy { it.slot }
             CuckooCueWidgetContent(
                 cues = pendingCues,
                 allCues = cues,
-                categoryStripOffset = categoryStripOffset,
-                selectedCategoryKey = selectedCategoryKey,
+                footerTipStripOffset = footerTipStripOffset,
+                selectedFooterTipKey = selectedFooterTipKey,
                 lastUndoCue = lastUndoCue,
                 colors = colors,
                 metrics = metrics,
@@ -158,17 +162,13 @@ class CuckooCueWidget : GlanceAppWidget() {
 }
 
 object CuckooCueWidgetUpdater {
-    fun updateAll(context: Context) {
-        runBlocking {
-            CuckooCueWidget().updateAll(context)
-        }
+    suspend fun updateAll(context: Context) {
+        CuckooCueWidget().updateAll(context)
     }
 
-    fun clearTransientUndoAndUpdateAll(context: Context) {
-        runBlocking {
-            clearTransientUndo(context)
-            CuckooCueWidget().updateAll(context)
-        }
+    suspend fun clearTransientUndoAndUpdateAll(context: Context) {
+        clearTransientUndo(context)
+        CuckooCueWidget().updateAll(context)
     }
 
     private suspend fun clearTransientUndo(context: Context) {
@@ -184,11 +184,11 @@ object CuckooCueWidgetUpdater {
 
 @Composable
 private fun CuckooCueWidgetContent(
-    cues: List<FocusCue>,
-    allCues: List<FocusCue>,
-    categoryStripOffset: Int,
-    selectedCategoryKey: String?,
-    lastUndoCue: FocusCue?,
+    cues: List<WidgetCue>,
+    allCues: List<WidgetCue>,
+    footerTipStripOffset: Int,
+    selectedFooterTipKey: String?,
+    lastUndoCue: UndoCueUi?,
     colors: WidgetColors,
     metrics: WidgetMetrics,
 ) {
@@ -220,9 +220,9 @@ private fun CuckooCueWidgetContent(
         }
 
         Footer(
-            categories = allCues.categoryTips(),
-            categoryStripOffset = categoryStripOffset,
-            selectedCategoryKey = selectedCategoryKey,
+            footerTips = allCues.footerTips(),
+            footerTipStripOffset = footerTipStripOffset,
+            selectedFooterTipKey = selectedFooterTipKey,
             lastUndoCue = lastUndoCue,
             colors = colors,
             metrics = metrics,
@@ -252,7 +252,7 @@ private fun EmptyState(
                 ),
             )
             Text(
-                text = "アプリでFocusを置く",
+                text = "アプリで項目を作る",
                 style = TextStyle(
                     color = colors.muted,
                     fontSize = 12.sp,
@@ -264,13 +264,12 @@ private fun EmptyState(
 
 @Composable
 private fun CueRow(
-    cue: FocusCue,
+    cue: WidgetCue,
     colors: WidgetColors,
     metrics: WidgetMetrics,
     modifier: GlanceModifier = GlanceModifier,
 ) {
     val action = actionRunCallback<CompleteCueAction>(cue.actionParameters)
-    val background = if (cue.slot == 0) colors.highlight else colors.transparent
     val usesTwoLines = cue.usesTwoLineTitle(metrics)
     val titleMaxChars = if (usesTwoLines) {
         metrics.maxTaskTitleChars
@@ -282,7 +281,7 @@ private fun CueRow(
         modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 1.dp)
-            .background(background)
+            .background(colors.transparent)
             .cornerRadius(10.dp)
             .clickable(action)
             .padding(horizontal = 6.dp),
@@ -320,8 +319,8 @@ private fun CueRow(
         Text(
             text = "┃",
             style = TextStyle(
-                color = cue.categoryColorKey.categoryColor(colors),
-                fontSize = metrics.categoryRailSize,
+                color = cue.groupColorKey().cueGroupColor(colors),
+                fontSize = metrics.contextRailSize,
                 fontWeight = FontWeight.Bold,
             ),
         )
@@ -330,15 +329,15 @@ private fun CueRow(
 
 @Composable
 private fun Footer(
-    categories: List<WidgetCategoryTip>,
-    categoryStripOffset: Int,
-    selectedCategoryKey: String?,
-    lastUndoCue: FocusCue?,
+    footerTips: List<WidgetFooterTip>,
+    footerTipStripOffset: Int,
+    selectedFooterTipKey: String?,
+    lastUndoCue: UndoCueUi?,
     colors: WidgetColors,
     metrics: WidgetMetrics,
     modifier: GlanceModifier = GlanceModifier,
 ) {
-    val rotatedCategories = categories.rotateBy(categoryStripOffset)
+    val rotatedFooterTips = footerTips.rotateBy(footerTipStripOffset)
 
     Box(
         modifier = modifier
@@ -355,15 +354,15 @@ private fun Footer(
                 UndoChip(cue = lastUndoCue, colors = colors)
                 Spacer(GlanceModifier.width(14.dp))
             }
-            rotatedCategories.forEach { category ->
-                CategoryTip(
-                    category = category.tip,
-                    selected = selectedCategoryKey == category.tip.key,
+            rotatedFooterTips.forEach { footerTip ->
+                FooterTip(
+                    footerTip = footerTip.tip,
+                    selected = selectedFooterTipKey == footerTip.tip.key,
                     colors = colors,
                     metrics = metrics,
                 )
-                if (category.index != rotatedCategories.last().index) {
-                    Spacer(GlanceModifier.width(FooterCategoryGap))
+                if (footerTip.index != rotatedFooterTips.last().index) {
+                    Spacer(GlanceModifier.width(FooterTipGap))
                 }
             }
         }
@@ -379,7 +378,7 @@ private fun Footer(
                     .width(32.dp)
                     .height(30.dp)
                     .background(colors.surfaceBase)
-                    .clickable(actionRunCallback<AdvanceCategoryStripAction>()),
+                    .clickable(actionRunCallback<AdvanceFooterTipStripAction>()),
                 contentAlignment = Alignment.CenterEnd,
             ) {
                 Text(
@@ -395,34 +394,34 @@ private fun Footer(
     }
 }
 
-private data class IndexedCategoryTip(
+private data class IndexedFooterTip(
     val index: Int,
-    val tip: WidgetCategoryTip,
+    val tip: WidgetFooterTip,
 )
 
-private fun List<WidgetCategoryTip>.rotateBy(offset: Int): List<IndexedCategoryTip> {
+private fun List<WidgetFooterTip>.rotateBy(offset: Int): List<IndexedFooterTip> {
     if (isEmpty()) return emptyList()
     val normalizedOffset = offset.floorMod(size)
     return indices.map { position ->
         val index = (normalizedOffset + position).floorMod(size)
-        IndexedCategoryTip(
+        IndexedFooterTip(
             index = index,
             tip = this[index],
         )
     }
 }
 
-class AdvanceCategoryStripAction : ActionCallback {
+class AdvanceFooterTipStripAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
-        val categoryCount = CuckooRepository.getInstance(context)
-            .getFocusCues()
-            .categoryTips()
+        val footerTipCount = CuckooRepository.getInstance(context)
+            .getWidgetCues()
+            .footerTips()
             .size
-        if (categoryCount == 0) return
+        if (footerTipCount == 0) return
         updateAppWidgetState(context, glanceId) { preferences ->
-            val currentOffset = preferences[CategoryStripOffsetPreferenceKey] ?: 0
-            preferences[CategoryStripOffsetPreferenceKey] =
-                (currentOffset + 1).floorMod(categoryCount)
+            val currentFooterTipOffset = preferences[FooterTipStripOffsetPreferenceKey] ?: 0
+            preferences[FooterTipStripOffsetPreferenceKey] =
+                (currentFooterTipOffset + 1).floorMod(footerTipCount)
             preferences.clearTransientUndo()
         }
         CuckooCueWidget().updateAll(context)
@@ -430,7 +429,7 @@ class AdvanceCategoryStripAction : ActionCallback {
 }
 @Composable
 private fun UndoChip(
-    cue: FocusCue,
+    cue: UndoCueUi,
     colors: WidgetColors,
     modifier: GlanceModifier = GlanceModifier,
 ) {
@@ -471,16 +470,16 @@ private fun UndoChip(
 }
 
 @Composable
-private fun CategoryTip(
-    category: WidgetCategoryTip,
+private fun FooterTip(
+    footerTip: WidgetFooterTip,
     selected: Boolean,
     colors: WidgetColors,
     metrics: WidgetMetrics,
     modifier: GlanceModifier = GlanceModifier,
 ) {
-    val label = category.label.truncateForWidget(MaxCategoryLabelChars)
-    val tipWidth = (label.length * EstimatedCategoryGlyphWidthDp)
-        .coerceIn(FooterCategoryMinWidthDp, FooterCategoryMaxWidthDp)
+    val label = footerTip.label.truncateForWidget(MaxFooterTipLabelChars)
+    val tipWidth = (label.length * EstimatedFooterTipGlyphWidthDp)
+        .coerceIn(FooterTipMinWidthDp, FooterTipMaxWidthDp)
         .dp
 
     Box(
@@ -488,23 +487,23 @@ private fun CategoryTip(
             .width(tipWidth)
             .height(15.dp)
             .clickable(
-                actionRunCallback<ToggleCategoryFilterAction>(
-                    actionParametersOf(CategoryKey to category.key),
+                actionRunCallback<ToggleFooterTipFilterAction>(
+                    actionParametersOf(FooterTipKey to footerTip.key),
                 ),
             ),
         contentAlignment = Alignment.BottomStart,
     ) {
         Box(
             modifier = GlanceModifier
-                .width(metrics.categoryMarkWidth)
+                .width(metrics.footerMarkWidth)
                 .height(if (selected) 6.dp else 5.dp)
-                .background(category.colorKey.categoryMarkColor()),
+                .background(footerTip.colorKey.cueGroupMarkColor()),
         ) {}
         Text(
             text = label,
             maxLines = 1,
             style = TextStyle(
-                color = if (selected) category.colorKey.categoryColor(colors) else colors.muted,
+                color = if (selected) footerTip.colorKey.cueGroupColor(colors) else colors.muted,
                 fontSize = 11.sp,
                 fontWeight = if (selected) FontWeight.Bold else null,
             ),
@@ -515,12 +514,12 @@ private fun CategoryTip(
 class CompleteCueAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
         val taskId = parameters[TaskIdKey] ?: return
-        val version = parameters[VersionKey] ?: return
-        val completed = CuckooRepository.getInstance(context).completeTask(taskId, version)
+        val title = parameters[TaskTitleKey] ?: ""
+        val result = CuckooRepository.getInstance(context).completeTask(taskId)
         updateAppWidgetState(context, glanceId) { preferences ->
-            if (completed) {
+            if (result.completed) {
                 preferences[LastUndoTaskIdPreferenceKey] = taskId
-                preferences[LastUndoVersionPreferenceKey] = version + 1
+                preferences[LastUndoTitlePreferenceKey] = title
             } else {
                 preferences.clearTransientUndo()
             }
@@ -532,8 +531,7 @@ class CompleteCueAction : ActionCallback {
 class UndoCueAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
         val taskId = parameters[TaskIdKey] ?: return
-        val version = parameters[VersionKey] ?: return
-        CuckooRepository.getInstance(context).undoCompleteTask(taskId, version)
+        CuckooRepository.getInstance(context).undoCompleteTask(taskId)
         updateAppWidgetState(context, glanceId) { preferences ->
             preferences.clearTransientUndo()
         }
@@ -541,15 +539,15 @@ class UndoCueAction : ActionCallback {
     }
 }
 
-class ToggleCategoryFilterAction : ActionCallback {
+class ToggleFooterTipFilterAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
-        val categoryKey = parameters[CategoryKey] ?: return
+        val footerTipKey = parameters[FooterTipKey] ?: return
         updateAppWidgetState(context, glanceId) { preferences ->
-            val currentCategoryKey = preferences[SelectedCategoryKeyPreferenceKey]
-            if (currentCategoryKey == categoryKey) {
-                preferences.remove(SelectedCategoryKeyPreferenceKey)
+            val currentFooterTipKey = preferences[SelectedFooterTipKeyPreferenceKey]
+            if (currentFooterTipKey == footerTipKey) {
+                preferences.remove(SelectedFooterTipKeyPreferenceKey)
             } else {
-                preferences[SelectedCategoryKeyPreferenceKey] = categoryKey
+                preferences[SelectedFooterTipKeyPreferenceKey] = footerTipKey
             }
             preferences.clearTransientUndo()
         }
@@ -557,22 +555,25 @@ class ToggleCategoryFilterAction : ActionCallback {
     }
 }
 
-private val FocusCue.actionParameters: ActionParameters
+private val WidgetCue.actionParameters: ActionParameters
     get() = actionParametersOf(
         TaskIdKey to taskId,
-        VersionKey to version,
+        TaskTitleKey to title,
     )
+
+private val UndoCueUi.actionParameters: ActionParameters
+    get() = actionParametersOf(TaskIdKey to taskId)
 
 private fun Int.floorMod(divisor: Int): Int = ((this % divisor) + divisor) % divisor
 
-private fun String.categoryColor(colors: WidgetColors): ColorProvider =
+private fun String.cueGroupColor(colors: WidgetColors): ColorProvider =
     when (this) {
         "green" -> colors.green
         "gold" -> colors.gold
         else -> colors.teal
     }
 
-private fun String.categoryMarkColor(): ColorProvider =
+private fun String.cueGroupMarkColor(): ColorProvider =
     when (this) {
         "green" -> GreenMark
         "gold" -> GoldMark
@@ -589,10 +590,10 @@ private fun Int.priorityColor(colors: WidgetColors): ColorProvider =
 private fun Int.prioritySize(metrics: WidgetMetrics): androidx.compose.ui.unit.TextUnit =
     metrics.prioritySizes.getOrElse(this) { metrics.prioritySizes.last() }
 
-private fun FocusCue.usesTwoLineTitle(metrics: WidgetMetrics): Boolean =
+private fun WidgetCue.usesTwoLineTitle(metrics: WidgetMetrics): Boolean =
     title.length > metrics.singleLineTitleChars
 
-private fun FocusCue.rowHeight(metrics: WidgetMetrics): androidx.compose.ui.unit.Dp =
+private fun WidgetCue.rowHeight(metrics: WidgetMetrics): androidx.compose.ui.unit.Dp =
     if (usesTwoLineTitle(metrics)) metrics.twoLineRowHeight else metrics.singleLineRowHeight
 
 private fun String.truncateForWidget(maxChars: Int): String =
@@ -600,19 +601,24 @@ private fun String.truncateForWidget(maxChars: Int): String =
 
 private fun MutablePreferences.clearTransientUndo() {
     remove(LastUndoTaskIdPreferenceKey)
-    remove(LastUndoVersionPreferenceKey)
+    remove(LastUndoTitlePreferenceKey)
 }
 
-private fun List<FocusCue>.categoryTips(): List<WidgetCategoryTip> =
-    sortedBy { it.slot }
-        .distinctBy { it.categoryKey }
-        .map { cue ->
-            WidgetCategoryTip(
-                key = cue.categoryKey,
-                label = cue.categoryLabel,
-                colorKey = cue.categoryColorKey,
+private fun List<WidgetCue>.footerTips(): List<WidgetFooterTip> =
+    map { cue ->
+            WidgetFooterTip(
+                key = cue.taskId,
+                label = cue.title,
+                colorKey = cue.groupColorKey(),
             )
         }
+
+private fun WidgetCue.groupColorKey(): String =
+    when (taskId.fold(0) { acc, char -> acc + char.code }.floorMod(3)) {
+        1 -> "green"
+        2 -> "gold"
+        else -> "teal"
+    }
 
 private fun AppearanceSettings.resolveWidgetDark(systemDark: Boolean): Boolean =
     when (widgetTheme) {
@@ -668,8 +674,8 @@ private fun widgetMetrics(scale: WidgetTextScale): WidgetMetrics =
             singleLineTitleChars = 18,
             maxTaskTitleChars = 38,
             prioritySizes = listOf(14.sp, 10.sp, 6.sp),
-            categoryRailSize = 17.sp,
-            categoryMarkWidth = 10.dp,
+            contextRailSize = 17.sp,
+            footerMarkWidth = 10.dp,
         )
         WidgetTextScale.Standard -> WidgetMetrics(
             singleLineRowHeight = 30.dp,
@@ -678,8 +684,8 @@ private fun widgetMetrics(scale: WidgetTextScale): WidgetMetrics =
             singleLineTitleChars = 16,
             maxTaskTitleChars = 34,
             prioritySizes = listOf(15.sp, 10.sp, 6.sp),
-            categoryRailSize = 18.sp,
-            categoryMarkWidth = 11.dp,
+            contextRailSize = 18.sp,
+            footerMarkWidth = 11.dp,
         )
         WidgetTextScale.Large -> WidgetMetrics(
             singleLineRowHeight = 34.dp,
@@ -688,12 +694,12 @@ private fun widgetMetrics(scale: WidgetTextScale): WidgetMetrics =
             singleLineTitleChars = 14,
             maxTaskTitleChars = 30,
             prioritySizes = listOf(16.sp, 11.sp, 7.sp),
-            categoryRailSize = 20.sp,
-            categoryMarkWidth = 12.dp,
+            contextRailSize = 20.sp,
+            footerMarkWidth = 12.dp,
         )
     }
 
-private data class WidgetCategoryTip(
+private data class WidgetFooterTip(
     val key: String,
     val label: String,
     val colorKey: String,

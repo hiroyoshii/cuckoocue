@@ -16,3 +16,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "CuckooCue"
 include(":app")
+include(":macrobenchmark")

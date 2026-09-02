@@ -1,12 +1,12 @@
 {
   "formatVersion": 1,
   "database": {
-    "version": 2,
-    "identityHash": "eeea91a7d5b4b07d5fbec7c262e97ad7",
+    "version": 7,
+    "identityHash": "a67830d86fb7f65f85b62b5eca3c7ca8",
     "entities": [
       {
         "tableName": "runs",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `title` TEXT NOT NULL, `created_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `title` TEXT NOT NULL, `sort_order` INTEGER NOT NULL, `archived_at` INTEGER, `created_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -19,6 +19,17 @@
             "columnName": "title",
             "affinity": "TEXT",
             "notNull": true
+          },
+          {
+            "fieldPath": "sortOrder",
+            "columnName": "sort_order",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "archivedAt",
+            "columnName": "archived_at",
+            "affinity": "INTEGER"
           },
           {
             "fieldPath": "createdAt",
@@ -42,7 +53,7 @@
       },
       {
         "tableName": "run_tasks",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `run_id` TEXT NOT NULL, `title` TEXT NOT NULL, `status` TEXT NOT NULL, `version` INTEGER NOT NULL, `priority` INTEGER NOT NULL, `category_key` TEXT NOT NULL, `category_label` TEXT NOT NULL, `category_color_key` TEXT NOT NULL, `sort_order` INTEGER NOT NULL, `completed_at` INTEGER, `created_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`run_id`) REFERENCES `runs`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `run_id` TEXT NOT NULL, `title` TEXT NOT NULL, `user_priority` INTEGER, `due_at` INTEGER, `sort_order` INTEGER NOT NULL, `completed_at` INTEGER, `created_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`run_id`) REFERENCES `runs`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -63,40 +74,14 @@
             "notNull": true
           },
           {
-            "fieldPath": "status",
-            "columnName": "status",
-            "affinity": "TEXT",
-            "notNull": true
+            "fieldPath": "userPriority",
+            "columnName": "user_priority",
+            "affinity": "INTEGER"
           },
           {
-            "fieldPath": "version",
-            "columnName": "version",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "priority",
-            "columnName": "priority",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "categoryKey",
-            "columnName": "category_key",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "categoryLabel",
-            "columnName": "category_label",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "categoryColorKey",
-            "columnName": "category_color_key",
-            "affinity": "TEXT",
-            "notNull": true
+            "fieldPath": "dueAt",
+            "columnName": "due_at",
+            "affinity": "INTEGER"
           },
           {
             "fieldPath": "sortOrder",
@@ -154,15 +139,9 @@
         ]
       },
       {
-        "tableName": "focus_assignments",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `task_id` TEXT NOT NULL, `slot` INTEGER NOT NULL, `created_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`task_id`) REFERENCES `run_tasks`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "tableName": "widget_cues",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`task_id` TEXT NOT NULL, `run_id` TEXT NOT NULL, `priority` INTEGER NOT NULL, `created_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL, PRIMARY KEY(`task_id`), FOREIGN KEY(`task_id`) REFERENCES `run_tasks`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
-          {
-            "fieldPath": "id",
-            "columnName": "id",
-            "affinity": "TEXT",
-            "notNull": true
-          },
           {
             "fieldPath": "taskId",
             "columnName": "task_id",
@@ -170,8 +149,14 @@
             "notNull": true
           },
           {
-            "fieldPath": "slot",
-            "columnName": "slot",
+            "fieldPath": "runId",
+            "columnName": "run_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "priority",
+            "columnName": "priority",
             "affinity": "INTEGER",
             "notNull": true
           },
@@ -191,27 +176,18 @@
         "primaryKey": {
           "autoGenerate": false,
           "columnNames": [
-            "id"
+            "task_id"
           ]
         },
         "indices": [
           {
-            "name": "index_focus_assignments_task_id",
-            "unique": true,
+            "name": "index_widget_cues_run_id",
+            "unique": false,
             "columnNames": [
-              "task_id"
+              "run_id"
             ],
             "orders": [],
-            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_focus_assignments_task_id` ON `${TABLE_NAME}` (`task_id`)"
-          },
-          {
-            "name": "index_focus_assignments_slot",
-            "unique": true,
-            "columnNames": [
-              "slot"
-            ],
-            "orders": [],
-            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_focus_assignments_slot` ON `${TABLE_NAME}` (`slot`)"
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_widget_cues_run_id` ON `${TABLE_NAME}` (`run_id`)"
           }
         ],
         "foreignKeys": [
@@ -231,7 +207,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'eeea91a7d5b4b07d5fbec7c262e97ad7')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'a67830d86fb7f65f85b62b5eca3c7ca8')"
     ]
   }
 }
