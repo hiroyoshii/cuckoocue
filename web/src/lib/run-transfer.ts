@@ -34,7 +34,7 @@ export function decodeSaveReviewTransfer(value: string): SaveReviewTransfer | nu
       !Array.isArray(parsed.tasks) ||
       parsed.tasks.length === 0 ||
       parsed.tasks.length > 50 ||
-      !isIsoDay(parsed.source_anchor_day) ||
+      !isValidIsoDay(parsed.source_anchor_day) ||
       !parsed.tasks.every(isSaveReviewTask)
     ) {
       return null;
@@ -46,11 +46,49 @@ export function decodeSaveReviewTransfer(value: string): SaveReviewTransfer | nu
 }
 
 export function buildAndroidImportUri(payload: AndroidImportTransfer): string {
+  if (!isAndroidImportTransfer(payload)) {
+    throw new Error("Android に渡す内容が不正です。");
+  }
   const encoded = encodeBase64Url(JSON.stringify(payload));
   if (new TextEncoder().encode(encoded).length > MAX_TRANSFER_BYTES) {
     throw new Error("項目数が多すぎるため Android に渡せません。項目を減らしてください。");
   }
   return `https://cuckoocue.hiyozoo.com/import?payload=${encodeURIComponent(encoded)}`;
+}
+
+export function fitsInlineAndroidImport(payload: AndroidImportTransfer): boolean {
+  if (!isAndroidImportTransfer(payload)) return false;
+  const jsonBytes = new TextEncoder().encode(JSON.stringify(payload)).length;
+  return Math.ceil((jsonBytes * 4) / 3) <= MAX_TRANSFER_BYTES;
+}
+
+export function isAndroidImportTransfer(value: unknown): value is AndroidImportTransfer {
+  if (!value || typeof value !== "object") return false;
+  const payload = value as AndroidImportTransfer;
+  return Boolean(
+    payload.version === 1 &&
+      typeof payload.title === "string" &&
+      payload.title.trim().length > 0 &&
+      payload.title.length <= 240 &&
+      isValidIsoDay(payload.target_anchor_day) &&
+      Array.isArray(payload.tasks) &&
+      payload.tasks.length > 0 &&
+      payload.tasks.length <= 50 &&
+      payload.tasks.every((task) =>
+        Boolean(
+          task &&
+            typeof task.title === "string" &&
+            task.title.trim().length > 0 &&
+            task.title.length <= 240 &&
+            isNullablePriority(task.default_priority) &&
+            isNullableDay(task.relative_start_day) &&
+            isNullableDay(task.relative_end_day) &&
+            (task.relative_start_day == null ||
+              task.relative_end_day == null ||
+              task.relative_start_day <= task.relative_end_day),
+        ),
+      ),
+  );
 }
 
 function isSaveReviewTask(value: SaveReviewTransfer["tasks"][number]): boolean {
@@ -76,8 +114,10 @@ function isNullableDay(value: unknown): boolean {
   return value === null || (Number.isInteger(value) && Math.abs(Number(value)) <= 3650);
 }
 
-function isIsoDay(value: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`));
+export function isValidIsoDay(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(date.valueOf()) && date.toISOString().slice(0, 10) === value;
 }
 
 function encodeBase64Url(value: string): string {

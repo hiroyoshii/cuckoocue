@@ -41,7 +41,7 @@ type SearchResult = {
   text_matched: boolean;
 };
 type EnrichmentDraft = { domain: string; context_text: string; task_groupings: TaskGrouping[] };
-type ImportPayload = Omit<AndroidImportTransfer, "version"> & { source_task_list_entry_id: string };
+type ImportPayload = AndroidImportTransfer;
 
 const emptyTask = (): TaskDraft => ({
   text: "", default_priority: null, relative_start_day: null, relative_end_day: null,
@@ -233,12 +233,7 @@ export function CuckooCueWebApp() {
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "Import payload failed");
       const payload = body.importPayload as ImportPayload;
-      const uri = buildAndroidImportUri({
-        version: 1,
-        title: payload.title,
-        target_anchor_day: payload.target_anchor_day,
-        tasks: payload.tasks,
-      });
+      const uri = buildAndroidImportUri(payload);
       setPreparedImport(payload);
       setAndroidImportUri(uri);
       setStatus("Import ready");

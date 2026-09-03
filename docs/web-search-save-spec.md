@@ -118,7 +118,8 @@ Current API returns:
 Web search result
   -> user chooses target_anchor_day
   -> Web fetches import payload by corpus id
-  -> Web opens cuckoocue://import with transfer contract v1 on Android
+  -> Web opens https://cuckoocue.hiyozoo.com/import with transfer contract v1
+  -> Android receives the verified HTTPS App Link
   -> Android imports as a new local list
   -> Android converts relative_start_day/end_day to absolute schedule
   -> Android navigates directly to the imported list confirmation/edit screen
@@ -126,12 +127,24 @@ Web search result
 
 The transfer contract is versioned JSON encoded as URL-safe Base64. It contains only the user-reviewed title, tasks, priority and relative date range. Corpus embeddings, scores, owner ids, domain/context and Memory Bank profile data are not sent to Android.
 
+Imported lists are independent local copies. Android intentionally does not retain a corpus source id, so importing the same reusable list more than once creates separate lists.
+
+The inline transfer is capped at 16 KB and 50 tasks. The save API rejects a reviewed list that cannot fit this contract, so a published corpus entry cannot become non-importable later.
+
 Android stores both sides of the imported range:
 
 - `available_from_at`: `target_anchor_day + relative_start_day`
 - `due_at`: `target_anchor_day + relative_end_day`
 
-Desktop web does not automatically open Android. Android web opens the custom app link after import preparation and also leaves an explicit `Androidで開く` retry action on screen.
+Desktop Web does not automatically open Android. Android Web opens the HTTPS App Link after import preparation and also leaves an explicit `Androidで開く` retry action on screen.
+
+## Identity Contract
+
+- Web and Android both sign in with Google through Firebase Authentication.
+- API calls send a Firebase ID token as a bearer token. The server verifies it and uses its UID for BigQuery `owner_user_id` and Memory Bank scope.
+- Search remains a shared-corpus operation and is not filtered by owner UID.
+- Sign-out clears the local Firebase session. Android also clears Credential Manager state so a later sign-in can choose an account again.
+- `x-dev-user-id` is accepted only when `CUE_ALLOW_DEV_AUTH=true`; production App Hosting sets it to `false`.
 
 ## Brand and interaction language
 
@@ -152,35 +165,35 @@ BigQuery result pagination should be used for search result paging.
 - The web API exposes this as opaque `nextCursor`.
 - Web observes the result-tail sentinel and fetches the next page shortly before it enters the viewport. The visible button remains as a keyboard-accessible retry path.
 
-## Implementation TODO
+## Implementation Status
 
 The following list is the implementation backlog as of 2026-09-03. Priority is based on whether the issue blocks deployment, corrupts data semantics, or leaves a required data path disconnected.
 
 ### P0: deployment, identity, and data correctness
 
-- [ ] **WEB-001: Repair the Firebase App Hosting build.** Configure the backend to build the Next.js application under `web/`, produce a successful rollout, and verify that its generated App Hosting URL serves the application instead of returning 404.
-- [ ] **WEB-002: Connect the canonical production domain.** Map `cuckoocue.hiyozoo.com` to the App Hosting backend, complete DNS and certificate provisioning, redirect or stop advertising obsolete Firebase Hosting URLs, and smoke-test every Web entry point on the canonical domain.
-- [ ] **AUTH-001: Complete production Web authentication.** Add `cuckoocue.hiyozoo.com` to Firebase Auth authorized domains, choose and enable the production sign-in provider, provide the required `NEXT_PUBLIC_FIREBASE_*` build variables, and verify that production never falls through to `x-dev-user-id`.
-- [ ] **AUTH-002: Define one user identity across Android, Web, BigQuery, and Memory Bank.** Android must obtain the same Firebase UID that the Web/API uses; `owner_user_id` and Memory Bank scope must derive from that verified UID. Document sign-in, sign-out, account switching, and token handoff behavior.
-- [ ] **MODEL-001: Unify task priority semantics.** Replace the incompatible Web `1..3` and Android `0..2` meanings with one canonical contract, preferably a named enum such as `strong | medium | quiet`. Validate the value at the API and Android import boundaries and migrate or reset existing test rows.
-- [ ] **MODEL-002: Anchor relative task dates to run completion.** Persist or deterministically derive a stable completion anchor in Android when a list becomes complete. Build `relative_start_day` and `relative_end_day` from that anchor rather than the day the user later opens Web. BQ does not gain a `completed_at` column.
-- [ ] **SEARCH-001: Restore the agreed Query First ranking contract.** Use BigQuery `SEARCH` and the coarse mapped domain to form candidates, then rank those candidates by similarity between query plus weak profile attributes and corpus context. A domain match must not unconditionally outrank a direct query match. Return truthful `text_matched` diagnostics and rename or remove misleading `matched_text` output.
+- [x] **WEB-001: Firebase App Hosting build.** The backend builds from `web/`; the generated `asia-east1` URL serves the current Next.js application.
+- [ ] **WEB-002: Canonical production domain.** The App Hosting domain resource exists, but the external DNS A/TXT/ACME records and resulting certificate are still pending. This is the only Web deployment blocker outside this repository/project.
+- [x] **AUTH-001: Production Web authentication.** Google sign-in and authorized domains are configured, Firebase client variables are present, and production rejects unauthenticated API requests instead of accepting the development header.
+- [x] **AUTH-002: Shared identity contract.** Web and Android use Firebase Auth; verified UID scopes provenance and Memory Bank as documented above.
+- [x] **MODEL-001: Priority semantics.** Web, API, BigQuery and Android use nullable integer values `0=強`, `1=中`, `2=弱`.
+- [x] **MODEL-002: Completion-relative dates.** Android persists a stable completion anchor and exports both relative range endpoints from it. BQ has no completion timestamp.
+- [x] **SEARCH-001: Query First ranking.** BigQuery uses `SEARCH`/mapped domain only to select candidates, then sorts the candidate set by query plus weak-profile context similarity. Diagnostics expose truthful `text_matched` and `context_score` values only in the API/logging layer.
 
 ### P1: required end-to-end data paths
 
-- [ ] **MEMORY-001: Connect non-widget Android operations to Memory Bank ingestion.** Send the agreed raw operation events through the authenticated API asynchronously. Exclude widget operations, search queries, and `android_completed_run_saved`. Verify profile updates against the fixed attribute-list schema.
-- [ ] **ANDROID-001: Make imported date ranges fully reviewable.** Show and edit both `available_from_at` and `due_at` on the Android confirmation/edit screen, persist both values through the repository/DAO, and test open-ended and same-day ranges.
-- [ ] **MODEL-003: Add cross-field corpus validation.** Require `relative_start_day <= relative_end_day` when both exist; validate priority, task count/text, grouping offsets, duplicate offsets, and references against the reviewed task array. Apply the same contract to LLM output and user-edited enrichment.
-- [ ] **PRIVACY-001: Enforce the public-corpus safety boundary.** Before save/publish, detect and block clearly unsafe personal data such as precise addresses, personal contact details, and account identifiers in titles, task text, context, and grouping labels. Keep an explicit final user confirmation because save and publish are the same operation.
-- [ ] **IMPORT-001: Decide and implement import provenance.** Decide whether an Android list needs `source_corpus_entry_id`. If retained, use it for duplicate warnings, reuse attribution, and re-import behavior; if omitted, explicitly accept duplicate imports and document that imported lists are independent copies.
-- [ ] **IMPORT-002: Keep BQ-only grouping behavior consistent.** `task_groupings` currently remain in the Web/BQ corpus and are not transferred to Android. Remove claims that Android consumes them, and add contract tests proving the import payload intentionally excludes grouping, domain, context, embeddings, scores, and owner data.
+- [x] **MEMORY-001: Android Memory Bank ingestion.** Authenticated non-widget app operations send raw events asynchronously. Widget actions, search queries and completed-list publication are excluded; live profile retrieval was verified against the fixed attribute-list schema.
+- [x] **ANDROID-001: Reviewable date ranges.** Android edits and persists start/end dates; instrumentation covers open-ended and same-day transfer ranges.
+- [x] **MODEL-003: Cross-field validation.** API, enrichment output and Android import validate ranges, priorities, counts, text limits, grouping offsets and duplicate membership.
+- [x] **PRIVACY-001: Public-corpus safety.** Save blocks obvious precise addresses, contact details and account identifiers and requires explicit publication confirmation.
+- [x] **IMPORT-001: Import provenance decision.** Imported lists are independent copies and retain no corpus source id.
+- [x] **IMPORT-002: BQ-only grouping.** Grouping/domain/context/internal fields stay out of the Android transfer payload; E2E checks the exact boundary.
 
 ### P2: transport, reliability, and operations
 
-- [ ] **IMPORT-003: Harden the Android transfer contract.** Validate every decoded task and reject unsupported versions, malformed dates, invalid priority values, excessive task counts, and oversized payloads. Show a confirmation before inserting untrusted incoming data.
-- [ ] **IMPORT-004: Replace the custom scheme with a verified HTTPS App Link.** Associate `https://cuckoocue.hiyozoo.com` with the Android application and retain an explicit retry/open action. Verify installed-app, missing-app, mobile-browser, and desktop behavior.
-- [ ] **IMPORT-005: Bound transfer payload size.** Establish a tested maximum for inline app-link payloads. Use a short-lived authenticated transfer ID when a reviewed list exceeds it.
-- [ ] **SAVE-001: Make corpus publication idempotent.** Add a client operation ID or equivalent API contract so retries and repeated submissions cannot accidentally create duplicate rows. This need not become user-visible corpus semantics.
-- [ ] **SEARCH-002: Add and verify the BigQuery search index.** Create the `search_text` search index after the table contract stabilizes, verify that `SEARCH` uses it, and record representative latency and query cost.
-- [ ] **OPS-001: Verify runtime IAM and regional dependencies.** Confirm the App Hosting service account can run BigQuery jobs, read/write the corpus, call Vertex AI models, and access Memory Bank. Record the accepted latency impact of App Hosting in `asia-east1` with data/AI services in `asia-northeast1`, or align regions where supported.
-- [ ] **OPS-002: Add production scenario coverage.** Exercise authenticated save, public search, paging, profile-assisted ranking, import, Android execution, completion-anchor export, re-save, retry, invalid payload, unsafe-data rejection, and cross-user isolation on the canonical domain. Preserve raw inputs, BQ rows, Memory Bank results, API outputs, and ranking diagnostics as evaluation artifacts.
+- [x] **IMPORT-003: Hardened Android transfer contract.** Version, origin/path, date, range, priority, count, text and encoded size are validated before a confirmation dialog and local insert.
+- [ ] **IMPORT-004: Verified HTTPS App Link.** Manifest and `assetlinks.json` are implemented and debug-signed behavior is covered. End-to-end domain verification awaits external DNS/certificate provisioning; the release signing SHA-256 must be added when a release key exists.
+- [x] **IMPORT-005: Bounded inline transfer.** The contract is capped at 16 KB/50 tasks, and publication rejects content that could not later be transferred. No fallback storage path is part of MVP.
+- [x] **SAVE-001: Idempotent publication.** A UUID operation id is merged into BigQuery and cross-owner reuse is rejected.
+- [x] **SEARCH-002: BigQuery search index.** `task_list_search_idx` exists and `SEARCH` is exercised. Because the current table is below BigQuery's 10 GB population threshold, coverage remains 0% and current representative latency reflects an unaccelerated scan.
+- [x] **OPS-001: Runtime IAM and regions.** App Hosting runtime can invoke BigQuery and Vertex AI/Memory Bank. App Hosting remains in its closest supported region `asia-east1`; BigQuery and Vertex AI remain in Tokyo `asia-northeast1`.
+- [ ] **OPS-002: Canonical-domain production scenario.** The generated App Hosting production URL passes authenticated API save/search/paging/import and failure-path E2E; Android execution/export is covered by emulator instrumentation. Repeat the Web smoke test on the canonical hostname after WEB-002, including interactive Google account selection and installed/missing-app browser routing.
