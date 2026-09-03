@@ -320,7 +320,7 @@ private fun CuckooCueScreen(
     if (incomingImport != null) {
         AlertDialog(
             onDismissRequest = onImportConsumed,
-            title = { Text("このリストを取り込みますか") },
+            title = { Text("リストを取り込みますか") },
             text = { Text("${incomingImport.title}（${incomingImport.tasks.size}件）") },
             confirmButton = {
                 TextButton(onClick = {
@@ -329,7 +329,6 @@ private fun CuckooCueScreen(
                     scope.launch {
                         repository.importRun(payload)?.let { runId ->
                             importedRunId = runId
-                            selectedRunId = runId
                             widgetRedrawScheduler.request()
                         }
                     }
@@ -337,6 +336,13 @@ private fun CuckooCueScreen(
             },
             dismissButton = { TextButton(onClick = onImportConsumed) { Text("キャンセル") } },
         )
+    }
+
+    LaunchedEffect(importedRunId, runs) {
+        val pendingRunId = importedRunId ?: return@LaunchedEffect
+        if (runs.any { it.id == pendingRunId }) {
+            selectedRunId = pendingRunId
+        }
     }
 
     val selectedRun = runs.firstOrNull { it.id == selectedRunId }
