@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.cuckoocue",
+      "sha256_cert_fingerprints": [
+        "BF:06:3F:A5:FD:8B:CF:63:B2:CA:66:BE:0A:0E:86:6C:DB:79:32:08:67:25:63:B1:F8:12:BF:98:B2:CA:5D:F3"
+      ]
+    }
+  }
+]

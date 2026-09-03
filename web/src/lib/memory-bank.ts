@@ -101,7 +101,7 @@ export async function retrieveUserProfileAttributes(userId: string): Promise<str
     return [];
   }
 
-  return Object.entries(profile).flatMap(([key, value]) => {
+  const attributes = Object.entries(profile).flatMap(([key, value]) => {
     if (Array.isArray(value)) {
       return value
         .map((phrase) => String(phrase).trim())
@@ -116,4 +116,5 @@ export async function retrieveUserProfileAttributes(userId: string): Promise<str
     const phrase = String(value).trim();
     return phrase ? [`${key}: ${phrase}`] : [];
   });
+  return Array.from(new Set(attributes));
 }

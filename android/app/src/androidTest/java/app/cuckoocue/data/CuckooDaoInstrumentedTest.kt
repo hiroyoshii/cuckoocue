@@ -60,6 +60,7 @@ class CuckooDaoInstrumentedTest {
         repository.updateTask(
             taskId = task.id,
             title = "新しい表示",
+            availableFromAt = null,
             dueAt = null,
             priority = PriorityExposure.Medium,
             clock = { 200 },
@@ -82,6 +83,7 @@ class CuckooDaoInstrumentedTest {
         repository.updateTask(
             taskId = task.id,
             title = task.title,
+            availableFromAt = null,
             dueAt = null,
             priority = PriorityExposure.Quiet,
             clock = { 200 },
@@ -224,6 +226,51 @@ class CuckooDaoInstrumentedTest {
         assertEquals(true, undo)
         assertEquals(true, secondComplete.completed)
         assertEquals(0, dao.isWidgetCue("task-1"))
+    }
+
+    @Test
+    fun finalCompletionSetsStableRunAnchorAndUndoClearsIt() = runTest {
+        seedRun()
+        seedTask("run-1", "task-1", "最後の項目", PriorityExposure.Strong, sortOrder = 0)
+
+        dao.completeTaskAndRemoveWidgetCue("task-1", 123_000)
+        assertEquals(123_000L, dao.observeRuns().first().single().completedAnchorAt)
+
+        dao.undoCompleteTaskAndRestoreWidgetCue(
+            taskId = "task-1",
+            now = 124_000,
+            priority = PriorityExposure.Strong,
+        )
+        assertEquals(null, dao.observeRuns().first().single().completedAnchorAt)
+    }
+
+    @Test
+    fun repositoryPersistsValidDateRangeAndRejectsInvertedRange() = runTest {
+        seedRun()
+        seedTask("run-1", "task-1", "期間付き", PriorityExposure.Strong, sortOrder = 0)
+        val repository = repository()
+
+        val changed = repository.updateTask(
+            taskId = "task-1",
+            title = "期間付き",
+            availableFromAt = 100,
+            dueAt = 200,
+            priority = PriorityExposure.Strong,
+            clock = { 300 },
+        )
+        val rejected = repository.updateTask(
+            taskId = "task-1",
+            title = "期間付き",
+            availableFromAt = 300,
+            dueAt = 200,
+            priority = PriorityExposure.Strong,
+            clock = { 400 },
+        )
+
+        assertEquals(true, changed)
+        assertEquals(false, rejected)
+        assertEquals(100L, dao.taskById("task-1")?.availableFromAt)
+        assertEquals(200L, dao.taskById("task-1")?.dueAt)
     }
 
     @Test

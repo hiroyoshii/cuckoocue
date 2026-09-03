@@ -1,10 +1,12 @@
 package app.cuckoocue
 
 import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.lifecycle.lifecycleScope
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,6 +23,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -30,6 +33,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.material3.Button
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -66,6 +70,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
@@ -79,10 +84,14 @@ import app.cuckoocue.appearance.AppearanceSettings
 import app.cuckoocue.appearance.AppThemeMode
 import app.cuckoocue.appearance.WidgetTextScale
 import app.cuckoocue.appearance.WidgetThemeMode
+import app.cuckoocue.auth.CuckooAuth
 import app.cuckoocue.data.CuckooRepository
 import app.cuckoocue.data.PriorityExposure
 import app.cuckoocue.data.RunEntity
 import app.cuckoocue.data.RunTaskEntity
+import app.cuckoocue.transfer.ImportedRunPayload
+import app.cuckoocue.transfer.RunTransferContract
+import app.cuckoocue.memory.MemoryEventClient
 import app.cuckoocue.widget.CuckooCueWidgetUpdater
 import java.time.Instant
 import java.time.LocalDate
@@ -93,6 +102,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.MutableStateFlow
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
 
 private val Ink = Color(0xFF172126)
 private val Muted = Color(0xFF647174)
@@ -119,8 +131,17 @@ private data class CuckooColors(
 private val LocalCuckooColors = staticCompositionLocalOf { cuckooColors(dark = false) }
 
 class MainActivity : ComponentActivity() {
+    private val incomingImport = MutableStateFlow<ImportedRunPayload?>(null)
+    private val authUser = MutableStateFlow<FirebaseUser?>(null)
+    private val authError = MutableStateFlow<String?>(null)
+    private val cuckooAuth = CuckooAuth()
+    private val authListener = FirebaseAuth.AuthStateListener { auth -> authUser.value = auth.currentUser }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        incomingImport.value = RunTransferContract.parseImportUri(intent?.data)
+        cuckooAuth.addListener(authListener)
+        authUser.value = cuckooAuth.currentUser
         val app = application as CuckooCueApp
         val repository = app.repository
         val appearanceRepository = app.appearanceRepository
@@ -129,6 +150,9 @@ class MainActivity : ComponentActivity() {
             val settings by appearanceRepository.settings.collectAsStateWithLifecycle(
                 initialValue = AppearanceSettings(),
             )
+            val importPayload by incomingImport.collectAsStateWithLifecycle()
+            val signedInUser by authUser.collectAsStateWithLifecycle()
+            val signInError by authError.collectAsStateWithLifecycle()
             val systemDark = isSystemInDarkTheme()
             val dark = settings.appTheme.resolve(systemDark)
             val colors = cuckooColors(dark)
@@ -139,10 +163,35 @@ class MainActivity : ComponentActivity() {
                         repository = repository,
                         appearanceRepository = appearanceRepository,
                         appearanceSettings = settings,
+                        incomingImport = importPayload,
+                        onImportConsumed = { incomingImport.value = null },
+                        signedInUser = signedInUser,
+                        signInError = signInError,
+                        onSignIn = {
+                            lifecycleScope.launch {
+                                authError.value = null
+                                runCatching { cuckooAuth.signIn(this@MainActivity) }
+                                    .onFailure { authError.value = it.localizedMessage ?: "Google ログインに失敗しました" }
+                            }
+                        },
+                        onSignOut = {
+                            lifecycleScope.launch { cuckooAuth.signOut(this@MainActivity) }
+                        },
                     )
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        incomingImport.value = RunTransferContract.parseImportUri(intent.data)
+    }
+
+    override fun onDestroy() {
+        cuckooAuth.removeListener(authListener)
+        super.onDestroy()
     }
 }
 
@@ -248,16 +297,46 @@ private fun CuckooCueScreen(
     repository: CuckooRepository,
     appearanceRepository: AppearanceRepository,
     appearanceSettings: AppearanceSettings,
+    incomingImport: ImportedRunPayload?,
+    onImportConsumed: () -> Unit,
+    signedInUser: FirebaseUser?,
+    signInError: String?,
+    onSignIn: () -> Unit,
+    onSignOut: () -> Unit,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val widgetRedrawScheduler = remember(scope, context) { WidgetRedrawScheduler(scope, context) }
+    val memoryEventClient = remember { MemoryEventClient() }
     val runs by repository.runs.collectAsStateWithLifecycle(initialValue = emptyList())
     var selectedRunId by remember { mutableStateOf<String?>(null) }
+    var importedRunId by remember { mutableStateOf<String?>(null) }
     var showAppearance by remember { mutableStateOf(false) }
 
     LaunchedEffect(repository) {
         widgetRedrawScheduler.request()
+    }
+
+    if (incomingImport != null) {
+        AlertDialog(
+            onDismissRequest = onImportConsumed,
+            title = { Text("このリストを取り込みますか") },
+            text = { Text("${incomingImport.title}（${incomingImport.tasks.size}件）") },
+            confirmButton = {
+                TextButton(onClick = {
+                    val payload = incomingImport
+                    onImportConsumed()
+                    scope.launch {
+                        repository.importRun(payload)?.let { runId ->
+                            importedRunId = runId
+                            selectedRunId = runId
+                            widgetRedrawScheduler.request()
+                        }
+                    }
+                }) { Text("取り込む") }
+            },
+            dismissButton = { TextButton(onClick = onImportConsumed) { Text("キャンセル") } },
+        )
     }
 
     val selectedRun = runs.firstOrNull { it.id == selectedRunId }
@@ -270,6 +349,7 @@ private fun CuckooCueScreen(
         RunDetailScreen(
             repository = repository,
             run = selectedRun,
+            isImported = selectedRun.id == importedRunId,
             onBack = { selectedRunId = null },
             onRenameRun = { title ->
                 scope.launch {
@@ -284,35 +364,55 @@ private fun CuckooCueScreen(
                     widgetRedrawScheduler.request()
                 }
             },
+            onReuseRun = {
+                scope.launch {
+                    val tasks = repository.getTasks(selectedRun.id)
+                    val uri = RunTransferContract.buildSaveReviewUri(
+                        webAppUrl = context.getString(R.string.cuckoo_cue_web_url),
+                        run = selectedRun,
+                        tasks = tasks,
+                    )
+                    context.startActivity(Intent(Intent.ACTION_VIEW, uri))
+                }
+            },
             onAddTask = { title, dueAt, priority ->
                 scope.launch {
-                    repository.addTask(selectedRun.id, title, dueAt, priority)
+                    val added = repository.addTask(selectedRun.id, title, dueAt, priority)
+                    if (added != null) memoryEventClient.ingest("android_task_added", "タスクを追加: $title")
                     widgetRedrawScheduler.request()
                 }
             },
-            onUpdateTaskAndAddBlankAfter = { taskId, title, dueAt, priority, onAdded ->
+            onUpdateTaskAndAddBlankAfter = { taskId, title, availableFromAt, dueAt, priority, onAdded ->
                 scope.launch {
-                    repository.updateTask(taskId, title, dueAt, priority)
+                    val before = repository.getTask(taskId)
+                    val updated = repository.updateTask(taskId, title, availableFromAt, dueAt, priority)
+                    if (updated) sendTaskEditEvents(memoryEventClient, before, title, availableFromAt, dueAt, priority)
                     val addedTaskId = repository.addTaskAfter(taskId, "")
                     widgetRedrawScheduler.request()
                     onAdded(addedTaskId)
                 }
             },
-            onUpdateTask = { taskId, title, dueAt, priority ->
+            onUpdateTask = { taskId, title, availableFromAt, dueAt, priority ->
                 scope.launch {
-                    repository.updateTask(taskId, title, dueAt, priority)
+                    val before = repository.getTask(taskId)
+                    val updated = repository.updateTask(taskId, title, availableFromAt, dueAt, priority)
+                    if (updated) sendTaskEditEvents(memoryEventClient, before, title, availableFromAt, dueAt, priority)
                     widgetRedrawScheduler.request()
                 }
             },
             onMoveTask = { taskId, delta ->
                 scope.launch {
-                    repository.movePendingTask(selectedRun.id, taskId, delta)
+                    val task = repository.getTask(taskId)
+                    val moved = repository.movePendingTask(selectedRun.id, taskId, delta)
+                    if (moved) memoryEventClient.ingest("android_task_reordered", "タスクの順序を変更: ${task?.title.orEmpty()}")
                     widgetRedrawScheduler.request()
                 }
             },
             onDeleteTask = { taskId ->
                 scope.launch {
+                    val task = repository.getTask(taskId)
                     repository.deleteTask(taskId)
+                    memoryEventClient.ingest("android_task_deleted", "タスクを削除: ${task?.title.orEmpty()}")
                     widgetRedrawScheduler.request()
                 }
             },
@@ -334,8 +434,12 @@ private fun CuckooCueScreen(
             repository = repository,
             runs = runs,
             appearanceSettings = appearanceSettings,
+            signedInUser = signedInUser,
+            signInError = signInError,
             showAppearance = showAppearance,
             onToggleAppearance = { showAppearance = !showAppearance },
+            onSignIn = onSignIn,
+            onSignOut = onSignOut,
             onOpenRun = { selectedRunId = it.id },
             onCreateRun = { title ->
                 scope.launch {
@@ -371,8 +475,12 @@ private fun RunListScreen(
     repository: CuckooRepository,
     runs: List<RunEntity>,
     appearanceSettings: AppearanceSettings,
+    signedInUser: FirebaseUser?,
+    signInError: String?,
     showAppearance: Boolean,
     onToggleAppearance: () -> Unit,
+    onSignIn: () -> Unit,
+    onSignOut: () -> Unit,
     onOpenRun: (RunEntity) -> Unit,
     onCreateRun: (String) -> Unit,
     onAppThemeChange: (AppThemeMode) -> Unit,
@@ -386,12 +494,23 @@ private fun RunListScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
-                        Text("Cuckoo Cue", fontSize = 12.sp, color = colors.teal, fontWeight = FontWeight.Bold)
-                        Text("リスト", color = colors.ink, fontWeight = FontWeight.Bold)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Image(
+                            painter = painterResource(R.drawable.ic_cuckoo_cue_brand),
+                            contentDescription = null,
+                            modifier = Modifier.size(34.dp),
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Column {
+                            Text("Cuckoo Cue", fontSize = 12.sp, color = colors.teal, fontWeight = FontWeight.Bold)
+                            Text("リスト", color = colors.ink, fontWeight = FontWeight.Bold)
+                        }
                     }
                 },
                 actions = {
+                    TextButton(onClick = if (signedInUser == null) onSignIn else onSignOut) {
+                        Text(if (signedInUser == null) "ログイン" else "ログアウト", color = colors.teal)
+                    }
                     TextButton(onClick = onToggleAppearance) {
                         Text("表示", color = colors.muted)
                     }
@@ -408,6 +527,15 @@ private fun RunListScreen(
                 .padding(horizontal = 18.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            if (signedInUser != null || signInError != null) {
+                item {
+                    Text(
+                        text = signInError ?: "${signedInUser?.displayName ?: signedInUser?.email} でログイン中",
+                        color = if (signInError == null) colors.muted else MaterialTheme.colorScheme.error,
+                        fontSize = 12.sp,
+                    )
+                }
+            }
             item {
                 NewRunComposer(
                     value = runDraft,
@@ -530,12 +658,14 @@ private fun MiniTaskPreview(task: RunTaskEntity) {
 private fun RunDetailScreen(
     repository: CuckooRepository,
     run: RunEntity,
+    isImported: Boolean,
     onBack: () -> Unit,
     onRenameRun: (String) -> Unit,
     onArchiveRun: () -> Unit,
+    onReuseRun: () -> Unit,
     onAddTask: (String, Long?, Int?) -> Unit,
-    onUpdateTaskAndAddBlankAfter: (String, String, Long?, Int?, (String?) -> Unit) -> Unit,
-    onUpdateTask: (String, String, Long?, Int?) -> Unit,
+    onUpdateTaskAndAddBlankAfter: (String, String, Long?, Long?, Int?, (String?) -> Unit) -> Unit,
+    onUpdateTask: (String, String, Long?, Long?, Int?) -> Unit,
     onMoveTask: (String, Int) -> Unit,
     onDeleteTask: (String) -> Unit,
     onComplete: (String) -> Unit,
@@ -639,6 +769,11 @@ private fun RunDetailScreen(
                     modifier = Modifier.padding(top = 8.dp, bottom = 6.dp),
                 )
             }
+            if (isImported && pending.isNotEmpty()) {
+                item {
+                    ImportedNotice(modifier = Modifier.padding(bottom = 8.dp))
+                }
+            }
             item {
                 AddTaskComposer(
                     onAdd = onAddTask,
@@ -648,9 +783,9 @@ private fun RunDetailScreen(
             items(visiblePending, key = { it.id }) { task ->
                 TaskRow(
                     task = task,
-                    onUpdate = { title, dueAt, priority -> onUpdateTask(task.id, title, dueAt, priority) },
-                    onSubmitAndCreateNext = { title, dueAt, priority ->
-                        onUpdateTaskAndAddBlankAfter(task.id, title, dueAt, priority) { addedTaskId ->
+                    onUpdate = { title, availableFromAt, dueAt, priority -> onUpdateTask(task.id, title, availableFromAt, dueAt, priority) },
+                    onSubmitAndCreateNext = { title, availableFromAt, dueAt, priority ->
+                        onUpdateTaskAndAddBlankAfter(task.id, title, availableFromAt, dueAt, priority) { addedTaskId ->
                             expandedTaskId = addedTaskId
                         }
                     },
@@ -685,8 +820,8 @@ private fun RunDetailScreen(
                 items(completed, key = { it.id }) { task ->
                     TaskRow(
                         task = task,
-                        onUpdate = { title, dueAt, priority -> onUpdateTask(task.id, title, dueAt, priority) },
-                        onSubmitAndCreateNext = { title, dueAt, priority -> onUpdateTask(task.id, title, dueAt, priority) },
+                        onUpdate = { title, availableFromAt, dueAt, priority -> onUpdateTask(task.id, title, availableFromAt, dueAt, priority) },
+                        onSubmitAndCreateNext = { title, availableFromAt, dueAt, priority -> onUpdateTask(task.id, title, availableFromAt, dueAt, priority) },
                         onDragStart = {},
                         onPreviewMoveBy = {},
                         onDragFinished = {},
@@ -698,7 +833,69 @@ private fun RunDetailScreen(
                     )
                 }
             }
+            if (pending.isEmpty() && completed.isNotEmpty()) {
+                item {
+                    ReuseCompletedList(onReuse = onReuseRun)
+                }
+            }
             item { Spacer(Modifier.height(20.dp)) }
+        }
+    }
+}
+
+@Composable
+private fun ImportedNotice(modifier: Modifier = Modifier) {
+    val colors = LocalCuckooColors.current
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(colors.highlight)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Image(
+            painter = painterResource(R.drawable.ic_cuckoo_cue_brand),
+            contentDescription = null,
+            modifier = Modifier.size(24.dp),
+        )
+        Spacer(Modifier.width(8.dp))
+        Column {
+            Text("Webから取り込みました", color = colors.ink, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            Text("日付と優先度を確認して、このまま使えます", color = colors.muted, fontSize = 12.sp)
+        }
+    }
+}
+
+@Composable
+private fun ReuseCompletedList(onReuse: () -> Unit) {
+    val colors = LocalCuckooColors.current
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 16.dp)
+            .border(1.dp, colors.line, RoundedCornerShape(8.dp))
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Image(
+                painter = painterResource(R.drawable.ic_cuckoo_cue_brand),
+                contentDescription = null,
+                modifier = Modifier.size(30.dp),
+            )
+            Spacer(Modifier.width(10.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text("このリストを残す", color = colors.ink, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text("確認して、次に同じことをするとき再利用できます", color = colors.muted, fontSize = 12.sp)
+            }
+        }
+        Button(
+            onClick = onReuse,
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = colors.teal),
+        ) {
+            Text("Webで確認して残す")
         }
     }
 }
@@ -821,8 +1018,8 @@ private fun RunTitleEditor(
 @Composable
 private fun TaskRow(
     task: RunTaskEntity,
-    onUpdate: (String, Long?, Int?) -> Unit,
-    onSubmitAndCreateNext: (String, Long?, Int?) -> Unit,
+    onUpdate: (String, Long?, Long?, Int?) -> Unit,
+    onSubmitAndCreateNext: (String, Long?, Long?, Int?) -> Unit,
     onDragStart: () -> Unit,
     onPreviewMoveBy: (Int) -> Unit,
     onDragFinished: () -> Unit,
@@ -840,6 +1037,7 @@ private fun TaskRow(
     var isTitleEditing by remember(task.id) { mutableStateOf(false) }
     var isControlsOpen by remember(task.id) { mutableStateOf(false) }
     var titleDraft by remember(task.id, task.updatedAt) { mutableStateOf(task.title) }
+    var availableDateDraft by remember(task.id, task.updatedAt) { mutableStateOf(task.availableFromAt.dueInputLabel()) }
     var dueDateDraft by remember(task.id, task.updatedAt) { mutableStateOf(task.dueAt.dueInputLabel()) }
     var priorityDraft by remember(task.id, task.updatedAt) { mutableStateOf(task.userPriority ?: task.effectivePriority()) }
     var isDragging by remember(task.id) { mutableStateOf(false) }
@@ -850,7 +1048,7 @@ private fun TaskRow(
         task.effectivePriority()
     }
     fun submitAndCreateNext() {
-        onSubmitAndCreateNext(titleDraft, dueDateDraft.toDueAt(), priorityDraft)
+        onSubmitAndCreateNext(titleDraft, availableDateDraft.toDueAt(), dueDateDraft.toDueAt(), priorityDraft)
         isTitleEditing = false
         isControlsOpen = false
     }
@@ -912,6 +1110,7 @@ private fun TaskRow(
             if (isTitleEditing) {
                 TaskTitleEditor(
                     title = titleDraft,
+                    availableFromAt = availableDateDraft.toDueAt(),
                     dueAt = dueDateDraft.toDueAt(),
                     isCompleted = isCompleted,
                     focusRequester = titleFocusRequester,
@@ -923,6 +1122,7 @@ private fun TaskRow(
             } else {
                 TaskTitleText(
                     title = task.title.ifBlank { "新しい項目" },
+                    availableFromAt = task.availableFromAt,
                     dueAt = task.dueAt,
                     isCompleted = isCompleted,
                     modifier = Modifier.weight(1f).clickable { isTitleEditing = true },
@@ -953,8 +1153,10 @@ private fun TaskRow(
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 TaskMetaControls(
+                    availableDateText = availableDateDraft,
                     dueDateText = dueDateDraft,
                     priority = priorityDraft,
+                    onAvailableDateTextChange = { availableDateDraft = it },
                     onDueDateTextChange = { dueDateDraft = it },
                     onPriorityChange = { priorityDraft = it },
                 )
@@ -973,7 +1175,7 @@ private fun TaskRow(
                         label = "保存",
                         filled = true,
                         onClick = {
-                            onUpdate(titleDraft, dueDateDraft.toDueAt(), priorityDraft)
+                            onUpdate(titleDraft, availableDateDraft.toDueAt(), dueDateDraft.toDueAt(), priorityDraft)
                             isTitleEditing = false
                             isControlsOpen = false
                         },
@@ -1049,6 +1251,7 @@ private fun DragHandle(
 @Composable
 private fun TaskTitleEditor(
     title: String,
+    availableFromAt: Long?,
     dueAt: Long?,
     isCompleted: Boolean,
     focusRequester: FocusRequester,
@@ -1059,7 +1262,7 @@ private fun TaskTitleEditor(
 ) {
     val colors = LocalCuckooColors.current
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
-        DueLabel(dueAt = dueAt, trailingGap = 4.dp)
+        ScheduleLabel(availableFromAt = availableFromAt, dueAt = dueAt, trailingGap = 4.dp)
         BasicTextField(
             value = title,
             onValueChange = onTitleChange,
@@ -1108,13 +1311,14 @@ private fun TaskTitleEditor(
 @Composable
 private fun TaskTitleText(
     title: String,
+    availableFromAt: Long?,
     dueAt: Long?,
     isCompleted: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val colors = LocalCuckooColors.current
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
-        DueLabel(dueAt = dueAt, trailingGap = 4.dp)
+        ScheduleLabel(availableFromAt = availableFromAt, dueAt = dueAt, trailingGap = 4.dp)
         Text(
             text = title,
             modifier = Modifier.weight(1f),
@@ -1129,12 +1333,20 @@ private fun TaskTitleText(
 }
 
 @Composable
-private fun DueLabel(
+private fun ScheduleLabel(
+    availableFromAt: Long?,
     dueAt: Long?,
     trailingGap: androidx.compose.ui.unit.Dp,
 ) {
     val colors = LocalCuckooColors.current
-    val label = dueAt.dueLabel() ?: return
+    val startLabel = availableFromAt.dueLabel()
+    val endLabel = dueAt.dueLabel()
+    val label = when {
+        startLabel != null && endLabel != null && startLabel != endLabel -> "$startLabel〜$endLabel"
+        endLabel != null -> endLabel
+        startLabel != null -> "$startLabel〜"
+        else -> return
+    }
     Text(
         text = label,
         color = colors.teal,
@@ -1207,15 +1419,42 @@ private fun CheckPriorityControl(
 
 @Composable
 private fun TaskMetaControls(
+    availableDateText: String,
     dueDateText: String,
     priority: Int,
+    onAvailableDateTextChange: (String) -> Unit,
     onDueDateTextChange: (String) -> Unit,
     onPriorityChange: (Int) -> Unit,
 ) {
     val colors = LocalCuckooColors.current
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("日付", color = colors.muted, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(48.dp))
+            Text("期間", color = colors.muted, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(48.dp))
+            Box(
+                modifier = Modifier
+                    .width(96.dp)
+                    .height(26.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(colors.panel)
+                    .border(1.dp, colors.line, RoundedCornerShape(6.dp))
+                    .padding(horizontal = 8.dp),
+                contentAlignment = Alignment.CenterStart,
+            ) {
+                BasicTextField(
+                    value = availableDateText,
+                    onValueChange = onAvailableDateTextChange,
+                    singleLine = true,
+                    textStyle = TextStyle(color = colors.ink, fontSize = 13.sp, fontWeight = FontWeight.Bold),
+                    cursorBrush = SolidColor(colors.teal),
+                    decorationBox = { innerTextField ->
+                        if (availableDateText.isBlank()) {
+                            Text("開始 M/d", color = colors.muted, fontSize = 12.sp)
+                        }
+                        innerTextField()
+                    },
+                )
+            }
+            Text("〜", color = colors.muted, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 4.dp))
             Box(
                 modifier = Modifier
                     .width(96.dp)
@@ -1234,7 +1473,7 @@ private fun TaskMetaControls(
                     cursorBrush = SolidColor(colors.teal),
                     decorationBox = { innerTextField ->
                         if (dueDateText.isBlank()) {
-                            Text("M/d", color = colors.muted, fontSize = 13.sp)
+                            Text("終了 M/d", color = colors.muted, fontSize = 12.sp)
                         }
                         innerTextField()
                     },
@@ -1390,6 +1629,32 @@ private fun <T> ChoiceRow(
 
 private fun RunTaskEntity.effectivePriority(): Int =
     userPriority?.let { PriorityExposure.normalize(it) } ?: PriorityExposure.compute(dueAt)
+
+private suspend fun sendTaskEditEvents(
+    client: MemoryEventClient,
+    before: RunTaskEntity?,
+    title: String,
+    availableFromAt: Long?,
+    dueAt: Long?,
+    priority: Int?,
+) {
+    if (before == null) return
+    if (before.title != title.trim()) {
+        client.ingest("android_task_edited", "タスク名を変更: ${before.title} -> ${title.trim()}")
+    }
+    if (before.availableFromAt != availableFromAt || before.dueAt != dueAt) {
+        client.ingest(
+            "android_relative_date_changed",
+            "タスクの日程を変更: ${title.trim()} / ${availableFromAt.eventDay()} から ${dueAt.eventDay()}",
+        )
+    }
+    if (before.userPriority != priority) {
+        client.ingest("android_priority_changed", "タスクの強さを変更: ${title.trim()} / ${priority ?: "自動"}")
+    }
+}
+
+private fun Long?.eventDay(): String =
+    this?.let { Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate().toString() } ?: "指定なし"
 
 private fun Long?.dueLabel(): String? =
     this?.let {

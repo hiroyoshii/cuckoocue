@@ -145,14 +145,17 @@ async function main() {
 }
 
 function task(text, default_priority, relative_start_day, relative_end_day) {
-  return { text, default_priority, relative_start_day, relative_end_day };
+  return { text, default_priority: default_priority - 1, relative_start_day, relative_end_day };
 }
 
 async function post(path, body) {
+  const requestBody = path === "/api/task-list-entries"
+    ? { operation_id: crypto.randomUUID(), ...body }
+    : body;
   const response = await fetch(`${baseUrl}${path}`, {
     method: "POST",
     headers,
-    body: JSON.stringify(body),
+    body: JSON.stringify(requestBody),
   });
   return readResponse(response, path);
 }

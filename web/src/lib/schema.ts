@@ -1,15 +1,15 @@
 import { z } from "zod";
 
 export const taskEntryTaskSchema = z.object({
-  text: z.string().trim().min(1),
-  default_priority: z.number().int().nullable().optional(),
-  relative_start_day: z.number().int().nullable().optional(),
-  relative_end_day: z.number().int().nullable().optional(),
+  text: z.string().trim().min(1).max(240),
+  default_priority: z.number().int().min(0).max(2).nullable().optional(),
+  relative_start_day: z.number().int().min(-3650).max(3650).nullable().optional(),
+  relative_end_day: z.number().int().min(-3650).max(3650).nullable().optional(),
 });
 
 export const taskGroupingSchema = z.object({
-  label: z.string().trim().min(1),
-  task_offsets: z.array(z.number().int().nonnegative()),
+  label: z.string().trim().min(1).max(80),
+  task_offsets: z.array(z.number().int().nonnegative()).min(1),
 });
 
 export const taskListEnrichmentSchema = z.object({
@@ -31,13 +31,51 @@ export const taskListEntrySchema = z.object({
   created_at: z.string(),
 });
 
-export const saveTaskListSchema = z.object({
-  title: z.string().trim().min(1),
-  tasks: z.array(taskEntryTaskSchema).min(1),
-  domain: z.string().trim().min(1).optional(),
-  context_text: z.string().trim().min(1).optional(),
-  task_groupings: z.array(taskGroupingSchema).min(1).optional(),
-});
+export const saveTaskListSchema = z
+  .object({
+    operation_id: z.string().uuid(),
+    title: z.string().trim().min(1).max(160),
+    tasks: z.array(taskEntryTaskSchema).min(1).max(50),
+    domain: z.string().trim().min(1).max(40).optional(),
+    context_text: z.string().trim().min(1).max(1200).optional(),
+    task_groupings: z.array(taskGroupingSchema).min(1).max(20).optional(),
+  })
+  .superRefine((value, context) => {
+    value.tasks.forEach((task, index) => {
+      if (
+        task.relative_start_day != null &&
+        task.relative_end_day != null &&
+        task.relative_start_day > task.relative_end_day
+      ) {
+        context.addIssue({
+          code: "custom",
+          path: ["tasks", index, "relative_start_day"],
+          message: "relative_start_day must not be after relative_end_day",
+        });
+      }
+    });
+
+    const usedOffsets = new Set<number>();
+    value.task_groupings?.forEach((grouping, groupIndex) => {
+      grouping.task_offsets.forEach((offset, offsetIndex) => {
+        if (offset >= value.tasks.length) {
+          context.addIssue({
+            code: "custom",
+            path: ["task_groupings", groupIndex, "task_offsets", offsetIndex],
+            message: "task offset is outside the reviewed task list",
+          });
+        }
+        if (usedOffsets.has(offset)) {
+          context.addIssue({
+            code: "custom",
+            path: ["task_groupings", groupIndex, "task_offsets", offsetIndex],
+            message: "a task may belong to only one grouping",
+          });
+        }
+        usedOffsets.add(offset);
+      });
+    });
+  });
 
 export const searchTaskListsSchema = z
   .object({

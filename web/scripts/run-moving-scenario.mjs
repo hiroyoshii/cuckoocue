@@ -49,49 +49,49 @@ const completedList = {
   tasks: [
     {
       text: "現住所の退去日と新居の入居日を確定する",
-      default_priority: 1,
+      default_priority: 0,
       relative_start_day: -35,
       relative_end_day: -28,
     },
     {
       text: "引越し業者の見積もりを取り、搬出入時間を確定する",
-      default_priority: 1,
+      default_priority: 0,
       relative_start_day: -30,
       relative_end_day: -25,
     },
     {
       text: "東京側の転出届に必要な期限と本人確認書類を確認する",
-      default_priority: 1,
+      default_priority: 0,
       relative_start_day: -21,
       relative_end_day: -18,
     },
     {
       text: "名古屋側の転入届で必要な持ち物と提出先の区役所を確認する",
-      default_priority: 1,
+      default_priority: 0,
       relative_start_day: -14,
       relative_end_day: -10,
     },
     {
       text: "電気、ガス、水道の停止と開始を申し込む",
-      default_priority: 2,
+      default_priority: 1,
       relative_start_day: -14,
       relative_end_day: -7,
     },
     {
       text: "郵便転送を申し込む",
-      default_priority: 2,
+      default_priority: 1,
       relative_start_day: -14,
       relative_end_day: -7,
     },
     {
       text: "銀行、クレジットカード、携帯電話、勤務先の住所を変更する",
-      default_priority: 2,
+      default_priority: 1,
       relative_start_day: -7,
       relative_end_day: -4,
     },
     {
       text: "粗大ごみ回収、旧居清掃、鍵返却の予定を確定する",
-      default_priority: 3,
+      default_priority: 2,
       relative_start_day: -3,
       relative_end_day: 0,
     },
@@ -183,10 +183,13 @@ async function main() {
 }
 
 async function post(path, body) {
+  const requestBody = path === "/api/task-list-entries"
+    ? { operation_id: crypto.randomUUID(), ...body }
+    : body;
   const response = await fetch(`${baseUrl}${path}`, {
     method: "POST",
     headers,
-    body: JSON.stringify(body),
+    body: JSON.stringify(requestBody),
   });
   return readResponse(response, path);
 }

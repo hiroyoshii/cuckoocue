@@ -1,5 +1,4 @@
 import { BigQuery } from "@google-cloud/bigquery";
-import { randomUUID } from "crypto";
 import { cueEnv } from "./env";
 import {
   buildSearchContextEmbeddingText,
@@ -12,6 +11,8 @@ import type { SaveTaskListInput, TaskListEnrichment, TaskListEntry } from "./sch
 
 let bigQueryClient: BigQuery | null = null;
 let domainCache: { expiresAt: number; domains: string[] } | null = null;
+const BigQueryJobTimeoutMs = 30_000;
+const BigQueryCallTimeoutMs = 35_000;
 
 function bigQuery() {
   bigQueryClient ??= new BigQuery({ projectId: cueEnv.projectId() });
@@ -22,6 +23,14 @@ export async function insertTaskListEntry(
   ownerUserId: string,
   input: SaveTaskListInput,
 ): Promise<TaskListEntry> {
+  const existing = await getTaskListEntry(input.operation_id);
+  if (existing) {
+    if (existing.owner_user_id !== ownerUserId) {
+      throw new Error("operation_id is already owned by another user");
+    }
+    return existing;
+  }
+
   const enrichment: TaskListEnrichment =
     input.domain && input.context_text && input.task_groupings
       ? {
@@ -35,7 +44,7 @@ export async function insertTaskListEntry(
   );
   const searchText = buildSearchText(input, enrichment);
   const row: TaskListEntry = {
-    id: randomUUID(),
+    id: input.operation_id,
     owner_user_id: ownerUserId,
     title: input.title.trim(),
     tasks: input.tasks.map((task) => ({
@@ -56,34 +65,33 @@ export async function insertTaskListEntry(
     () =>
       bigQuery().query({
         query: `
-          INSERT INTO \`${cueEnv.projectId()}.${cueEnv.dataset()}.${cueEnv.table()}\`
-            (
-              id,
-              owner_user_id,
-              title,
-              tasks,
-              domain,
-              context_text,
-              task_groupings,
-              search_text,
-              context_embedding,
-              created_at
+          MERGE \`${cueEnv.projectId()}.${cueEnv.dataset()}.${cueEnv.table()}\` AS target
+          USING (
+            SELECT
+              @id AS id,
+              @ownerUserId AS owner_user_id,
+              @title AS title,
+              @tasks AS tasks,
+              @domain AS domain,
+              @contextText AS context_text,
+              @taskGroupings AS task_groupings,
+              @searchText AS search_text,
+              @contextEmbedding AS context_embedding,
+              TIMESTAMP(@createdAt) AS created_at
+          ) AS source
+          ON target.id = source.id
+          WHEN NOT MATCHED THEN
+            INSERT (
+              id, owner_user_id, title, tasks, domain, context_text,
+              task_groupings, search_text, context_embedding, created_at
             )
-          VALUES
-            (
-              @id,
-              @ownerUserId,
-              @title,
-              @tasks,
-              @domain,
-              @contextText,
-              @taskGroupings,
-              @searchText,
-              @contextEmbedding,
-              TIMESTAMP(@createdAt)
+            VALUES (
+              source.id, source.owner_user_id, source.title, source.tasks,
+              source.domain, source.context_text, source.task_groupings,
+              source.search_text, source.context_embedding, source.created_at
             )
         `,
-        jobTimeoutMs: 10000,
+        jobTimeoutMs: BigQueryJobTimeoutMs,
         params: {
           id: row.id,
           ownerUserId: row.owner_user_id,
@@ -97,7 +105,7 @@ export async function insertTaskListEntry(
           createdAt: row.created_at,
         },
       }),
-    { attempts: 2, timeoutMs: 12000, delayMs: 500 },
+    { attempts: 2, timeoutMs: BigQueryCallTimeoutMs, delayMs: 500 },
   );
 
   return row;
@@ -106,7 +114,6 @@ export async function insertTaskListEntry(
 export type SearchResult = TaskListEntry & {
   text_matched: boolean;
   context_score: number;
-  matched_text: string;
 };
 
 export type SearchPage = {
@@ -175,21 +182,20 @@ export async function searchTaskListEntries(
       context_text,
       task_groupings,
       created_at,
-      TRUE AS text_matched,
-      IFNULL(context_score, 0) AS context_score,
-      search_text AS matched_text
+      explicit_hit_count >= @requiredExplicitHits AS text_matched,
+      IFNULL(context_score, 0) AS context_score
     FROM scored
     WHERE explicit_hit_count >= @requiredExplicitHits
        OR domain_matched
        OR @hasExplicitTokens = FALSE
-    ORDER BY domain_matched DESC, context_score DESC, created_at DESC
+    ORDER BY context_score DESC, created_at DESC
   `;
 
   const [job] = await withRetry(
     () =>
       bigQuery().createQueryJob({
         query,
-        jobTimeoutMs: 10000,
+        jobTimeoutMs: BigQueryJobTimeoutMs,
         location: cueEnv.googleCloudLocation(),
         params: {
           ...Object.fromEntries(
@@ -201,7 +207,7 @@ export async function searchTaskListEntries(
           contextEmbedding,
         },
       }),
-    { attempts: 2, timeoutMs: 12000, delayMs: 500 },
+    { attempts: 2, timeoutMs: BigQueryCallTimeoutMs, delayMs: 500 },
   );
   const [rows, nextQuery] = await withRetry(
     () =>
@@ -209,7 +215,7 @@ export async function searchTaskListEntries(
         autoPaginate: false,
         maxResults: pageSize,
       }),
-    { attempts: 2, timeoutMs: 12000, delayMs: 500 },
+    { attempts: 2, timeoutMs: BigQueryCallTimeoutMs, delayMs: 500 },
   );
 
   return {
@@ -236,7 +242,7 @@ export async function getSearchTaskListEntriesPage(
         maxResults: pageSize,
         pageToken: decoded.pageToken,
       }),
-    { attempts: 2, timeoutMs: 12000, delayMs: 500 },
+    { attempts: 2, timeoutMs: BigQueryCallTimeoutMs, delayMs: 500 },
   );
 
   return {
@@ -272,10 +278,10 @@ export async function getTaskListEntry(
     () =>
       bigQuery().query({
         query,
-        jobTimeoutMs: 10000,
+        jobTimeoutMs: BigQueryJobTimeoutMs,
         params: { id },
       }),
-    { attempts: 2, timeoutMs: 12000, delayMs: 500 },
+    { attempts: 2, timeoutMs: BigQueryCallTimeoutMs, delayMs: 500 },
   );
   return (rows[0] as TaskListEntry | undefined) ?? null;
 }
@@ -298,9 +304,9 @@ export async function listTaskListDomains(): Promise<string[]> {
     () =>
       bigQuery().query({
         query,
-        jobTimeoutMs: 10000,
+        jobTimeoutMs: BigQueryJobTimeoutMs,
       }),
-    { attempts: 2, timeoutMs: 12000, delayMs: 500 },
+    { attempts: 2, timeoutMs: BigQueryCallTimeoutMs, delayMs: 500 },
   );
   const domains = rows
     .map((row) => String(row.domain ?? "").trim())

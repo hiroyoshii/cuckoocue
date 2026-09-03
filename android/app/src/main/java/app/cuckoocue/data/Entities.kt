@@ -17,6 +17,7 @@ data class RunEntity(
     val title: String,
     @ColumnInfo(name = "sort_order") val sortOrder: Int = 0,
     @ColumnInfo(name = "archived_at") val archivedAt: Long? = null,
+    @ColumnInfo(name = "completed_anchor_at") val completedAnchorAt: Long? = null,
     @ColumnInfo(name = "created_at") val createdAt: Long,
     @ColumnInfo(name = "updated_at") val updatedAt: Long,
 )
@@ -41,6 +42,7 @@ data class RunTaskEntity(
     @ColumnInfo(name = "run_id") val runId: String,
     val title: String,
     @ColumnInfo(name = "user_priority") val userPriority: Int? = null,
+    @ColumnInfo(name = "available_from_at") val availableFromAt: Long? = null,
     @ColumnInfo(name = "due_at") val dueAt: Long? = null,
     @ColumnInfo(name = "sort_order") val sortOrder: Int,
     @ColumnInfo(name = "completed_at") val completedAt: Long? = null,
