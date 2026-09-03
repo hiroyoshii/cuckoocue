@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireUserId } from "@/lib/auth";
 import { getTaskListEntry } from "@/lib/bigquery";
+import { isValidIsoDay } from "@/lib/run-transfer";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -18,21 +19,17 @@ export async function GET(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Entry not found" }, { status: 404 });
     }
 
-    if (!targetAnchorDay) {
+    if (!targetAnchorDay || !isValidIsoDay(targetAnchorDay)) {
       return NextResponse.json(
-        { error: "target_anchor_day is required" },
+        { error: "A valid target_anchor_day is required" },
         { status: 400 },
       );
     }
 
     return NextResponse.json({
       importPayload: {
-        source_task_list_entry_id: entry.id,
+        version: 1,
         title: entry.title,
-        domain: entry.domain,
-        context_text: entry.context_text,
-        task_groupings: entry.task_groupings,
-        relative_day_anchor: "target_anchor_day",
         target_anchor_day: targetAnchorDay,
         tasks: entry.tasks.map((task) => ({
           title: task.text,

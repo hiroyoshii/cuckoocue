@@ -69,6 +69,11 @@ async function main() {
     const repeated = await step(`save_idempotent_retry:${list.key}`, input, () => request("POST", "/api/task-list-entries", input));
     assert(first.entry.id === repeated.entry.id, "idempotent retry returned a different corpus id");
     assert(first.entry.tasks.every((item) => item.default_priority == null || item.default_priority in {0:1,1:1,2:1}), "priority escaped the 0/1/2 contract");
+    if (!idToken && list.key === "tokyo-nagoya") {
+      const conflict = await rawRequest("POST", "/api/task-list-entries", input, `${devUserId}-other`);
+      assert(conflict.status === 400, `cross-owner operation id reuse returned ${conflict.status}`);
+      report.steps.push({ name: "reject_cross_owner_operation_id", input: { operation_id: operationId }, output: conflict });
+    }
     saved[list.key] = first.entry;
   }
 
@@ -87,6 +92,15 @@ async function main() {
     422,
     { operation_id: crypto.randomUUID(), title: "連絡先", tasks: [task("foo@example.com に連絡する", 1, -1, 0)] },
   );
+  await expectedFailure(
+    "reject_untransferable_payload",
+    400,
+    {
+      operation_id: crypto.randomUUID(),
+      title: "Android transfer limit",
+      tasks: Array.from({ length: 50 }, (_, index) => task(`${index}-${"長".repeat(236)}`, 1, -1, 0)),
+    },
+  );
 
   const searches = [
     ["specific-japan", "東京から名古屋へ引っ越す。転出届、転入届、ライフライン、郵便転送を整理したい", "tokyo-nagoya"],
@@ -95,7 +109,8 @@ async function main() {
   ];
   for (const [label, message, expectedKey] of searches) {
     const result = await step(`search:${label}`, { message }, () => request("POST", "/api/search", { message, page_size: 20 }));
-    assert(result.results[0]?.id === saved[expectedKey].id, `${label} did not rank the expected list first`);
+    assert(result.results[0]?.title === saved[expectedKey].title, `${label} did not rank the expected list first`);
+    assert(result.results[0]?.domain === saved[expectedKey].domain, `${label} returned the wrong domain first`);
   }
 
   const firstPage = await step("paging:first", { message: "東京", page_size: 1 }, () =>
@@ -112,7 +127,16 @@ async function main() {
   );
   assert(imported.importPayload.tasks.length === lists[0].tasks.length, "import lost tasks");
   assert(imported.importPayload.tasks[0].default_priority === 0, "import changed priority semantics");
-  assert(imported.importPayload.task_groupings, "Web import preview should retain BQ grouping");
+  assert(imported.importPayload.version === 1, "import contract version is missing");
+  for (const internalField of ["source_task_list_entry_id", "domain", "context_text", "task_groupings", "context_embedding", "owner_user_id"]) {
+    assert(!(internalField in imported.importPayload), `import leaked internal field: ${internalField}`);
+  }
+  await expectedRequestFailure(
+    "reject_invalid_target_anchor_day",
+    400,
+    "GET",
+    `/api/import-payload/${saved["tokyo-nagoya"].id}?target_anchor_day=2026-02-31`,
+  );
 
   report.completed_at = new Date().toISOString();
   report.status = "passed";
@@ -140,6 +164,12 @@ async function expectedFailure(name, expectedStatus, input) {
   report.steps.push({ name, input, output: result });
 }
 
+async function expectedRequestFailure(name, expectedStatus, method, path, input) {
+  const result = await rawRequest(method, path, input);
+  assert(result.status === expectedStatus, `${name}: expected ${expectedStatus}, got ${result.status}`);
+  report.steps.push({ name, input: input ?? null, output: result });
+}
+
 async function request(method, path, body) {
   const result = await rawRequest(method, path, body);
   if (result.status < 200 || result.status >= 300) {
@@ -148,10 +178,10 @@ async function request(method, path, body) {
   return result.body;
 }
 
-async function rawRequest(method, path, body) {
+async function rawRequest(method, path, body, userOverride) {
   const headers = { "content-type": "application/json" };
   if (idToken) headers.authorization = `Bearer ${idToken}`;
-  else headers["x-dev-user-id"] = devUserId;
+  else headers["x-dev-user-id"] = userOverride || devUserId;
   const response = await fetch(`${baseUrl}${path}`, {
     method,
     headers,
