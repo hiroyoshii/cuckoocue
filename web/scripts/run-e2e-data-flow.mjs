@@ -61,6 +61,14 @@ async function main() {
     await step("memory_event", event, () => request("POST", "/api/memory-events", event));
   }
 
+  const prepared = await step(
+    "prepare_enrichment",
+    { title: lists[0].title, tasks: lists[0].tasks },
+    () => request("POST", "/api/task-list-enrichment", { title: lists[0].title, tasks: lists[0].tasks }),
+  );
+  assert(prepared.enrichment?.domain === "引っ越し", "save review enrichment returned the wrong domain");
+  assert(prepared.enrichment?.task_groupings?.length > 0, "save review enrichment returned no grouping");
+
   const saved = {};
   for (const list of lists) {
     const operationId = crypto.randomUUID();

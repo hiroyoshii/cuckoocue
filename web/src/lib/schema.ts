@@ -32,49 +32,24 @@ export const taskListEntrySchema = z.object({
   created_at: z.string(),
 });
 
-export const saveTaskListSchema = z
-  .object({
+const taskListDraftObjectSchema = z.object({
+  title: z.string().trim().min(1).max(160),
+  tasks: z.array(taskEntryTaskSchema).min(1).max(50),
+});
+
+export const taskListDraftSchema = taskListDraftObjectSchema.superRefine(
+  validateTransferableTaskList,
+);
+
+export const saveTaskListSchema = taskListDraftObjectSchema
+  .extend({
     operation_id: z.string().uuid(),
-    title: z.string().trim().min(1).max(160),
-    tasks: z.array(taskEntryTaskSchema).min(1).max(50),
     domain: z.string().trim().min(1).max(40).optional(),
     context_text: z.string().trim().min(1).max(1200).optional(),
     task_groupings: z.array(taskGroupingSchema).min(1).max(20).optional(),
   })
   .superRefine((value, context) => {
-    value.tasks.forEach((task, index) => {
-      if (
-        task.relative_start_day != null &&
-        task.relative_end_day != null &&
-        task.relative_start_day > task.relative_end_day
-      ) {
-        context.addIssue({
-          code: "custom",
-          path: ["tasks", index, "relative_start_day"],
-          message: "relative_start_day must not be after relative_end_day",
-        });
-      }
-    });
-
-    if (
-      !fitsInlineAndroidImport({
-        version: 1,
-        title: value.title,
-        target_anchor_day: "2000-01-01",
-        tasks: value.tasks.map((task) => ({
-          title: task.text,
-          default_priority: task.default_priority ?? null,
-          relative_start_day: task.relative_start_day ?? null,
-          relative_end_day: task.relative_end_day ?? null,
-        })),
-      })
-    ) {
-      context.addIssue({
-        code: "custom",
-        path: ["tasks"],
-        message: "reviewed task list exceeds the 16 KB Android import contract",
-      });
-    }
+    validateTransferableTaskList(value, context);
 
     const usedOffsets = new Set<number>();
     value.task_groupings?.forEach((grouping, groupIndex) => {
@@ -97,6 +72,45 @@ export const saveTaskListSchema = z
       });
     });
   });
+
+function validateTransferableTaskList(
+  value: z.infer<typeof taskListDraftObjectSchema>,
+  context: z.RefinementCtx,
+) {
+  value.tasks.forEach((task, index) => {
+    if (
+      task.relative_start_day != null &&
+      task.relative_end_day != null &&
+      task.relative_start_day > task.relative_end_day
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["tasks", index, "relative_start_day"],
+        message: "relative_start_day must not be after relative_end_day",
+      });
+    }
+  });
+
+  if (
+    !fitsInlineAndroidImport({
+      version: 1,
+      title: value.title,
+      target_anchor_day: "2000-01-01",
+      tasks: value.tasks.map((task) => ({
+        title: task.text,
+        default_priority: task.default_priority ?? null,
+        relative_start_day: task.relative_start_day ?? null,
+        relative_end_day: task.relative_end_day ?? null,
+      })),
+    })
+  ) {
+    context.addIssue({
+      code: "custom",
+      path: ["tasks"],
+      message: "reviewed task list exceeds the 16 KB Android import contract",
+    });
+  }
+}
 
 export const searchTaskListsSchema = z
   .object({
