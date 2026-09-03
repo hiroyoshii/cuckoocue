@@ -6,6 +6,18 @@ const chromePath =
 const baseUrl = process.env.CUE_SCREENSHOT_BASE_URL || "http://localhost:3000";
 const outDir = process.env.CUE_SCREENSHOT_OUT_DIR || "../build/web-screenshots";
 const port = Number(process.env.CUE_SCREENSHOT_CDP_PORT || 9222);
+const androidSavePayload = Buffer.from(
+  JSON.stringify({
+    version: 1,
+    title: "東京から名古屋への引っ越し手続き",
+    source_anchor_day: "2026-10-01",
+    tasks: [
+      { text: "現住所の退去日と新居の入居日を確定する", default_priority: 0, relative_start_day: -35, relative_end_day: -28 },
+      { text: "転出届と転入届の提出先を確認する", default_priority: 1, relative_start_day: -21, relative_end_day: -10 },
+      { text: "電気、ガス、水道、郵便転送を申し込む", default_priority: 1, relative_start_day: -14, relative_end_day: -4 },
+    ],
+  }),
+).toString("base64url");
 
 await mkdir(outDir, { recursive: true });
 
@@ -34,6 +46,14 @@ try {
   await capture(cdp, "01-empty-desktop.png", { width: 1440, height: 1050 }, async () => {
     await cdp.send("Page.navigate", { url: baseUrl });
     await waitForReady(cdp);
+    await cdp.eval(`
+      const el = document.querySelector('textarea[aria-label="Search query"]');
+      if (el) {
+        const setter = Object.getOwnPropertyDescriptor(el.constructor.prototype, 'value').set;
+        setter.call(el, '');
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    `);
   });
 
   await capture(
@@ -67,6 +87,10 @@ try {
       await cdp.send("Page.navigate", { url: baseUrl });
       await waitForReady(cdp);
       await cdp.eval(`
+        [...document.querySelectorAll('button')].find((button) => button.textContent.trim() === '残す')?.click();
+      `);
+      await waitFor(cdp, () => Boolean(document.querySelector('#save-title')), 5000);
+      await cdp.eval(`
         const setValue = (selector, value) => {
           const el = document.querySelector(selector);
           const setter = Object.getOwnPropertyDescriptor(el.constructor.prototype, 'value').set;
@@ -86,9 +110,9 @@ try {
         setValue('input[aria-label="Priority 3"]', '2');
         setValue('input[aria-label="Relative start day 3"]', '-14');
         setValue('input[aria-label="Relative end day 3"]', '-4');
-        setTimeout(() => [...document.querySelectorAll('button')].find((button) => button.textContent.includes('確認')).click(), 100);
+        setTimeout(() => [...document.querySelectorAll('button')].find((button) => button.textContent.includes('検索情報を作る')).click(), 100);
       `);
-      await waitForText(cdp, "確認できます", 30000);
+      await waitForText(cdp, "検索情報を確認", 30000);
     },
   );
 
@@ -112,6 +136,17 @@ try {
         setTimeout(() => document.querySelector('button[type="submit"]').click(), 100);
       `);
       await waitForText(cdp, "東京旅行の準備", 30000);
+    },
+  );
+
+  await capture(
+    cdp,
+    "05-android-save-handoff-mobile.png",
+    { width: 390, height: 1180, mobile: true },
+    async () => {
+      await cdp.send("Page.navigate", { url: `${baseUrl}/?save=${androidSavePayload}` });
+      await waitForReady(cdp);
+      await new Promise((resolve) => setTimeout(resolve, 900));
     },
   );
 } finally {

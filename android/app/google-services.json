@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "675825988404",
+    "project_id": "cuckoocue",
+    "storage_bucket": "cuckoocue.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:675825988404:android:82e4e007c3431d3ca9ab61",
+        "android_client_info": {
+          "package_name": "app.cuckoocue"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "675825988404-k9k12983nlpaejsd8okttfednisfhk70.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "app.cuckoocue",
+            "certificate_hash": "8142a849cdfed49c867d42a51a7547eba3c9a300"
+          }
+        },
+        {
+          "client_id": "675825988404-2cpe85mh5ei056i3bpljper93vb33lvu.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAbXhblajj_8RNPEMGLlM6R-rQr66Y9KUU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "675825988404-2cpe85mh5ei056i3bpljper93vb33lvu.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -14,7 +14,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Cuckoo Cue",
-  description: "Search and save reusable cue lists.",
+  description: "完了したリストを見つけて、次の自分の手元に置く。",
+  icons: { icon: "/cuckoo-cue-mark.svg" },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

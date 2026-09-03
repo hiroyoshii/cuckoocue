@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Cuckoo Cue</string>
+    <string name="cuckoo_cue_web_url">https://cuckoocue.hiyozoo.com</string>
 </resources>

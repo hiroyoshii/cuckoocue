@@ -170,7 +170,7 @@ function event(day, kind, text) {
 }
 
 function task(text, default_priority, relative_start_day, relative_end_day) {
-  return { text, default_priority, relative_start_day, relative_end_day };
+  return { text, default_priority: default_priority - 1, relative_start_day, relative_end_day };
 }
 
 function search(label, message) {
@@ -220,10 +220,13 @@ async function searchWithRetry(userId, message) {
 }
 
 async function post(userId, path, body) {
+  const requestBody = path === "/api/task-list-entries"
+    ? { operation_id: crypto.randomUUID(), ...body }
+    : body;
   const response = await fetch(`${baseUrl}${path}`, {
     method: "POST",
     headers: headers(userId),
-    body: JSON.stringify(body),
+    body: JSON.stringify(requestBody),
   });
   return readResponse(response, path);
 }

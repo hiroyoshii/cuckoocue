@@ -1,6 +1,5 @@
 "use client";
 
-import { signInAnonymously } from "firebase/auth";
 import { firebaseAuth, hasFirebaseClientConfig } from "./firebase-client";
 
 export async function cueApiFetch(
@@ -13,7 +12,10 @@ export async function cueApiFetch(
 
   if (hasFirebaseClientConfig()) {
     const auth = firebaseAuth();
-    const user = auth.currentUser ?? (await signInAnonymously(auth)).user;
+    const user = auth.currentUser;
+    if (!user) {
+      throw new Error("Google アカウントでログインしてください。");
+    }
     headers.set("authorization", `Bearer ${await user.getIdToken()}`);
   } else {
     headers.set("x-dev-user-id", devUserId);

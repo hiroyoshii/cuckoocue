@@ -6,6 +6,35 @@ runConfig:
   memoryMiB: 512
 
 env:
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    value: AIzaSyAbXhblajj_8RNPEMGLlM6R-rQr66Y9KUU
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    value: cuckoocue.firebaseapp.com
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    value: cuckoocue
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    value: "1:675825988404:web:dd899a005671732ca9ab61"
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: CUE_ALLOW_DEV_AUTH
+    value: "false"
+    availability:
+      - RUNTIME
+
   - variable: CUE_BIGQUERY_DATASET
     value: cuckoo_cue
     availability:

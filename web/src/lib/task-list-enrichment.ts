@@ -23,7 +23,7 @@ function googleAuth() {
 }
 
 export async function enrichTaskList(
-  input: SaveTaskListInput,
+  input: Omit<SaveTaskListInput, "operation_id">,
 ): Promise<TaskListEnrichment> {
   const model = process.env.CUE_LLM_MODEL || "gemini-2.5-flash";
   const url = [
@@ -67,13 +67,19 @@ export async function enrichTaskList(
   return normalizeEnrichment(JSON.parse(text), input.tasks.length);
 }
 
-function normalizeEnrichment(value: unknown, taskCount: number): TaskListEnrichment {
+export function normalizeEnrichment(value: unknown, taskCount: number): TaskListEnrichment {
   const parsed = taskListEnrichmentSchema.parse(value);
+  const usedOffsets = new Set<number>();
   const task_groupings = parsed.task_groupings
     .map((grouping) => ({
       label: grouping.label,
       task_offsets: Array.from(new Set(grouping.task_offsets))
         .filter((offset) => offset >= 0 && offset < taskCount)
+        .filter((offset) => {
+          if (usedOffsets.has(offset)) return false;
+          usedOffsets.add(offset);
+          return true;
+        })
         .sort((left, right) => left - right),
     }))
     .filter((grouping) => grouping.task_offsets.length > 0);
@@ -89,7 +95,7 @@ function normalizeEnrichment(value: unknown, taskCount: number): TaskListEnrichm
   };
 }
 
-function buildPrompt(input: SaveTaskListInput) {
+function buildPrompt(input: Omit<SaveTaskListInput, "operation_id">) {
   return `
 あなたは reusable task list corpus の curator です。
 完了済み task list を、将来の検索と Android/widget での再利用に使いやすい形へ分類してください。
@@ -100,7 +106,7 @@ function buildPrompt(input: SaveTaskListInput) {
 - context_text は、この task list が再利用される状況を1から2文の日本語で説明する。
 - context_text には、再利用判断に効く地域、制度、行政手続き、サービス名、制約を残す。汎用化しすぎない。
 - ただし、住所、氏名、個人の好み、今回だけの感情や試行錯誤は含めない。
-- task_groupings は Android 側の section 候補として使える粒度にする。
+- task_groupings は Web の検索結果で一覧を理解しやすい粒度にする。Android には渡さない。
 - task_offsets は 0 始まりの task index。存在しない index は含めない。
 - relative_start_day / relative_end_day は、再利用時にユーザが指定する target_anchor_day を 0 日目とする相対日数として扱う。
 - 引っ越しやイベント準備のように目標日が明確な task list では、事前に行う task は負の値、当日の task は 0 になる。

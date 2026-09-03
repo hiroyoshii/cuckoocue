@@ -2,6 +2,8 @@ package app.cuckoocue.data
 
 import android.content.Context
 import android.database.sqlite.SQLiteException
+import app.cuckoocue.transfer.ImportedRunPayload
+import java.time.ZoneId
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
 
@@ -40,6 +42,55 @@ class CuckooRepository internal constructor(
         )
         return runId
     }
+
+    suspend fun importRun(
+        payload: ImportedRunPayload,
+        clock: () -> Long = { System.currentTimeMillis() },
+    ): String? {
+        if (payload.title.isBlank() || payload.tasks.isEmpty()) return null
+        val now = clock()
+        val runId = UUID.randomUUID().toString()
+        val nextOrder = (dao.maxRunSortOrder() ?: -1) + 1
+        val anchor = payload.targetAnchorDay
+        val zoneId = ZoneId.systemDefault()
+        val tasks = payload.tasks.mapIndexed { index, task ->
+            RunTaskEntity(
+                id = UUID.randomUUID().toString(),
+                runId = runId,
+                title = task.title,
+                userPriority = task.defaultPriority?.let { PriorityExposure.normalize(it) },
+                availableFromAt = task.relativeStartDay
+                    ?.let { anchor.plusDays(it.toLong()) }
+                    ?.atStartOfDay(zoneId)
+                    ?.toInstant()
+                    ?.toEpochMilli(),
+                dueAt = task.relativeEndDay
+                    ?.let { anchor.plusDays(it.toLong()) }
+                    ?.atStartOfDay(zoneId)
+                    ?.toInstant()
+                    ?.toEpochMilli(),
+                sortOrder = index,
+                createdAt = now,
+                updatedAt = now,
+            )
+        }
+        dao.insertRunAndTasks(
+            run = RunEntity(
+                id = runId,
+                title = payload.title.trim(),
+                sortOrder = nextOrder,
+                createdAt = now,
+                updatedAt = now,
+            ),
+            tasks = tasks,
+            now = now,
+        )
+        return runId
+    }
+
+    suspend fun getTasks(runId: String): List<RunTaskEntity> = dao.tasksForRun(runId)
+
+    suspend fun getTask(taskId: String): RunTaskEntity? = dao.taskById(taskId)
 
     suspend fun renameRun(runId: String, title: String, clock: () -> Long = { System.currentTimeMillis() }): Boolean {
         val cleanTitle = title.trim()
@@ -106,15 +157,18 @@ class CuckooRepository internal constructor(
     suspend fun updateTask(
         taskId: String,
         title: String,
+        availableFromAt: Long?,
         dueAt: Long?,
         priority: Int?,
         clock: () -> Long = { System.currentTimeMillis() },
     ): Boolean {
         val cleanTitle = title.trim()
+        if (availableFromAt != null && dueAt != null && availableFromAt > dueAt) return false
         val now = clock()
         return dao.updateTaskDetailsAndRefreshWidgetCue(
             taskId = taskId,
             title = cleanTitle,
+            availableFromAt = availableFromAt,
             dueAt = dueAt,
             userPriority = priority?.let { PriorityExposure.normalize(it) },
             now = now,
@@ -127,7 +181,7 @@ class CuckooRepository internal constructor(
     }
 
     suspend fun deleteTask(taskId: String) {
-        dao.deleteTaskAndRemoveWidgetCue(taskId)
+        dao.deleteTaskAndRemoveWidgetCue(taskId, System.currentTimeMillis())
     }
 
     suspend fun archiveRun(runId: String, clock: () -> Long = { System.currentTimeMillis() }): Boolean {

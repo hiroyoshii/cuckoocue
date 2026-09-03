@@ -18,6 +18,12 @@ interface CuckooDao {
     @Query("select count(*) from run_tasks")
     suspend fun taskCount(): Int
 
+    @Query("select count(*) from run_tasks where run_id = :runId")
+    suspend fun taskCountForRun(runId: String): Int
+
+    @Query("select count(*) from run_tasks where run_id = :runId and completed_at is null")
+    suspend fun pendingTaskCountForRun(runId: String): Int
+
     @Query("select count(*) from widget_cues")
     suspend fun widgetCueCount(): Int
 
@@ -30,6 +36,15 @@ interface CuckooDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertTask(task: RunTaskEntity)
 
+    @Transaction
+    suspend fun insertRunAndTasks(run: RunEntity, tasks: List<RunTaskEntity>, now: Long) {
+        insertRun(run)
+        tasks.forEach { task ->
+            insertTask(task)
+            refreshWidgetCueForTask(task.id, now)
+        }
+    }
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertWidgetCue(cue: WidgetCueEntity)
 
@@ -41,6 +56,9 @@ interface CuckooDao {
 
     @Query("select * from run_tasks where run_id = :runId order by sort_order, created_at")
     fun observeTasks(runId: String): Flow<List<RunTaskEntity>>
+
+    @Query("select * from run_tasks where run_id = :runId order by sort_order, created_at")
+    suspend fun tasksForRun(runId: String): List<RunTaskEntity>
 
     @Query(
         """
@@ -187,6 +205,7 @@ interface CuckooDao {
         """
         update run_tasks
         set title = :title,
+            available_from_at = :availableFromAt,
             due_at = :dueAt,
             user_priority = :userPriority,
             updated_at = :now
@@ -196,6 +215,7 @@ interface CuckooDao {
     suspend fun updateTaskDetails(
         taskId: String,
         title: String,
+        availableFromAt: Long?,
         dueAt: Long?,
         userPriority: Int?,
         now: Long,
@@ -287,6 +307,27 @@ interface CuckooDao {
 
     @Query(
         """
+        update runs
+        set completed_anchor_at = coalesce(completed_anchor_at, :now),
+            updated_at = :now
+        where id = :runId
+        """,
+    )
+    suspend fun setRunCompletionAnchor(runId: String, now: Long): Int
+
+    @Query(
+        """
+        update runs
+        set completed_anchor_at = null,
+            updated_at = :now
+        where id = :runId
+          and completed_anchor_at is not null
+        """,
+    )
+    suspend fun clearRunCompletionAnchor(runId: String, now: Long): Int
+
+    @Query(
+        """
         update run_tasks
         set completed_at = null,
             updated_at = :now
@@ -301,10 +342,12 @@ interface CuckooDao {
         taskId: String,
         now: Long,
     ): CompleteMutationResult {
+        val task = taskById(taskId)
         val removedFromWidget = isWidgetCue(taskId) > 0
         val changed = completeTask(taskId, now)
         if (changed == 1) {
             removeWidgetCueForTask(taskId)
+            task?.runId?.let { refreshRunCompletionAnchor(it, now) }
         }
         return CompleteMutationResult(
             completed = changed == 1,
@@ -330,6 +373,9 @@ interface CuckooDao {
                     updatedAt = now,
                 ),
             )
+        }
+        if (changed == 1 && task != null) {
+            refreshRunCompletionAnchor(task.runId, now)
         }
         return changed
     }
@@ -357,6 +403,7 @@ interface CuckooDao {
     @Transaction
     suspend fun insertTaskAndRefreshWidgetCue(task: RunTaskEntity, now: Long) {
         insertTask(task)
+        refreshRunCompletionAnchor(task.runId, now)
         refreshWidgetCueForTask(task.id, now)
     }
 
@@ -364,11 +411,12 @@ interface CuckooDao {
     suspend fun updateTaskDetailsAndRefreshWidgetCue(
         taskId: String,
         title: String,
+        availableFromAt: Long?,
         dueAt: Long?,
         userPriority: Int?,
         now: Long,
     ): Int {
-        val changed = updateTaskDetails(taskId, title, dueAt, userPriority, now)
+        val changed = updateTaskDetails(taskId, title, availableFromAt, dueAt, userPriority, now)
         if (changed == 1) {
             refreshWidgetCueForTask(taskId, now)
         }
@@ -376,9 +424,20 @@ interface CuckooDao {
     }
 
     @Transaction
-    suspend fun deleteTaskAndRemoveWidgetCue(taskId: String) {
+    suspend fun deleteTaskAndRemoveWidgetCue(taskId: String, now: Long) {
+        val task = taskById(taskId)
         removeWidgetCueForTask(taskId)
         deleteTask(taskId)
+        task?.runId?.let { refreshRunCompletionAnchor(it, now) }
+    }
+
+    @Transaction
+    suspend fun refreshRunCompletionAnchor(runId: String, now: Long) {
+        if (taskCountForRun(runId) > 0 && pendingTaskCountForRun(runId) == 0) {
+            setRunCompletionAnchor(runId, now)
+        } else {
+            clearRunCompletionAnchor(runId, now)
+        }
     }
 
     @Transaction
