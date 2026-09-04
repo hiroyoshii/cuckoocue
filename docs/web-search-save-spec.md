@@ -1,6 +1,6 @@
 # CuckooCue Web Search/Save Spec
 
-Last updated: 2026-09-03
+Last updated: 2026-09-04
 
 ## Product Boundary
 
@@ -42,10 +42,12 @@ Not included:
 
 ```text
 Android completed run
+  -> Android syncs the owner-scoped run snapshot to Firestore through the authenticated API
   -> all retained tasks are completed
   -> user taps "Webで確認して残す"
-  -> Android opens Web with transfer contract v1
-  -> Web restores the completed title, task order, priority and relative date range
+  -> Android confirms sync and opens Web with only run_id
+  -> Web authenticates the same user and fetches the completed run by owner UID + run_id
+  -> Web derives relative date ranges from the completion anchor in the run's time zone
   -> Web save confirmation
   -> user reviews/edits title, tasks, relative days, priority, domain, context_text, task_groupings
   -> Web generates search_text + context_embedding from the reviewed values
@@ -55,6 +57,29 @@ Android completed run
 Save and publish are the same operation.
 
 `default_priority` and task order are both observed values and recommendations because the user reviews them before saving. Deleted tasks are not saved into the corpus.
+
+## Run Sync
+
+Firestore stores owner-scoped operational run snapshots at
+`users/{uid}/runs/{run_id}`. Each document contains the Room run fields, the
+device time zone and its task array. It is not public corpus data.
+
+- Room remains the immediate Android state used by the app and widget.
+- Android queues a fresh full-run snapshot after each run/task mutation,
+  including widget completion and undo.
+- Signing in queues every local run again, covering edits made while signed out
+  and interrupted background uploads.
+- Opening the Web save review performs a synchronous upload first and opens the
+  browser only after it succeeds.
+- The API derives completion-relative days from absolute task timestamps using
+  the synced completion anchor and device time zone.
+- API access is always scoped by the verified Firebase UID; `run_id` is an
+  identifier, not an authorization secret.
+- Publishing creates an independent, user-reviewed BigQuery corpus snapshot.
+
+Multi-device merge/conflict behavior and a restore UI are separate from this
+cross-surface mirror. They require an explicit conflict policy before enabling
+cloud-to-Room mutation.
 
 ## Memory Bank
 
@@ -88,7 +113,7 @@ User natural-language query
   -> retrieve Memory Bank profile attributes for the user
   -> fetch distinct BigQuery domains from daily cache
   -> LLM maps query to one existing coarse domain or null
-  -> BigQuery filters candidates with SEARCH(search_text, query tokens) OR domain match
+  -> BigQuery admits candidates matching at least one query token with SEARCH(search_text, token), or the mapped domain
   -> BigQuery sorts filtered candidates by similarity between:
        query text + weak user profile attributes
        and corpus context_embedding
@@ -118,18 +143,17 @@ Current API returns:
 Web search result
   -> user chooses target_anchor_day
   -> Web fetches import payload by corpus id
-  -> Web opens https://cuckoocue.hiyozoo.com/import with transfer contract v1
+  -> Web opens https://cuckoocue.hiyozoo.com/import with entry_id and target_anchor_day only
   -> Android receives the verified HTTPS App Link
+  -> Android authenticates and fetches the corpus payload from the API
   -> Android imports as a new local list
   -> Android converts relative_start_day/end_day to absolute schedule
   -> Android navigates directly to the imported list confirmation/edit screen
 ```
 
-The transfer contract is versioned JSON encoded as URL-safe Base64. It contains only the user-reviewed title, tasks, priority and relative date range. Corpus embeddings, scores, owner ids, domain/context and Memory Bank profile data are not sent to Android.
+The App Link carries references, not task data. The authenticated import API returns only the user-reviewed title, tasks, priority and relative date range. Corpus embeddings, scores, owner ids, domain/context and Memory Bank profile data are not sent to Android.
 
 Imported lists are independent local copies. Android intentionally does not retain a corpus source id, so importing the same reusable list more than once creates separate lists.
-
-The inline transfer is capped at 16 KB and 50 tasks. The save API rejects a reviewed list that cannot fit this contract, so a published corpus entry cannot become non-importable later.
 
 Android stores both sides of the imported range:
 
@@ -176,23 +200,25 @@ The following list is the implementation backlog as of 2026-09-03. Priority is b
 - [x] **AUTH-001: Production Web authentication.** Google sign-in and authorized domains are configured, Firebase client variables are present, and production rejects unauthenticated API requests instead of accepting the development header.
 - [x] **AUTH-002: Shared identity contract.** Web and Android use Firebase Auth; verified UID scopes provenance and Memory Bank as documented above.
 - [x] **MODEL-001: Priority semantics.** Web, API, BigQuery and Android use nullable integer values `0=強`, `1=中`, `2=弱`.
-- [x] **MODEL-002: Completion-relative dates.** Android persists a stable completion anchor and exports both relative range endpoints from it. BQ has no completion timestamp.
+- [x] **MODEL-002: Completion-relative dates.** Android syncs a stable completion anchor and absolute task dates; the owner-scoped Web API derives both relative range endpoints in the run's recorded time zone. BQ has no completion timestamp.
 - [x] **SEARCH-001: Query First ranking.** BigQuery uses `SEARCH`/mapped domain only to select candidates, then sorts the candidate set by query plus weak-profile context similarity. Diagnostics expose truthful `text_matched` and `context_score` values only in the API/logging layer.
 
 ### P1: required end-to-end data paths
 
+- [x] **SYNC-001: Owner-scoped run mirror.** Android mutations and sign-in reconciliation upload complete Room run snapshots through the authenticated API to Firestore; Web save review fetches only the caller's completed run by id.
+- [ ] **SYNC-002: Multi-device restore and conflicts.** Define per-run/per-task conflict semantics and restoration UX before applying cloud snapshots back into Room. This is not required for Android-to-Web completed-run publication.
 - [x] **MEMORY-001: Android Memory Bank ingestion.** Authenticated non-widget app operations send raw events asynchronously. Widget actions, search queries and completed-list publication are excluded; live profile retrieval was verified against the fixed attribute-list schema.
-- [x] **ANDROID-001: Reviewable date ranges.** Android edits and persists start/end dates; instrumentation covers open-ended and same-day transfer ranges.
-- [x] **MODEL-003: Cross-field validation.** API, enrichment output and Android import validate ranges, priorities, counts, text limits, grouping offsets and duplicate membership.
+- [x] **ANDROID-001: Reviewable date ranges.** Android edits, persists and syncs start/end dates; import converts the API-returned relative range around the selected target day.
+- [x] **MODEL-003: Cross-field validation.** API, enrichment output and Android import validate ranges, priorities, text limits, grouping offsets and duplicate membership.
 - [x] **PRIVACY-001: Public-corpus safety.** Save blocks obvious precise addresses, contact details and account identifiers and requires explicit publication confirmation.
 - [x] **IMPORT-001: Import provenance decision.** Imported lists are independent copies and retain no corpus source id.
 - [x] **IMPORT-002: BQ-only grouping.** Grouping/domain/context/internal fields stay out of the Android transfer payload; E2E checks the exact boundary.
 
 ### P2: transport, reliability, and operations
 
-- [x] **IMPORT-003: Hardened Android transfer contract.** Version, origin/path, date, range, priority, count, text and encoded size are validated before a confirmation dialog and local insert.
+- [x] **IMPORT-003: Authenticated Android import.** The App Link validates origin/path and reference fields; Android then authenticates, fetches and validates the payload before confirmation and local insert.
 - [ ] **IMPORT-004: Verified HTTPS App Link.** Manifest and `assetlinks.json` are implemented and debug-signed behavior is covered. End-to-end domain verification awaits external DNS/certificate provisioning; the release signing SHA-256 must be added when a release key exists.
-- [x] **IMPORT-005: Bounded inline transfer.** The contract is capped at 16 KB/50 tasks, and publication rejects content that could not later be transferred. No fallback storage path is part of MVP.
+- [x] **IMPORT-005: Reference-only transfer.** Task data is fetched through authenticated APIs. URLs contain only run/corpus references and the target anchor date; no inline payload or arbitrary 16 KB limit remains.
 - [x] **SAVE-001: Idempotent publication.** A UUID operation id is merged into BigQuery and cross-owner reuse is rejected.
 - [x] **SEARCH-002: BigQuery search index.** `task_list_search_idx` exists and `SEARCH` is exercised. Because the current table is below BigQuery's 10 GB population threshold, coverage remains 0% and current representative latency reflects an unaccelerated scan.
 - [x] **OPS-001: Runtime IAM and regions.** App Hosting runtime can invoke BigQuery and Vertex AI/Memory Bank. App Hosting remains in its closest supported region `asia-east1`; BigQuery and Vertex AI remain in Tokyo `asia-northeast1`.

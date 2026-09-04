@@ -129,7 +129,6 @@ export async function searchTaskListEntries(
 ): Promise<SearchPage> {
   const explicitTokens = tokenize(message);
   const hasExplicitTokens = explicitTokens.length > 0;
-  const requiredExplicitHits = hasExplicitTokens && explicitTokens.length >= 2 ? 2 : 1;
   const explicitTokensParam = hasExplicitTokens
     ? explicitTokens
     : ["__cuckoo_no_query_token__"];
@@ -182,10 +181,10 @@ export async function searchTaskListEntries(
       context_text,
       task_groupings,
       created_at,
-      explicit_hit_count >= @requiredExplicitHits AS text_matched,
+      explicit_hit_count > 0 AS text_matched,
       IFNULL(context_score, 0) AS context_score
     FROM scored
-    WHERE explicit_hit_count >= @requiredExplicitHits
+    WHERE explicit_hit_count > 0
        OR domain_matched
        OR @hasExplicitTokens = FALSE
     ORDER BY context_score DESC, created_at DESC
@@ -202,7 +201,6 @@ export async function searchTaskListEntries(
             explicitTokensParam.map((token, index) => [`explicitToken${index}`, token]),
           ),
           hasExplicitTokens,
-          requiredExplicitHits,
           searchDomain: searchDomainParam,
           contextEmbedding,
         },

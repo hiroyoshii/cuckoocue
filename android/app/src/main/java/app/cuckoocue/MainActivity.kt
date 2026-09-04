@@ -3,6 +3,7 @@ package app.cuckoocue
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -90,6 +91,8 @@ import app.cuckoocue.data.PriorityExposure
 import app.cuckoocue.data.RunEntity
 import app.cuckoocue.data.RunTaskEntity
 import app.cuckoocue.transfer.ImportedRunPayload
+import app.cuckoocue.transfer.CorpusImportClient
+import app.cuckoocue.transfer.ImportReference
 import app.cuckoocue.transfer.RunTransferContract
 import app.cuckoocue.memory.MemoryEventClient
 import app.cuckoocue.widget.CuckooCueWidgetUpdater
@@ -132,18 +135,30 @@ private val LocalCuckooColors = staticCompositionLocalOf { cuckooColors(dark = f
 
 class MainActivity : ComponentActivity() {
     private val incomingImport = MutableStateFlow<ImportedRunPayload?>(null)
+    private var pendingImportReference: ImportReference? = null
+    private var importJob: Job? = null
     private val authUser = MutableStateFlow<FirebaseUser?>(null)
     private val authError = MutableStateFlow<String?>(null)
     private val cuckooAuth = CuckooAuth()
-    private val authListener = FirebaseAuth.AuthStateListener { auth -> authUser.value = auth.currentUser }
+    private lateinit var repository: CuckooRepository
+    private lateinit var importClient: CorpusImportClient
+    private val authListener = FirebaseAuth.AuthStateListener { auth ->
+        authUser.value = auth.currentUser
+        if (auth.currentUser != null && ::repository.isInitialized) {
+            repository.syncAllRuns()
+            loadPendingImport()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        incomingImport.value = RunTransferContract.parseImportUri(intent?.data)
+        val app = application as CuckooCueApp
+        repository = app.repository
+        importClient = CorpusImportClient(getString(R.string.cuckoo_cue_web_url))
+        pendingImportReference = RunTransferContract.parseImportUri(intent?.data)
         cuckooAuth.addListener(authListener)
         authUser.value = cuckooAuth.currentUser
-        val app = application as CuckooCueApp
-        val repository = app.repository
+        if (cuckooAuth.currentUser != null) loadPendingImport()
         val appearanceRepository = app.appearanceRepository
 
         setContent {
@@ -186,12 +201,30 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        incomingImport.value = RunTransferContract.parseImportUri(intent.data)
+        pendingImportReference = RunTransferContract.parseImportUri(intent.data)
+        loadPendingImport()
     }
 
     override fun onDestroy() {
         cuckooAuth.removeListener(authListener)
         super.onDestroy()
+    }
+
+    private fun loadPendingImport() {
+        val reference = pendingImportReference ?: return
+        if (cuckooAuth.currentUser == null || !::importClient.isInitialized) return
+        importJob?.cancel()
+        importJob = lifecycleScope.launch {
+            runCatching { importClient.fetch(reference) }
+                .onSuccess {
+                    pendingImportReference = null
+                    incomingImport.value = it
+                    authError.value = null
+                }
+                .onFailure {
+                    authError.value = it.localizedMessage ?: "取り込み内容を取得できませんでした"
+                }
+        }
     }
 }
 
@@ -372,11 +405,18 @@ private fun CuckooCueScreen(
             },
             onReuseRun = {
                 scope.launch {
-                    val tasks = repository.getTasks(selectedRun.id)
+                    if (signedInUser == null) {
+                        Toast.makeText(context, "先にGoogleアカウントでログインしてください", Toast.LENGTH_SHORT).show()
+                        onSignIn()
+                        return@launch
+                    }
+                    if (!repository.syncRunNow(selectedRun.id)) {
+                        Toast.makeText(context, "同期できませんでした。通信を確認して再試行してください", Toast.LENGTH_LONG).show()
+                        return@launch
+                    }
                     val uri = RunTransferContract.buildSaveReviewUri(
                         webAppUrl = context.getString(R.string.cuckoo_cue_web_url),
-                        run = selectedRun,
-                        tasks = tasks,
+                        runId = selectedRun.id,
                     )
                     context.startActivity(Intent(Intent.ACTION_VIEW, uri))
                 }

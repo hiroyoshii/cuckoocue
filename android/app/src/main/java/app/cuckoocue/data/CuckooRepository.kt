@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.Flow
 
 class CuckooRepository internal constructor(
     private val dao: CuckooDao,
+    private val runSyncClient: RunSyncClient? = null,
 ) {
 
     val widgetCues: Flow<List<WidgetCue>>
@@ -40,6 +41,7 @@ class CuckooRepository internal constructor(
                 updatedAt = now,
             ),
         )
+        runSyncClient?.enqueue(runId)
         return runId
     }
 
@@ -85,6 +87,7 @@ class CuckooRepository internal constructor(
             tasks = tasks,
             now = now,
         )
+        runSyncClient?.enqueue(runId)
         return runId
     }
 
@@ -95,7 +98,9 @@ class CuckooRepository internal constructor(
     suspend fun renameRun(runId: String, title: String, clock: () -> Long = { System.currentTimeMillis() }): Boolean {
         val cleanTitle = title.trim()
         if (cleanTitle.isEmpty()) return false
-        return dao.updateRunTitle(runId, cleanTitle, clock()) == 1
+        val changed = dao.updateRunTitle(runId, cleanTitle, clock()) == 1
+        if (changed) runSyncClient?.enqueue(runId)
+        return changed
     }
 
     suspend fun addTask(
@@ -124,6 +129,7 @@ class CuckooRepository internal constructor(
             ),
             now = now,
         )
+        runSyncClient?.enqueue(runId)
         return taskId
     }
 
@@ -151,6 +157,7 @@ class CuckooRepository internal constructor(
             ),
             now = now,
         )
+        runSyncClient?.enqueue(afterTask.runId)
         return taskId
     }
 
@@ -165,7 +172,7 @@ class CuckooRepository internal constructor(
         val cleanTitle = title.trim()
         if (availableFromAt != null && dueAt != null && availableFromAt > dueAt) return false
         val now = clock()
-        return dao.updateTaskDetailsAndRefreshWidgetCue(
+        val changed = dao.updateTaskDetailsAndRefreshWidgetCue(
             taskId = taskId,
             title = cleanTitle,
             availableFromAt = availableFromAt,
@@ -173,43 +180,65 @@ class CuckooRepository internal constructor(
             userPriority = priority?.let { PriorityExposure.normalize(it) },
             now = now,
         ) == 1
+        if (changed) dao.taskById(taskId)?.runId?.let { runSyncClient?.enqueue(it) }
+        return changed
     }
 
     suspend fun movePendingTask(runId: String, taskId: String, delta: Int): Boolean {
         val now = System.currentTimeMillis()
-        return dao.movePendingTaskAndRefreshMovedWidgetCue(runId, taskId, delta, now)
+        val changed = dao.movePendingTaskAndRefreshMovedWidgetCue(runId, taskId, delta, now)
+        if (changed) runSyncClient?.enqueue(runId)
+        return changed
     }
 
     suspend fun deleteTask(taskId: String) {
+        val runId = dao.taskById(taskId)?.runId
         dao.deleteTaskAndRemoveWidgetCue(taskId, System.currentTimeMillis())
+        runId?.let { runSyncClient?.enqueue(it) }
     }
 
     suspend fun archiveRun(runId: String, clock: () -> Long = { System.currentTimeMillis() }): Boolean {
         val now = clock()
-        return dao.archiveRunAndRemoveWidgetCues(runId, now) == 1
+        val changed = dao.archiveRunAndRemoveWidgetCues(runId, now) == 1
+        if (changed) runSyncClient?.enqueue(runId)
+        return changed
     }
 
-    suspend fun completeTask(taskId: String): CompleteMutationResult =
-        try {
-            dao.completeTaskAndRemoveWidgetCue(taskId, System.currentTimeMillis())
+    suspend fun completeTask(taskId: String): CompleteMutationResult {
+        return try {
+            val runId = dao.taskById(taskId)?.runId
+            dao.completeTaskAndRemoveWidgetCue(taskId, System.currentTimeMillis()).also {
+                if (it.completed) runId?.let { id -> runSyncClient?.enqueue(id) }
+            }
         } catch (_: SQLiteException) {
             CompleteMutationResult(completed = false, removedFromWidget = false)
         }
+    }
 
     suspend fun undoCompleteTask(
         taskId: String,
-    ): Boolean =
-        try {
+    ): Boolean {
+        return try {
             val task = dao.taskById(taskId)
+            val runId = task?.runId
             val priority = task?.effectivePriority()
-            dao.undoCompleteTaskAndRestoreWidgetCue(
+            val changed = dao.undoCompleteTaskAndRestoreWidgetCue(
                 taskId = taskId,
                 now = System.currentTimeMillis(),
                 priority = priority,
             ) == 1
+            if (changed) runId?.let { runSyncClient?.enqueue(it) }
+            changed
         } catch (_: SQLiteException) {
             false
         }
+    }
+
+    suspend fun syncRunNow(runId: String): Boolean = runSyncClient?.sync(runId) ?: false
+
+    fun syncAllRuns() {
+        runSyncClient?.enqueueAll()
+    }
 
     suspend fun getWidgetCues(): List<WidgetCue> = dao.getWidgetCues()
 
@@ -231,9 +260,12 @@ class CuckooRepository internal constructor(
 
         fun getInstance(context: Context): CuckooRepository =
             instance ?: synchronized(this) {
-                instance ?: CuckooRepository(
-                    CuckooDatabase.getInstance(context).dao(),
-                ).also { instance = it }
+                instance ?: CuckooDatabase.getInstance(context).dao().let { dao ->
+                    CuckooRepository(
+                        dao,
+                        RunSyncClient(dao, context.getString(app.cuckoocue.R.string.cuckoo_cue_web_url)),
+                    ).also { instance = it }
+                }
             }
     }
 }

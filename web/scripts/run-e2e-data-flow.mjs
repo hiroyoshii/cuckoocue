@@ -51,6 +51,40 @@ const lists = [
 ];
 
 async function main() {
+  const completion = Date.parse("2026-10-01T12:00:00+09:00");
+  const syncedRun = {
+    id: `completed-run-${Date.now()}`,
+    title: lists[0].title,
+    sort_order: 0,
+    archived_at: null,
+    completed_anchor_at: completion,
+    time_zone: "Asia/Tokyo",
+    created_at: completion - 40 * 86_400_000,
+    updated_at: completion,
+    tasks: lists[0].tasks.map((item, index) => ({
+      id: `completed-task-${index}`,
+      title: item.text,
+      user_priority: item.default_priority,
+      available_from_at: completion + item.relative_start_day * 86_400_000,
+      due_at: completion + item.relative_end_day * 86_400_000,
+      sort_order: index,
+      completed_at: completion,
+      created_at: completion - 40 * 86_400_000,
+      updated_at: completion,
+    })),
+  };
+  await step("sync_completed_run", syncedRun, () => request("PUT", `/api/runs/${syncedRun.id}`, syncedRun));
+  const restoredRun = await step("fetch_completed_run", { run_id: syncedRun.id }, () =>
+    request("GET", `/api/runs/${syncedRun.id}`),
+  );
+  assert(restoredRun.run.tasks[0].relative_start_day === -35, "completed run changed relative start");
+  assert(restoredRun.run.tasks[0].relative_end_day === -28, "completed run changed relative end");
+  if (!idToken) {
+    const hidden = await rawRequest("GET", `/api/runs/${syncedRun.id}`, undefined, `${devUserId}-other`);
+    assert(hidden.status === 404, `another user fetched an owner-scoped run: ${hidden.status}`);
+    report.steps.push({ name: "reject_other_user_run_fetch", input: { run_id: syncedRun.id }, output: hidden });
+  }
+
   const events = [
     memory("android_task_added", "平日に電話が必要な手続きは避け、オンライン手続きを追加した"),
     memory("android_priority_changed", "役所とライフラインの手続きを強い項目として扱った"),
@@ -100,16 +134,6 @@ async function main() {
     422,
     { operation_id: crypto.randomUUID(), title: "連絡先", tasks: [task("foo@example.com に連絡する", 1, -1, 0)] },
   );
-  await expectedFailure(
-    "reject_untransferable_payload",
-    400,
-    {
-      operation_id: crypto.randomUUID(),
-      title: "Android transfer limit",
-      tasks: Array.from({ length: 50 }, (_, index) => task(`${index}-${"長".repeat(236)}`, 1, -1, 0)),
-    },
-  );
-
   const searches = [
     ["specific-japan", "東京から名古屋へ引っ越す。転出届、転入届、ライフライン、郵便転送を整理したい", "tokyo-nagoya"],
     ["specific-uk", "ロンドンからブライトンへ引っ越す。council tax、Royal Mail、GP、utilities を整理したい", "london-brighton"],
