@@ -6,7 +6,7 @@ Target: Firebase App Hosting generated production URL in `asia-east1`.
 
 Result: passed with a Firebase ID token and production development-auth fallback disabled.
 
-The scenario executed raw Memory Bank operation events; the save-review enrichment API; LLM enrichment and idempotent BigQuery publication for Tokyo-Nagoya moving, London-Brighton moving and Tokyo travel; unsafe/invalid input rejection; Japanese/UK/travel search ranking; and opaque BigQuery job paging. The former inline Android payload boundary has since been replaced by authenticated ID-based run sync/import and must be covered by the next production E2E run.
+The scenario executed raw Memory Bank operation events; the save-review enrichment API; LLM enrichment and idempotent BigQuery publication for Tokyo-Nagoya moving, London-Brighton moving and Tokyo travel; unsafe/invalid input rejection; Japanese/UK/travel search ranking; and opaque BigQuery job paging. The former inline Android payload boundary has since been replaced by authenticated ID-based run sync/import, covered below.
 
 ## 2026-09-04 Run Sync Update
 
@@ -16,6 +16,13 @@ owner-scoped retrieval, cross-user 404 behavior, completion-relative date
 derivation, LLM enrichment, idempotent BQ publication, Japanese/UK/travel
 ranking, paging and reference-based Android import payload fetch. All steps
 passed; generated Firestore and BQ test rows were removed afterward.
+
+App Hosting rollout `rollout-2026-09-04-001` deployed commit `da65267`. An
+ephemeral Firebase-authenticated user then performed a production PUT and GET
+through `/api/runs/{id}`; both returned HTTP 200 and restored the expected
+`-1/0` relative range. The temporary Auth user, Firestore document and token
+signing grant were removed after verification. Unauthenticated access returns
+HTTP 401.
 
 Observed first results:
 
