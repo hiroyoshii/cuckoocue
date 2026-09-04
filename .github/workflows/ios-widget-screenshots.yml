@@ -1,0 +1,81 @@
+name: iOS widget screenshots
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, "codex/**"]
+    paths:
+      - "ios/**"
+      - ".github/workflows/ios-widget-screenshots.yml"
+  pull_request:
+    paths:
+      - "ios/**"
+      - ".github/workflows/ios-widget-screenshots.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build-test-screenshot:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode 16.4
+        run: sudo xcode-select -s /Applications/Xcode_16.4.app/Contents/Developer
+
+      - name: Install XcodeGen
+        run: command -v xcodegen >/dev/null || brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate --spec ios/project.yml
+
+      - name: Create and boot simulator
+        id: simulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          runtime="com.apple.CoreSimulator.SimRuntime.iOS-18-5"
+          device_type="com.apple.CoreSimulator.SimDeviceType.iPhone-16-Pro"
+          simulator_id="$(xcrun simctl create 'Cuckoo Cue CI' "$device_type" "$runtime")"
+          echo "id=$simulator_id" >> "$GITHUB_OUTPUT"
+          xcrun simctl boot "$simulator_id"
+          xcrun simctl bootstatus "$simulator_id" -b
+
+      - name: Build and test
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project ios/CuckooCue.xcodeproj \
+            -scheme CuckooCue \
+            -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.id }}' \
+            -derivedDataPath build/ios-derived-data \
+            -resultBundlePath build/CuckooCueTests.xcresult \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Capture widget previews
+        shell: bash
+        run: |
+          set -euo pipefail
+          simulator_id='${{ steps.simulator.outputs.id }}'
+          app_path="build/ios-derived-data/Build/Products/Debug-iphonesimulator/CuckooCue.app"
+          mkdir -p build/ios-widget-screenshots
+          xcrun simctl install "$simulator_id" "$app_path"
+          for family in small medium large; do
+            xcrun simctl terminate "$simulator_id" app.cuckoocue.ios 2>/dev/null || true
+            xcrun simctl launch "$simulator_id" app.cuckoocue.ios --ui-testing --screenshot-gallery "$family"
+            sleep 2
+            xcrun simctl io "$simulator_id" screenshot "build/ios-widget-screenshots/widget-$family.png"
+          done
+
+      - name: Upload widget screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cuckoo-cue-ios-widget-screenshots
+          path: |
+            build/ios-widget-screenshots/*.png
+            build/CuckooCueTests.xcresult
+          if-no-files-found: warn
+          retention-days: 14
