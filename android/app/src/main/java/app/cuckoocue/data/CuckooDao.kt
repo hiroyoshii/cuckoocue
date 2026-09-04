@@ -54,6 +54,12 @@ interface CuckooDao {
     @Query("select * from runs where archived_at is null order by sort_order, created_at")
     fun observeRuns(): Flow<List<RunEntity>>
 
+    @Query("select * from runs where id = :runId")
+    suspend fun runById(runId: String): RunEntity?
+
+    @Query("select id from runs")
+    suspend fun allRunIds(): List<String>
+
     @Query("select * from run_tasks where run_id = :runId order by sort_order, created_at")
     fun observeTasks(runId: String): Flow<List<RunTaskEntity>>
 

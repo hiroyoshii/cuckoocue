@@ -1,10 +1,15 @@
 import { getApps, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
+import { getFirestore } from "firebase-admin/firestore";
+
+function adminApp() {
+  return getApps()[0] ?? initializeApp();
+}
 
 export function adminAuth() {
-  if (getApps().length === 0) {
-    initializeApp();
-  }
+  return getAuth(adminApp());
+}
 
-  return getAuth();
+export function adminFirestore() {
+  return getFirestore(adminApp());
 }

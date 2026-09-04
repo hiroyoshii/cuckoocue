@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { fitsInlineAndroidImport } from "./run-transfer";
 
 export const taskEntryTaskSchema = z.object({
   text: z.string().trim().min(1).max(240),
@@ -33,12 +32,12 @@ export const taskListEntrySchema = z.object({
 });
 
 const taskListDraftObjectSchema = z.object({
-  title: z.string().trim().min(1).max(160),
-  tasks: z.array(taskEntryTaskSchema).min(1).max(50),
+  title: z.string().trim().min(1).max(240),
+  tasks: z.array(taskEntryTaskSchema).min(1),
 });
 
 export const taskListDraftSchema = taskListDraftObjectSchema.superRefine(
-  validateTransferableTaskList,
+  validateTaskList,
 );
 
 export const saveTaskListSchema = taskListDraftObjectSchema
@@ -49,7 +48,7 @@ export const saveTaskListSchema = taskListDraftObjectSchema
     task_groupings: z.array(taskGroupingSchema).min(1).max(20).optional(),
   })
   .superRefine((value, context) => {
-    validateTransferableTaskList(value, context);
+    validateTaskList(value, context);
 
     const usedOffsets = new Set<number>();
     value.task_groupings?.forEach((grouping, groupIndex) => {
@@ -73,7 +72,7 @@ export const saveTaskListSchema = taskListDraftObjectSchema
     });
   });
 
-function validateTransferableTaskList(
+function validateTaskList(
   value: z.infer<typeof taskListDraftObjectSchema>,
   context: z.RefinementCtx,
 ) {
@@ -91,25 +90,6 @@ function validateTransferableTaskList(
     }
   });
 
-  if (
-    !fitsInlineAndroidImport({
-      version: 1,
-      title: value.title,
-      target_anchor_day: "2000-01-01",
-      tasks: value.tasks.map((task) => ({
-        title: task.text,
-        default_priority: task.default_priority ?? null,
-        relative_start_day: task.relative_start_day ?? null,
-        relative_end_day: task.relative_end_day ?? null,
-      })),
-    })
-  ) {
-    context.addIssue({
-      code: "custom",
-      path: ["tasks"],
-      message: "reviewed task list exceeds the 16 KB Android import contract",
-    });
-  }
 }
 
 export const searchTaskListsSchema = z

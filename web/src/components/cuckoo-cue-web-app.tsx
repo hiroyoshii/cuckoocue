@@ -19,7 +19,6 @@ import { cueApiFetch } from "@/lib/api-client";
 import { firebaseAuth, hasFirebaseClientConfig } from "@/lib/firebase-client";
 import {
   buildAndroidImportUri,
-  decodeSaveReviewTransfer,
   type AndroidImportTransfer,
 } from "@/lib/run-transfer";
 import { BrandMark } from "./brand-mark";
@@ -70,6 +69,7 @@ export function CuckooCueWebApp() {
     "search" | "more" | "enrich" | "save" | "import" | null
   >(null);
   const saveOperationId = useRef(crypto.randomUUID());
+  const loadedRunId = useRef<string | null>(null);
 
   useEffect(() => {
     if (!hasFirebaseClientConfig()) return;
@@ -80,23 +80,34 @@ export function CuckooCueWebApp() {
   }, []);
 
   useEffect(() => {
+    if (!authReady || (hasFirebaseClientConfig() && !user)) return;
     const url = new URL(window.location.href);
-    const encoded = url.searchParams.get("save");
-    if (!encoded) return;
-    const transfer = decodeSaveReviewTransfer(encoded);
-    /* eslint-disable react-hooks/set-state-in-effect -- URL handoff initializes this client-only workspace. */
-    if (!transfer) {
-      setErrorMessage("Android から受け取った内容を読み込めませんでした。");
-      return;
-    }
-    setSaveTitle(transfer.title);
-    setTasks(transfer.tasks);
-    setView("save");
-    setStatus("Completed list received");
-    /* eslint-enable react-hooks/set-state-in-effect */
-    url.searchParams.delete("save");
-    window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
-  }, []);
+    const runId = url.searchParams.get("run_id");
+    if (!runId || loadedRunId.current === runId) return;
+    loadedRunId.current = runId;
+    let cancelled = false;
+
+    void cueApiFetch(`/api/runs/${encodeURIComponent(runId)}`, devUserId)
+      .then(async (response) => {
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.error ?? "Completed list fetch failed");
+        if (cancelled) return;
+        setSaveTitle(body.run.title);
+        setTasks(body.run.tasks);
+        setEnrichment(null);
+        setView("save");
+        setStatus("Completed list received");
+        url.searchParams.delete("run_id");
+        window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        loadedRunId.current = null;
+        setErrorMessage(error instanceof Error ? error.message : "完了したリストを読み込めませんでした。");
+      });
+
+    return () => { cancelled = true; };
+  }, [authReady, devUserId, user]);
 
   const cleanedTasks = useMemo(
     () => tasks.filter((task) => task.text.trim().length > 0),
@@ -233,7 +244,7 @@ export function CuckooCueWebApp() {
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "Import payload failed");
       const payload = body.importPayload as ImportPayload;
-      const uri = buildAndroidImportUri(payload);
+      const uri = buildAndroidImportUri(id, targetAnchorDay);
       setPreparedImport(payload);
       setAndroidImportUri(uri);
       setStatus("Import ready");

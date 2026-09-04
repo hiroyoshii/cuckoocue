@@ -18,6 +18,12 @@ create or start a small run
 Android owns the active execution state. Web search/save and Memory Bank work
 are parallel tracks; they do not decide widget or local task behavior.
 
+Room is the immediate device state, while authenticated run snapshots are synced
+through the Web API to Firestore under `users/{uid}/runs/{run_id}`. This sync is
+part of the cross-surface product architecture even though Phase 0 originally
+validated local behavior first. Widget operations participate in run sync but
+remain excluded from Memory Bank events.
+
 The app UI is list-scoped for users: each internal run is shown as its own
 small list, but user-facing copy should not expose "Run" or "Cue" as navigation
 concepts. Task rows reuse the widget row language so the app and widget feel like
@@ -49,8 +55,7 @@ Phase 0 defers:
 
 - Skip
 - Snooze
-- Multi-device sync
-- Account backup and restore
+- Multi-device conflict resolution and restore UI
 - iOS widgets
 - WorkManager for widget complete/undo
 
@@ -449,7 +454,7 @@ Search follows a Query First plus Weak Profile shape:
    - user profile attributes
 5. Generate one embedding for that mixed search context.
 6. In one BigQuery query:
-   - use `SEARCH(search_text, token)` as the candidate filter
+   - admit a row when `SEARCH(search_text, token)` matches at least one query token
    - also admit rows whose domain matches the mapped search domain
    - compute context_score as similarity between the mixed search context and
      the saved task-list context_embedding

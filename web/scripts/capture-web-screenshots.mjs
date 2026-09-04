@@ -7,18 +7,9 @@ const baseUrl = process.env.CUE_SCREENSHOT_BASE_URL || "http://localhost:3000";
 const loginBaseUrl = process.env.CUE_SCREENSHOT_LOGIN_URL || "https://cuckoocue--cuckoocue.asia-east1.hosted.app";
 const outDir = process.env.CUE_SCREENSHOT_OUT_DIR || "../docs/review-screenshots/web/e2e";
 const port = Number(process.env.CUE_SCREENSHOT_CDP_PORT || 9222);
-const androidSavePayload = Buffer.from(
-  JSON.stringify({
-    version: 1,
-    title: "東京から名古屋への引っ越し手続き",
-    source_anchor_day: "2026-10-01",
-    tasks: [
-      { text: "現住所の退去日と新居の入居日を確定する", default_priority: 0, relative_start_day: -35, relative_end_day: -28 },
-      { text: "転出届と転入届の提出先を確認する", default_priority: 1, relative_start_day: -21, relative_end_day: -10 },
-      { text: "電気、ガス、水道、郵便転送を申し込む", default_priority: 1, relative_start_day: -14, relative_end_day: -4 },
-    ],
-  }),
-).toString("base64url");
+const screenshotRunId = "screenshot-completed-run";
+
+await seedCompletedRun();
 
 await mkdir(outDir, { recursive: true });
 
@@ -94,7 +85,7 @@ try {
     "04-save-review-desktop.png",
     { width: 1440, height: 1220 },
     async () => {
-      await cdp.send("Page.navigate", { url: `${baseUrl}/?save=${androidSavePayload}` });
+      await cdp.send("Page.navigate", { url: `${baseUrl}/?run_id=${screenshotRunId}` });
       await waitForReady(cdp);
       await waitFor(cdp, () => Boolean(document.querySelector('#save-title')), 5000);
       await cdp.eval(`
@@ -121,7 +112,7 @@ try {
     "06-android-save-handoff-mobile.png",
     { width: 390, height: 1180, mobile: true },
     async () => {
-      await cdp.send("Page.navigate", { url: `${baseUrl}/?save=${androidSavePayload}` });
+      await cdp.send("Page.navigate", { url: `${baseUrl}/?run_id=${screenshotRunId}` });
       await waitForReady(cdp);
       await new Promise((resolve) => setTimeout(resolve, 900));
     },
@@ -132,7 +123,7 @@ try {
     "07-save-published-desktop.png",
     { width: 1440, height: 1050 },
     async () => {
-      await cdp.send("Page.navigate", { url: `${baseUrl}/?save=${androidSavePayload}` });
+      await cdp.send("Page.navigate", { url: `${baseUrl}/?run_id=${screenshotRunId}` });
       await waitForReady(cdp);
       await cdp.eval(`
         setTimeout(() => [...document.querySelectorAll('button')].find((button) => button.textContent.includes('検索情報を作る'))?.click(), 100);
@@ -149,6 +140,41 @@ try {
 } finally {
   cdp?.close();
   chrome.kill();
+}
+
+async function seedCompletedRun() {
+  const completion = Date.parse("2026-10-01T12:00:00+09:00");
+  const tasks = [
+    ["現住所の退去日と新居の入居日を確定する", 0, -35, -28],
+    ["転出届と転入届の提出先を確認する", 1, -21, -10],
+    ["電気、ガス、水道、郵便転送を申し込む", 1, -14, -4],
+  ].map(([title, priority, start, end], index) => ({
+    id: `screenshot-task-${index}`,
+    title,
+    user_priority: priority,
+    available_from_at: completion + Number(start) * 86_400_000,
+    due_at: completion + Number(end) * 86_400_000,
+    sort_order: index,
+    completed_at: completion,
+    created_at: completion - 40 * 86_400_000,
+    updated_at: completion,
+  }));
+  const response = await fetch(`${baseUrl}/api/runs/${screenshotRunId}`, {
+    method: "PUT",
+    headers: { "content-type": "application/json", "x-dev-user-id": "local-user" },
+    body: JSON.stringify({
+      id: screenshotRunId,
+      title: "東京から名古屋への引っ越し手続き",
+      sort_order: 0,
+      archived_at: null,
+      completed_anchor_at: completion,
+      time_zone: "Asia/Tokyo",
+      created_at: completion - 40 * 86_400_000,
+      updated_at: completion,
+      tasks,
+    }),
+  });
+  if (!response.ok) throw new Error(`Run seed failed: ${response.status} ${await response.text()}`);
 }
 
 async function capture(cdp, name, viewport, setup) {
