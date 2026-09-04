@@ -24,6 +24,28 @@ through `/api/runs/{id}`; both returned HTTP 200 and restored the expected
 signing grant were removed after verification. Unauthenticated access returns
 HTTP 401.
 
+## 2026-09-05 Canonical Domain Verification
+
+The full authenticated production scenario was repeated against
+`https://cuckoocue.hiyozoo.com`. All 23 scenario steps passed in about 58
+seconds; together with Firebase custom-token issuance and exchange, this is the
+same 25-step path previously run against the generated hostname. It covered
+completed-run sync/fetch, four Memory Bank events, enrichment, three BQ saves
+and idempotent retries, three rejection paths, three searches, two paging
+requests, import retrieval and invalid-anchor rejection.
+
+The persisted test rows were inspected before cleanup: Tokyo-Nagoya moving had
+domain `引っ越し` and four groups, London-Brighton moving had domain `引っ越し`
+and five groups, and Tokyo travel had domain `旅行準備` and four groups. Each
+targeted search ranked its intended row first. The temporary Firebase Auth user,
+Firestore run, three BQ rows and token-signing IAM grant were removed; a
+post-cleanup query returned zero rows for the test user.
+
+Firebase App Hosting reports active host, ownership and certificate states.
+Android package verification reports `cuckoocue.hiyozoo.com: verified`, and an
+unqualified HTTPS import intent launches `app.cuckoocue/.MainActivity` rather
+than a browser.
+
 Observed first results:
 
 | Query | First result | `text_matched` | `context_score` |
@@ -55,6 +77,10 @@ Android captures are stored under `docs/review-screenshots/android/e2e/`. They s
 
 The visual run exposed and fixed a real gap missed by the API-only scenario: `/api/task-list-enrichment` attempted `.pick()` on a refined Zod schema and returned 503. The endpoint now has a separately reusable reviewed-draft schema, and `prepare_enrichment` is a permanent API E2E step.
 
-## Remaining External Verification
+## Remaining Release And UX Verification
 
-`cuckoocue.hiyozoo.com` does not resolve until its external DNS records are installed. App Hosting certificate issuance and a true verified App Link smoke test therefore remain pending. A future release signing certificate also needs its SHA-256 fingerprint added to Firebase/`assetlinks.json`; only the current debug signing identity exists today.
+DNS, certificate issuance and current debug App Link verification are complete.
+A future release signing certificate still needs its SHA-256 fingerprint added
+to Firebase and `assetlinks.json`. Google's interactive account chooser and the
+Android-browser fallback when the app is absent remain manual UX checks; they do
+not block the verified API, persistence or installed-app data paths above.

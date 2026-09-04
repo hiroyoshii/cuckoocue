@@ -191,12 +191,12 @@ BigQuery result pagination should be used for search result paging.
 
 ## Implementation Status
 
-The following list is the implementation backlog as of 2026-09-03. Priority is based on whether the issue blocks deployment, corrupts data semantics, or leaves a required data path disconnected.
+The following list is the implementation backlog as of 2026-09-05. Priority is based on whether the issue blocks deployment, corrupts data semantics, or leaves a required data path disconnected.
 
 ### P0: deployment, identity, and data correctness
 
 - [x] **WEB-001: Firebase App Hosting build.** The backend builds from `web/`; the generated `asia-east1` URL serves the current Next.js application.
-- [ ] **WEB-002: Canonical production domain.** The App Hosting domain resource exists, but the external DNS A/TXT/ACME records and resulting certificate are still pending. This is the only Web deployment blocker outside this repository/project.
+- [x] **WEB-002: Canonical production domain.** `cuckoocue.hiyozoo.com` resolves to App Hosting and reports active ownership and certificate state. The application, authenticated APIs and `assetlinks.json` are served over HTTPS.
 - [x] **AUTH-001: Production Web authentication.** Google sign-in and authorized domains are configured, Firebase client variables are present, and production rejects unauthenticated API requests instead of accepting the development header.
 - [x] **AUTH-002: Shared identity contract.** Web and Android use Firebase Auth; verified UID scopes provenance and Memory Bank as documented above.
 - [x] **MODEL-001: Priority semantics.** Web, API, BigQuery and Android use nullable integer values `0=強`, `1=中`, `2=弱`.
@@ -217,9 +217,11 @@ The following list is the implementation backlog as of 2026-09-03. Priority is b
 ### P2: transport, reliability, and operations
 
 - [x] **IMPORT-003: Authenticated Android import.** The App Link validates origin/path and reference fields; Android then authenticates, fetches and validates the payload before confirmation and local insert.
-- [ ] **IMPORT-004: Verified HTTPS App Link.** Manifest and `assetlinks.json` are implemented and debug-signed behavior is covered. End-to-end domain verification awaits external DNS/certificate provisioning; the release signing SHA-256 must be added when a release key exists.
+- [x] **IMPORT-004: Verified HTTPS App Link.** Android reports `cuckoocue.hiyozoo.com: verified`, and an unqualified HTTPS import intent resolves to `app.cuckoocue/.MainActivity` on the emulator using the current debug signing identity.
 - [x] **IMPORT-005: Reference-only transfer.** Task data is fetched through authenticated APIs. URLs contain only run/corpus references and the target anchor date; no inline payload or arbitrary 16 KB limit remains.
 - [x] **SAVE-001: Idempotent publication.** A UUID operation id is merged into BigQuery and cross-owner reuse is rejected.
 - [x] **SEARCH-002: BigQuery search index.** `task_list_search_idx` exists and `SEARCH` is exercised. Because the current table is below BigQuery's 10 GB population threshold, coverage remains 0% and current representative latency reflects an unaccelerated scan.
 - [x] **OPS-001: Runtime IAM and regions.** App Hosting runtime can invoke BigQuery and Vertex AI/Memory Bank. App Hosting remains in its closest supported region `asia-east1`; BigQuery and Vertex AI remain in Tokyo `asia-northeast1`.
-- [ ] **OPS-002: Canonical-domain production scenario.** The generated App Hosting production URL passes authenticated API save/search/paging/import and failure-path E2E; Android execution/export is covered by emulator instrumentation. Repeat the Web smoke test on the canonical hostname after WEB-002, including interactive Google account selection and installed/missing-app browser routing.
+- [x] **OPS-002: Canonical-domain production scenario.** A Firebase-authenticated scenario on `cuckoocue.hiyozoo.com` passes completed-run sync/fetch, Memory Bank event ingestion, LLM enrichment, BQ save/idempotency, validation/privacy failures, search/ranking, paging and import payload retrieval. Generated Auth, Firestore and BQ test data are removed afterward.
+- [ ] **RELEASE-001: Release App Link identity.** Add the release signing certificate SHA-256 to Firebase and `assetlinks.json` when the release key exists, then repeat App Link verification with a release-signed APK.
+- [ ] **UX-001: Browser routing matrix.** Manually verify Google account selection and Android-browser behavior with the app installed and missing. API authentication and installed-app OS resolution are already covered; these remaining checks concern browser UX.
