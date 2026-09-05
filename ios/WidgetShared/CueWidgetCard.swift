@@ -157,10 +157,6 @@ struct CueWidgetCard: View {
     @ViewBuilder
     private func cueRow(_ task: CueTask, compactAccessory: Bool = false) -> some View {
         let label = HStack(spacing: compactAccessory ? 4 : 6) {
-            Circle()
-                .fill(palette.priority(task.effectivePriority()))
-                .frame(width: prioritySize(task), height: prioritySize(task))
-                .frame(width: compactAccessory ? 12 : 15)
             Text(task.title)
                 .font(.system(size: compactAccessory ? 11 : titleSize, weight: .semibold, design: .rounded))
                 .lineLimit(family == .systemSmall || compactAccessory ? 1 : 2)
@@ -182,15 +178,23 @@ struct CueWidgetCard: View {
                 .toggleStyle(CueCompletionToggleStyle(
                     accent: palette.teal,
                     muted: palette.muted,
-                    highlight: palette.highlight
+                    highlight: palette.highlight,
+                    priority: palette.priority(task.effectivePriority()),
+                    priorityDiameter: prioritySize(task),
+                    compact: compactAccessory
                 ))
                 .accessibilityLabel("\(task.title)を完了")
                 .invalidatableContent()
         } else {
             HStack(spacing: 6) {
-                Image(systemName: "square")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(palette.muted)
+                CueCompletionMark(
+                    isOn: false,
+                    accent: palette.teal,
+                    muted: palette.muted,
+                    priority: palette.priority(task.effectivePriority()),
+                    priorityDiameter: prioritySize(task),
+                    compact: compactAccessory
+                )
                 label
             }
             .accessibilityLabel("\(task.title)、未完了")
@@ -341,15 +345,23 @@ private struct CueCompletionToggleStyle: ToggleStyle {
     let accent: Color
     let muted: Color
     let highlight: Color
+    let priority: Color
+    let priorityDiameter: CGFloat
+    let compact: Bool
 
     func makeBody(configuration: Configuration) -> some View {
         Button {
             configuration.isOn.toggle()
         } label: {
             HStack(spacing: 6) {
-                Image(systemName: configuration.isOn ? "checkmark.square.fill" : "square")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(configuration.isOn ? accent : muted)
+                CueCompletionMark(
+                    isOn: configuration.isOn,
+                    accent: accent,
+                    muted: muted,
+                    priority: priority,
+                    priorityDiameter: priorityDiameter,
+                    compact: compact
+                )
                 configuration.label
             }
             .padding(.horizontal, 4)
@@ -357,6 +369,27 @@ private struct CueCompletionToggleStyle: ToggleStyle {
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
         .buttonStyle(.plain)
+    }
+}
+
+private struct CueCompletionMark: View {
+    let isOn: Bool
+    let accent: Color
+    let muted: Color
+    let priority: Color
+    let priorityDiameter: CGFloat
+    let compact: Bool
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(priority)
+                .frame(width: priorityDiameter, height: priorityDiameter)
+            Image(systemName: isOn ? "checkmark.square.fill" : "square")
+                .font(.system(size: compact ? 12 : 14, weight: .semibold))
+                .foregroundStyle(isOn ? accent : muted)
+        }
+        .frame(width: compact ? 14 : 17, height: compact ? 14 : 17)
     }
 }
 
