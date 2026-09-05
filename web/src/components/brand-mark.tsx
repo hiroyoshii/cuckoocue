@@ -1,16 +1,28 @@
-export function BrandMark({ size = 40 }: { size?: number }) {
+import Image from "next/image";
+
+export function BrandMark({ size = 40, priority = false }: { size?: number; priority?: boolean }) {
   return (
-    <svg
+    <Image
+      alt=""
       aria-hidden="true"
       className="brand-mark"
       height={size}
-      viewBox="0 0 48 48"
+      priority={priority}
+      src="/brand/mark.png"
       width={size}
-    >
-      <circle cx="24" cy="24" r="19" fill="var(--teal)" />
-      <circle cx="24" cy="24" r="14" fill="var(--bg)" />
-      <path d="M24 14v11l8 4" fill="none" stroke="var(--ink)" strokeWidth="3" strokeLinecap="round" />
-      <circle cx="35" cy="38" r="5" fill="var(--gold)" />
-    </svg>
+    />
+  );
+}
+
+export function BrandLockup({ priority = false }: { priority?: boolean }) {
+  return (
+    <Image
+      alt="Cuckoo Cue"
+      className="brand-lockup-image"
+      height={44}
+      priority={priority}
+      src="/brand/lockup-header.png"
+      width={151}
+    />
   );
 }

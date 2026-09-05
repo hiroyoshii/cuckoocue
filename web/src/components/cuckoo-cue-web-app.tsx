@@ -21,7 +21,7 @@ import {
   buildAndroidImportUri,
   type AndroidImportTransfer,
 } from "@/lib/run-transfer";
-import { BrandMark } from "./brand-mark";
+import { BrandLockup, BrandMark } from "./brand-mark";
 
 type TaskDraft = {
   text: string;
@@ -388,8 +388,8 @@ export function CuckooCueWebApp() {
     <main className="product-shell">
       <aside className="product-rail">
         <a className="brand-lockup" href="#top" aria-label="Cuckoo Cue">
-          <BrandMark size={42} />
-          <span><strong>Cuckoo Cue</strong><small>次の自分へ渡す</small></span>
+          <BrandLockup priority />
+          <small>次の自分へ渡す</small>
         </a>
         <nav aria-label="主な操作">
           <button className={view === "search" ? "active" : ""} onClick={() => setView("search")}>
@@ -463,8 +463,9 @@ function AuthWorkspace({
   return (
     <main className="auth-shell">
       <section className="auth-workspace">
-        <BrandMark size={52} />
-        <span><strong>Cuckoo Cue</strong><small>次の自分へ渡す</small></span>
+        <BrandMark size={184} priority />
+        <BrandLockup priority />
+        <span><strong>できた手順を、次に渡す。</strong><small>完了したリストを見つけて、自分の日程で使えます。</small></span>
         {loading ? (
           <Loader2 className="spin" size={22} aria-label="ログイン状態を確認中" />
         ) : (
@@ -479,7 +480,7 @@ function AuthWorkspace({
 function MobileHeader({ view, onChange }: { view: "search" | "save"; onChange: (view: "search" | "save") => void }) {
   return (
     <header className="mobile-header">
-      <a className="brand-lockup" href="#top"><BrandMark size={34} /><strong>Cuckoo Cue</strong></a>
+      <a className="brand-lockup" href="#top" aria-label="Cuckoo Cue"><BrandLockup priority /></a>
       <nav aria-label="主な操作">
         <button className={view === "search" ? "active" : ""} onClick={() => onChange("search")} aria-label="探す"><Search size={18} /></button>
         <button className={view === "save" ? "active" : ""} onClick={() => onChange("save")} aria-label="残す"><ListChecks size={18} /></button>
@@ -527,8 +528,8 @@ function SearchWorkspace(props: SearchWorkspaceProps) {
   return (
     <div className="workspace">
       <header className="workspace-heading">
-        <p>REUSE LIBRARY</p><h1>やることを探す</h1>
-        <span>誰かが完了し、確認して残したリストから探します。</span>
+        <p>受け取る</p><h1>やることを探す</h1>
+        <span>完了して残されたリストを、自分の日程に合わせて使えます。</span>
       </header>
       <form className="search-composer" onSubmit={props.onSearch} autoComplete="off">
         <label><span>これからすること</span><textarea aria-label="Search query" value={props.searchMessage} onChange={(event) => props.setSearchMessage(event.target.value)} placeholder="東京から名古屋へ引っ越す。役所、ライフライン、住所変更を整理したい。" rows={3} /></label>
@@ -543,7 +544,6 @@ function SearchWorkspace(props: SearchWorkspaceProps) {
       {props.preparedImport ? (
         <section className="handoff-panel" aria-live="polite" ref={handoffPanel} tabIndex={-1}>
           <header>
-            <BrandMark size={34} />
             <span><small>取り込み内容</small><strong>{props.preparedImport.title}</strong></span>
             {props.isAndroidDevice && props.androidImportUri ? <a href={props.androidImportUri}><Smartphone size={17} />Androidで開く</a> : null}
           </header>
@@ -578,7 +578,12 @@ function SearchWorkspace(props: SearchWorkspaceProps) {
 }
 
 function EmptySearch({ hasSearched }: { hasSearched: boolean }) {
-  return <div className="empty-state"><Search size={28} /><strong>{hasSearched ? "一致するリストがありません" : "自然な文章で探せます"}</strong><span>{hasSearched ? "言葉を変えて、もう一度検索してください。" : "場所や制度、状況まで書くと近い内容から並びます。"}</span></div>;
+  return (
+    <div className={`empty-state ${hasSearched ? "" : "brand-empty"}`}>
+      {hasSearched ? <Search size={28} /> : <BrandMark size={168} priority />}
+      <span className="empty-copy"><strong>{hasSearched ? "一致するリストがありません" : "どんなことを始めますか？"}</strong><span>{hasSearched ? "言葉を変えて、もう一度検索してください。" : "場所や制度、状況まで自然な文章で書くと、近いカードから並びます。"}</span></span>
+    </div>
+  );
 }
 
 type SaveWorkspaceProps = {
@@ -634,11 +639,11 @@ function SaveWorkspace(props: SaveWorkspaceProps) {
     props.setEnrichment({ ...props.enrichment, task_groupings: groups });
   }
   if (props.savedTitle) {
-    return <div className="workspace save-success"><BrandMark size={56} /><p>LIBRARY UPDATED</p><h1>残しました</h1><span>「{props.savedTitle}」は、次の検索から見つけて使えます。</span><button onClick={props.onReset}><Plus size={17} />別のリストを残す</button></div>;
+    return <div className="workspace save-success"><p>公開完了</p><h1>残しました</h1><span>「{props.savedTitle}」は、次の検索から見つけて使えます。</span><button onClick={props.onReset}><Plus size={17} />別のリストを残す</button></div>;
   }
   return (
     <div className="workspace">
-      <header className="workspace-heading"><p>COMPLETED LIST</p><h1>完了した内容を残す</h1><span>Android から受け取った内容を確認し、検索できる形にします。</span></header>
+      <header className="workspace-heading"><p>次へ渡す</p><h1>完了した内容を残す</h1><span>Android から受け取った内容を確認し、次に使えるカードとして公開します。</span></header>
       <form className="save-form" onSubmit={props.onSave} autoComplete="off">
         <label className="save-title-field" htmlFor="save-title"><span>タイトル</span><input id="save-title" value={props.title} onChange={(event) => props.setTitle(event.target.value)} placeholder="完了したことの名前" /></label>
         <div className="completion-anchor"><CalendarCheck2 size={17} /><span><strong>{formatIsoDay(props.anchorDay)}</strong><small>この完了日を基準に、次回の日程へ置き換えます</small></span></div>
@@ -704,7 +709,7 @@ function CueResult({ result, importBusy, importDisabled, onImport }: { result: S
   return (
     <article className="cue-result">
       <header className="result-title-row">
-        <Circle className="exposure-dot" size={16} /><span><small>{result.domain ?? "未分類"}</small><h2>{result.title}</h2></span>
+        <span className="cue-card-mark" aria-hidden="true" /><span><small>{result.domain ?? "未分類"}</small><h2>{result.title}</h2></span>
         <button type="button" className="import-action" disabled={importDisabled} onClick={onImport} aria-label={`${result.title}をAndroidに取り込む`}>{importBusy ? <Loader2 className="spin" size={17} /> : <ArrowDownToLine size={17} />}使う</button>
       </header>
       <div className="fit-summary">

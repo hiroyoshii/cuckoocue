@@ -172,9 +172,11 @@ Desktop Web does not automatically open Android. Android Web opens the HTTPS App
 
 ## Brand and interaction language
 
-- The shared mark is a clock face with one gold cue point.
-- Shared colors come from the Android app/widget: ink, off-white surface, teal, green and gold.
-- Web search results use the same list-row grammar as Android: exposure dot, square completion affordance, task text, date range and priority bar.
+- The canonical mark is the blue cuckoo handing one cue card through the widget window. The former clock mark is retired.
+- The full cuckoo mark appears only where brand recognition or orientation matters, such as authentication and the empty search state. Dense results, review forms, success and error states do not repeat the mascot.
+- The horizontal `Cuckoo Cue` lockup is used in desktop and mobile navigation. A small amber card stamp identifies reusable search-result cards.
+- Shared colors use the supplied brand assets: warm cream surfaces, mint, deep teal, cuckoo blue, amber and dark brown outlines.
+- Web search results retain the Android list-row grammar for task text, relative date ranges and priority bars while presenting each reusable list as a restrained card.
 - `run` remains an internal data-model term. User-facing labels use `リスト`, `項目`, `完了した内容`, `探す`, `残す` and `使う`.
 - Search failure is explicit and retryable. It does not silently fall back to a different ranking path.
 
