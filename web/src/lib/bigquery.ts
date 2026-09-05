@@ -111,7 +111,10 @@ export async function insertTaskListEntry(
   return row;
 }
 
-export type SearchResult = TaskListEntry & {
+export type SearchResult = Omit<
+  TaskListEntry,
+  "owner_user_id" | "search_text" | "context_embedding"
+> & {
   text_matched: boolean;
   context_score: number;
 };
@@ -153,7 +156,15 @@ export async function searchTaskListEntries(
         context_embedding,
         FORMAT_TIMESTAMP('%Y-%m-%dT%H:%M:%E*S%Ez', created_at) AS created_at,
         IFNULL(search_text, '') AS search_text,
-        LOWER(IFNULL(domain, '')) = LOWER(@searchDomain) AS domain_matched
+        LOWER(IFNULL(domain, '')) = LOWER(@searchDomain) AS domain_matched,
+        TO_HEX(SHA256(TO_JSON_STRING(STRUCT(
+          LOWER(TRIM(title)) AS title,
+          ARRAY(
+            SELECT LOWER(TRIM(task.text))
+            FROM UNNEST(tasks) AS task WITH OFFSET task_position
+            ORDER BY task_position
+          ) AS task_texts
+        )))) AS content_key
       FROM \`${cueEnv.projectId()}.${cueEnv.dataset()}.${cueEnv.table()}\`
       WHERE ARRAY_LENGTH(context_embedding) = ARRAY_LENGTH(@contextEmbedding)
     ),
@@ -172,21 +183,18 @@ export async function searchTaskListEntries(
         ) AS context_score
       FROM prepared
     )
-    SELECT
-      id,
-      owner_user_id,
-      title,
-      tasks,
-      domain,
-      context_text,
-      task_groupings,
-      created_at,
+    SELECT * EXCEPT(
+      content_key, domain_matched, explicit_hit_count, search_text,
+      context_embedding, owner_user_id, context_score
+    ),
       explicit_hit_count > 0 AS text_matched,
       IFNULL(context_score, 0) AS context_score
     FROM scored
-    WHERE explicit_hit_count > 0
-       OR domain_matched
-       OR @hasExplicitTokens = FALSE
+    WHERE explicit_hit_count > 0 OR domain_matched OR @hasExplicitTokens = FALSE
+    QUALIFY ROW_NUMBER() OVER (
+      PARTITION BY content_key
+      ORDER BY context_score DESC, created_at DESC
+    ) = 1
     ORDER BY context_score DESC, created_at DESC
   `;
 
