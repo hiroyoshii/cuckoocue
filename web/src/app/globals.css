@@ -112,33 +112,6 @@ input:focus, textarea:focus, select:focus, button:focus-visible, summary:focus-v
   min-height: 34px; border: 1px solid var(--line); border-radius: 6px; display: flex;
   align-items: center; gap: 7px; padding: 0 9px; color: var(--muted); background: var(--surface);
 }
-.app-links-dialog {
-  width: min(420px, calc(100% - 32px));
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 22px;
-  color: var(--ink);
-  background: var(--surface);
-  box-shadow: 0 18px 52px rgb(59 33 23 / 18%);
-}
-.app-links-dialog::backdrop { background: rgb(59 33 23 / 32%); }
-.app-links-dialog > header { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; margin-bottom: 18px; }
-.app-links-dialog h2 { margin: 0; font-size: 22px; }
-.app-links-dialog .icon-button { width: 40px; height: 40px; border: 0; border-radius: 7px; display: grid; place-items: center; color: var(--muted); background: transparent; }
-.app-link-list { display: grid; gap: 8px; }
-.app-link-list > div {
-  min-height: 64px;
-  display: flex;
-  align-items: center;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  padding: 10px 12px;
-  color: var(--muted);
-  background: var(--surface-base);
-}
-.app-link-list span { display: grid; gap: 2px; }
-.app-link-list strong { font-size: 14px; }
-.app-link-list small { color: var(--muted); font-size: 11px; font-weight: 700; }
 .auth-shell { min-height: 100vh; display: grid; place-items: center; padding: 32px 24px; background: var(--highlight); }
 .auth-workspace { width: min(440px, 100%); display: grid; justify-items: center; gap: 15px; text-align: center; }
 .auth-workspace > .brand-mark { width: min(184px, 52vw); }
