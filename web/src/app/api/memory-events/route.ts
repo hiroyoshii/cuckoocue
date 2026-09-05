@@ -1,11 +1,11 @@
 import { after, NextRequest, NextResponse } from "next/server";
-import { requireUserId } from "@/lib/auth";
+import { requireRegisteredUserId } from "@/lib/auth";
 import { ingestMemoryEvent } from "@/lib/memory-bank";
 import { memoryEventInputSchema } from "@/lib/schema";
 
 export async function POST(request: NextRequest) {
   try {
-    const userId = await requireUserId(request);
+    const userId = await requireRegisteredUserId(request);
     const input = memoryEventInputSchema.parse(await request.json());
 
     after(async () => {

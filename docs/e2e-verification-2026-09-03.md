@@ -73,7 +73,7 @@ Android tests cover Room migration/DAO behavior, stable completion anchors, star
 
 ## Visual Transition Evidence
 
-Browser captures are stored under `docs/review-screenshots/web/e2e/`. They cover the production Google login gate and, after authentication, empty search, real search/expanded results, Android import preparation, Android-to-Web completed-list handoff, LLM-generated save review and successful publication. Functional captures use a local production Next.js server with development identity enabled, but call the real BigQuery, Vertex AI and Memory Bank services without mocked responses.
+Browser captures are stored under `docs/review-screenshots/web/e2e/`. They cover anonymous entry without a login gate, the contextual Google login request for saving, empty search, real search results, Android import preparation, Android-to-Web completed-list handoff, LLM-generated save review and successful publication. Functional captures use a local production Next.js server and real Firebase or development identity as appropriate; service responses are not mocked.
 
 Android captures are stored under `docs/review-screenshots/android/e2e/`. They show transfer-v1 confirmation and the resulting independently imported local list on the emulator.
 
@@ -97,6 +97,17 @@ named grouping, operation-id restoration across reload, API payload semantics,
 horizontal overflow and session restoration. Axe reports zero accessibility
 violations on both viewports. The refreshed captures under
 `docs/review-screenshots/web/e2e/` use real search and enrichment responses.
+
+## 2026-09-05 Anonymous Web Entry
+
+Firebase Anonymous Authentication and automatic deletion of anonymous users
+older than 30 days were enabled for `cuckoocue`. A production-configured browser
+opened directly into search without showing Google login. Anonymous search
+returned HTTP 200 with three results and zero Memory Bank profile attributes;
+public import payload retrieval also returned 200. Completed-run retrieval,
+enrichment and Memory Bank event ingestion each returned 403 with the explicit
+Google-login requirement. The anonymous users created by verification were
+deleted afterward.
 
 ## Remaining Release And UX Verification
 

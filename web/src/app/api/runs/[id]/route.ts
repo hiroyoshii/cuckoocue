@@ -1,6 +1,6 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { NextRequest, NextResponse } from "next/server";
-import { requireUserId } from "@/lib/auth";
+import { requireRegisteredUserId } from "@/lib/auth";
 import { adminFirestore } from "@/lib/firebase-admin";
 import { completedRunToSaveDraft, syncedRunSnapshotSchema } from "@/lib/synced-run";
 
@@ -8,7 +8,7 @@ type RouteContext = { params: Promise<{ id: string }> };
 
 export async function PUT(request: NextRequest, context: RouteContext) {
   try {
-    const userId = await requireUserId(request);
+    const userId = await requireRegisteredUserId(request);
     const { id } = await context.params;
     const run = syncedRunSnapshotSchema.parse(await request.json());
     if (run.id !== id) {
@@ -27,7 +27,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 
 export async function GET(request: NextRequest, context: RouteContext) {
   try {
-    const userId = await requireUserId(request);
+    const userId = await requireRegisteredUserId(request);
     const { id } = await context.params;
     const snapshot = await runDocument(userId, id).get();
     if (!snapshot.exists) {

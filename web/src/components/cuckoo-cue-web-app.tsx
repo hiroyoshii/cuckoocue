@@ -10,6 +10,7 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   GoogleAuthProvider,
   onAuthStateChanged,
+  signInAnonymously,
   signInWithPopup,
   signInWithRedirect,
   signOut,
@@ -99,9 +100,26 @@ export function CuckooCueWebApp() {
 
   useEffect(() => {
     if (!hasFirebaseClientConfig()) return;
-    return onAuthStateChanged(firebaseAuth(), (nextUser) => {
-      setUser(nextUser);
-      setAuthReady(true);
+    const auth = firebaseAuth();
+    let startingAnonymousSession = false;
+    return onAuthStateChanged(auth, (nextUser) => {
+      if (nextUser) {
+        setUser(nextUser);
+        setAuthReady(true);
+        return;
+      }
+      setUser(null);
+      setAuthReady(false);
+      if (startingAnonymousSession) return;
+      startingAnonymousSession = true;
+      void signInAnonymously(auth)
+        .catch(() => {
+          setErrorMessage("検索を始めるための接続を確立できませんでした。");
+          setAuthReady(true);
+        })
+        .finally(() => {
+          startingAnonymousSession = false;
+        });
     });
   }, []);
 
@@ -179,6 +197,10 @@ export function CuckooCueWebApp() {
     const url = new URL(window.location.href);
     const runId = url.searchParams.get("run_id");
     if (!runId || loadedRunId.current === runId) return;
+    if (user?.isAnonymous) {
+      const frame = window.requestAnimationFrame(() => setView("save"));
+      return () => window.cancelAnimationFrame(frame);
+    }
     loadedRunId.current = runId;
     let cancelled = false;
 
@@ -230,6 +252,19 @@ export function CuckooCueWebApp() {
       }
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "ログインできませんでした。");
+    }
+  }
+
+  async function retryAnonymousSession() {
+    setAuthReady(false);
+    setErrorMessage(null);
+    try {
+      const credential = await signInAnonymously(firebaseAuth());
+      setUser(credential.user);
+    } catch {
+      setErrorMessage("検索を始めるための接続を確立できませんでした。");
+    } finally {
+      setAuthReady(true);
     }
   }
 
@@ -376,12 +411,17 @@ export function CuckooCueWebApp() {
     setSaveOperationId(crypto.randomUUID());
   }
 
+  function changeView(nextView: "search" | "save") {
+    setErrorMessage(null);
+    setView(nextView);
+  }
+
   if (!authReady) {
     return <AuthWorkspace loading />;
   }
 
   if (hasFirebaseClientConfig() && !user) {
-    return <AuthWorkspace errorMessage={errorMessage} onSignIn={signInWithGoogle} />;
+    return <AuthWorkspace errorMessage={errorMessage} onRetry={retryAnonymousSession} />;
   }
 
   return (
@@ -392,16 +432,18 @@ export function CuckooCueWebApp() {
           <small>次の自分へ渡す</small>
         </a>
         <nav aria-label="主な操作">
-          <button className={view === "search" ? "active" : ""} onClick={() => setView("search")}>
+          <button className={view === "search" ? "active" : ""} onClick={() => changeView("search")}>
             <Search size={18} aria-hidden="true" />探す
           </button>
-          <button className={view === "save" ? "active" : ""} onClick={() => setView("save")}>
+          <button className={view === "save" ? "active" : ""} onClick={() => changeView("save")}>
             <ListChecks size={18} aria-hidden="true" />残す
           </button>
         </nav>
         <details className="connection-panel">
-          <summary><User size={17} aria-hidden="true" />{user?.displayName ?? "接続"}</summary>
-          {user ? (
+          <summary><User size={17} aria-hidden="true" />{user?.isAnonymous ? "ゲスト利用中" : user?.displayName ?? "接続"}</summary>
+          {user?.isAnonymous ? (
+            <button type="button" onClick={signInWithGoogle}><LogIn size={15} />Googleでログイン</button>
+          ) : user ? (
             <button type="button" onClick={signOutCurrentUser}><LogOut size={15} />ログアウト</button>
           ) : (
             <label>Dev user<input value={devUserId} onChange={(event) => setDevUserId(event.target.value)} /></label>
@@ -410,7 +452,7 @@ export function CuckooCueWebApp() {
       </aside>
 
       <section className="product-main" id="top">
-        <MobileHeader view={view} onChange={setView} />
+        <MobileHeader view={view} onChange={changeView} />
         {errorMessage ? (
           <div className="error-banner" role="alert">
             <AlertCircle size={18} aria-hidden="true" />
@@ -435,6 +477,8 @@ export function CuckooCueWebApp() {
             importingId={importingId} busySeconds={busySeconds}
             isAndroidDevice={isAndroidDevice}
           />
+        ) : hasFirebaseClientConfig() && user?.isAnonymous ? (
+          <SignInRequired onBack={() => changeView("search")} onSignIn={signInWithGoogle} />
         ) : (
           <SaveWorkspace
             key={saveOperationId}
@@ -454,11 +498,11 @@ export function CuckooCueWebApp() {
 function AuthWorkspace({
   loading = false,
   errorMessage,
-  onSignIn,
+  onRetry,
 }: {
   loading?: boolean;
   errorMessage?: string | null;
-  onSignIn?: () => void;
+  onRetry?: () => void;
 }) {
   return (
     <main className="auth-shell">
@@ -467,13 +511,25 @@ function AuthWorkspace({
         <BrandLockup priority />
         <span><strong>できた手順を、次に渡す。</strong><small>完了したリストを見つけて、自分の日程で使えます。</small></span>
         {loading ? (
-          <Loader2 className="spin" size={22} aria-label="ログイン状態を確認中" />
+          <Loader2 className="spin" size={22} aria-label="接続状態を確認中" />
         ) : (
-          <button type="button" onClick={onSignIn}><LogIn size={18} />Googleでログイン</button>
+          <button type="button" onClick={onRetry}><RotateCcw size={18} />もう一度接続</button>
         )}
         {errorMessage ? <p role="alert">{errorMessage}</p> : null}
       </section>
     </main>
+  );
+}
+
+function SignInRequired({ onBack, onSignIn }: { onBack: () => void; onSignIn: () => void }) {
+  return (
+    <div className="workspace sign-in-required">
+      <p>次へ渡す</p>
+      <h1>完了した内容を残す</h1>
+      <span>Androidで完了した内容を確認するため、同じGoogleアカウントでログインしてください。</span>
+      <button type="button" onClick={onSignIn}><LogIn size={18} />Googleでログイン</button>
+      <button type="button" className="text-action" onClick={onBack}>検索に戻る</button>
+    </div>
   );
 }
 

@@ -110,7 +110,8 @@ Memory Bank events are raw operation-like text from API operations. Search queri
 
 ```text
 User natural-language query
-  -> retrieve Memory Bank profile attributes for the user
+  -> if the Firebase user is registered, retrieve Memory Bank profile attributes
+  -> if the Firebase user is anonymous, use no profile attributes
   -> fetch distinct BigQuery domains from daily cache
   -> LLM maps query to one existing coarse domain or null
   -> BigQuery admits candidates matching at least one query token with SEARCH(search_text, token), or the mapped domain
@@ -164,10 +165,13 @@ Desktop Web does not automatically open Android. Android Web opens the HTTPS App
 
 ## Identity Contract
 
-- Web and Android both sign in with Google through Firebase Authentication.
-- API calls send a Firebase ID token as a bearer token. The server verifies it and uses its UID for BigQuery `owner_user_id` and Memory Bank scope.
+- Web automatically establishes a Firebase Anonymous Authentication session, so search and public-list import do not present a login gate.
+- Choosing `残す`, opening an Android `run_id`, enrichment, publication and Memory Bank operations require a non-anonymous Firebase user. Web asks for Google login only at that boundary.
+- Android signs in with Google. Web must use the same Google account to retrieve Android-owned completed runs.
+- API calls always send a Firebase ID token as a bearer token. Anonymous tokens can search and fetch public import payloads; registered-user tokens additionally scope BigQuery provenance, Firestore runs and Memory Bank.
 - Search remains a shared-corpus operation and is not filtered by owner UID.
-- Sign-out clears the local Firebase session. Android also clears Credential Manager state so a later sign-in can choose an account again.
+- Anonymous searches do not retrieve or create a Memory Bank profile. Firebase automatically deletes anonymous users older than 30 days.
+- Web sign-out clears the registered session and immediately returns to an anonymous search session. Android also clears Credential Manager state so a later sign-in can choose an account again.
 - `x-dev-user-id` is accepted only when `CUE_ALLOW_DEV_AUTH=true`; production App Hosting sets it to `false`.
 
 ## Brand and interaction language
@@ -199,8 +203,8 @@ The following list is the implementation backlog as of 2026-09-05. Priority is b
 
 - [x] **WEB-001: Firebase App Hosting build.** The backend builds from `web/`; the generated `asia-east1` URL serves the current Next.js application.
 - [x] **WEB-002: Canonical production domain.** `cuckoocue.hiyozoo.com` resolves to App Hosting and reports active ownership and certificate state. The application, authenticated APIs and `assetlinks.json` are served over HTTPS.
-- [x] **AUTH-001: Production Web authentication.** Google sign-in and authorized domains are configured, Firebase client variables are present, and production rejects unauthenticated API requests instead of accepting the development header.
-- [x] **AUTH-002: Shared identity contract.** Web and Android use Firebase Auth; verified UID scopes provenance and Memory Bank as documented above.
+- [x] **AUTH-001: Production Web authentication.** Anonymous and Google providers are configured, Firebase client variables are present, and production rejects requests without a verified Firebase token instead of accepting the development header. Anonymous accounts older than 30 days are automatically removed.
+- [x] **AUTH-002: Contextual identity contract.** Anonymous Web users can search and retrieve public import payloads without a login screen. Google identity is requested only for completed-run retrieval, enrichment, publication and Memory Bank; its verified UID scopes private data and provenance.
 - [x] **MODEL-001: Priority semantics.** Web, API, BigQuery and Android use nullable integer values `0=強`, `1=中`, `2=弱`.
 - [x] **MODEL-002: Completion-relative dates.** Android syncs a stable completion anchor and absolute task dates; the owner-scoped Web API derives both relative range endpoints in the run's recorded time zone. BQ has no completion timestamp.
 - [x] **SEARCH-001: Query First ranking.** BigQuery uses `SEARCH`/mapped domain only to select candidates, then sorts the candidate set by query plus weak-profile context similarity. Diagnostics expose truthful `text_matched` and `context_score` values only in the API/logging layer.
