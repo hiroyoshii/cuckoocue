@@ -48,7 +48,6 @@ test("search is scannable, accessible, and restored after reload", async ({ page
   await page.goto("/");
   await expect(page.locator('img[alt="Cuckoo Cue"]:visible')).toBeVisible();
   await expect(page.locator(".brand-empty .brand-mark")).toBeVisible();
-  await expect(page.getByText("タスクの作成・実行はiOS/Androidアプリで行います")).toBeVisible();
   await expect(page.locator("#target-anchor-day")).toHaveCount(0);
   await page.getByLabel("Search query").fill("東京から名古屋へ引っ越す。役所とライフラインを整理したい");
   const searchButton = page.locator("form").getByRole("button", { name: "検索", exact: true });

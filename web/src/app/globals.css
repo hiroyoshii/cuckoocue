@@ -150,17 +150,6 @@ input:focus, textarea:focus, select:focus, button:focus-visible, summary:focus-v
   line-height: 1.55;
   font-weight: 600;
 }
-.app-role-note {
-  width: fit-content;
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  margin-top: 10px;
-  color: var(--teal);
-  font-size: 12px;
-  font-weight: 800;
-}
-
 .search-composer { margin-bottom: 22px; }
 .search-composer > label, .save-title-field, .review-strip > label {
   display: grid;
@@ -360,8 +349,6 @@ input:focus, textarea:focus, select:focus, button:focus-visible, summary:focus-v
 .result-title-row > span { min-width: 0; }
 .result-title-row small { color: var(--teal); font-size: 11px; font-weight: 850; }
 .result-title-row h2 { margin: 2px 0 0; font-size: 20px; line-height: 1.28; letter-spacing: 0; }
-.exposure-dot { color: var(--green); fill: var(--green); stroke: var(--green); }
-.muted-dot { color: #b7c4c0; fill: #b7c4c0; stroke: #b7c4c0; }
 .import-action {
   min-height: 44px;
   border: 1px solid var(--line);
@@ -383,7 +370,7 @@ input:focus, textarea:focus, select:focus, button:focus-visible, summary:focus-v
 .task-row {
   min-height: 56px;
   display: grid;
-  grid-template-columns: 24px 12px minmax(0, 1fr) 84px;
+  grid-template-columns: 24px minmax(0, 1fr) 76px;
   align-items: center;
   gap: 9px;
   padding-left: 30px;
@@ -392,12 +379,8 @@ input:focus, textarea:focus, select:focus, button:focus-visible, summary:focus-v
 }
 .task-index { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; text-align: center; }
 .task-row p { margin: 0; color: var(--ink); font-size: 15px; line-height: 1.38; font-weight: 760; }
-.task-meta { height: 40px; display: grid; grid-template-columns: 1fr 5px; align-items: center; gap: 7px; }
+.task-meta { min-height: 40px; display: flex; align-items: center; justify-content: flex-end; }
 .task-meta small { color: var(--muted); font-size: 10px; line-height: 1.2; font-weight: 800; text-align: right; }
-.task-meta i { width: 5px; height: 34px; border-radius: 3px; background: #c4cfcb; }
-.task-meta i[data-priority="0"] { background: var(--teal); }
-.task-meta i[data-priority="1"] { background: var(--green); }
-.task-meta i[data-priority="2"] { background: var(--gold); }
 .context-details { border-top: 1px solid var(--line-soft); margin-left: 95px; }
 .context-details summary {
   min-height: 44px;
@@ -513,7 +496,7 @@ input:focus, textarea:focus, select:focus, button:focus-visible, summary:focus-v
   .result-title-row h2 { font-size: 18px; }
   .import-action { width: 38px; padding: 0; font-size: 0; }
   .fit-summary { margin-left: 0; }
-  .task-row { grid-template-columns: 22px 10px minmax(0, 1fr) 62px; gap: 7px; padding-left: 0; }
+  .task-row { grid-template-columns: 22px minmax(0, 1fr) 62px; gap: 7px; padding-left: 0; }
   .task-row p { font-size: 14px; }
   .context-details { margin-left: 55px; }
   .error-banner { grid-template-columns: auto minmax(0, 1fr); }
@@ -533,7 +516,7 @@ input:focus, textarea:focus, select:focus, button:focus-visible, summary:focus-v
 @media (max-width: 360px) {
   .product-main { padding-inline: 14px; }
   .workspace-heading h1 { font-size: 27px; }
-  .task-row { grid-template-columns: 20px 8px minmax(0, 1fr) 56px; gap: 5px; }
+  .task-row { grid-template-columns: 20px minmax(0, 1fr) 56px; gap: 5px; }
   .task-meta small { font-size: 9px; }
   .empty-state.brand-empty { grid-template-columns: 88px minmax(0, 1fr); }
   .empty-state.brand-empty .brand-mark { width: 84px; }
