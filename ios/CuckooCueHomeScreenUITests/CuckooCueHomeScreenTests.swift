@@ -36,7 +36,9 @@ final class CuckooCueHomeScreenTests: XCTestCase {
         XCTAssertTrue(widgetResult.waitForExistence(timeout: 8))
         widgetResult.tap()
 
-        let addWidgetButton = springboard.buttons["Add Widget"]
+        let addWidgetButton = springboard.buttons.matching(
+            NSPredicate(format: "label CONTAINS %@", "Add Widget")
+        ).firstMatch
         XCTAssertTrue(addWidgetButton.waitForExistence(timeout: 8))
         addWidgetButton.tap()
 
