@@ -23,7 +23,7 @@ html, body { min-height: 100%; margin: 0; }
 body {
   color: var(--ink);
   background: var(--bg);
-  font-family: var(--font-geist-sans), "Noto Sans JP", system-ui, sans-serif;
+  font-family: var(--font-zen-kaku-gothic-new), sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 button, input, textarea, select, summary { font: inherit; }
