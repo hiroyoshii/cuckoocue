@@ -17,11 +17,13 @@ final class CuckooCueHomeScreenTests: XCTestCase {
         XCTAssertTrue(editButton.waitForExistence(timeout: 5))
         editButton.tap()
 
-        let addButton = springboard.buttons.matching(
-            NSPredicate(format: "label == 'Add' OR label == 'Add Widget'")
-        ).firstMatch
-        XCTAssertTrue(addButton.waitForExistence(timeout: 5))
-        addButton.tap()
+        let editMenuButton = springboard.buttons["Edit"]
+        XCTAssertTrue(editMenuButton.waitForExistence(timeout: 5))
+        editMenuButton.tap()
+
+        let addWidgetMenuButton = springboard.buttons["Add Widget"]
+        XCTAssertTrue(addWidgetMenuButton.waitForExistence(timeout: 5))
+        addWidgetMenuButton.tap()
 
         let searchField = springboard.searchFields.firstMatch
         XCTAssertTrue(searchField.waitForExistence(timeout: 8))
