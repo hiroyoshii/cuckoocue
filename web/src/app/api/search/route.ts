@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireUserId } from "@/lib/auth";
+import { requireRequestUser } from "@/lib/auth";
 import { retrieveUserProfileAttributes } from "@/lib/memory-bank";
 import {
   getSearchTaskListEntriesPage,
@@ -11,7 +11,7 @@ import { searchTaskListsSchema } from "@/lib/schema";
 
 export async function POST(request: NextRequest) {
   try {
-    const userId = await requireUserId(request);
+    const user = await requireRequestUser(request);
     const input = searchTaskListsSchema.parse(await request.json());
     const pageSize = input.page_size ?? 20;
 
@@ -31,7 +31,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "message is required" }, { status: 400 });
     }
 
-    const userProfileAttributesPromise = retrieveUserProfileAttributes(userId);
+    const userProfileAttributesPromise = user.isAnonymous
+      ? Promise.resolve([])
+      : retrieveUserProfileAttributes(user.id);
     const searchDomainPromise = listTaskListDomains().then((domains) =>
       mapQueryToSearchDomain(message, domains),
     );

@@ -120,6 +120,12 @@ input:focus, textarea:focus, select:focus, button:focus-visible, summary:focus-v
 .auth-workspace strong { font-size: 22px; line-height: 1.35; }
 .auth-workspace small, .auth-workspace p { color: var(--muted); font-size: 13px; line-height: 1.55; }
 .auth-workspace button { min-height: 44px; border: 0; border-radius: 7px; display: flex; align-items: center; gap: 8px; padding: 0 18px; color: #fff; background: var(--teal); font-weight: 800; }
+.sign-in-required { min-height: 62vh; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; }
+.sign-in-required p { margin: 0 0 8px; color: var(--teal); font-size: 11px; font-weight: 850; }
+.sign-in-required h1 { margin: 0 0 8px; font-size: 34px; line-height: 1.18; }
+.sign-in-required > span { max-width: 520px; color: var(--muted); font-size: 14px; line-height: 1.6; font-weight: 600; }
+.sign-in-required > button:not(.text-action) { min-height: 44px; margin-top: 24px; border: 0; border-radius: 7px; display: inline-flex; align-items: center; gap: 8px; padding: 0 18px; color: #fff; background: var(--teal-dark); font-weight: 800; }
+.sign-in-required .text-action { min-height: 44px; margin-top: 6px; border: 0; padding: 0; color: var(--teal); background: transparent; font-size: 13px; font-weight: 800; }
 
 .product-main { min-width: 0; padding: 56px 64px 80px; }
 .mobile-header { display: none; }

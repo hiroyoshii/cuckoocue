@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireUserId } from "@/lib/auth";
+import { requireRegisteredUserId } from "@/lib/auth";
 import { enrichTaskList } from "@/lib/task-list-enrichment";
 import { assertPublicCorpusSafe, UnsafeCorpusContentError } from "@/lib/public-corpus-safety";
 import { taskListDraftSchema } from "@/lib/schema";
 
 export async function POST(request: NextRequest) {
   try {
-    await requireUserId(request);
+    await requireRegisteredUserId(request);
     const input = taskListDraftSchema.parse(await request.json());
     assertPublicCorpusSafe(input);
     const enrichment = await enrichTaskList(input);
