@@ -1,7 +1,7 @@
 import XCTest
 
 final class CuckooCueHomeScreenTests: XCTestCase {
-    func testAddMediumWidgetToHomeScreen() throws {
+    func testAddWidgetToHomeScreen() throws {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing"]
         app.launch()
