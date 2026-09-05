@@ -150,6 +150,16 @@ input:focus, textarea:focus, select:focus, button:focus-visible, summary:focus-v
   line-height: 1.55;
   font-weight: 600;
 }
+.app-role-note {
+  width: fit-content;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 10px;
+  color: var(--teal);
+  font-size: 12px;
+  font-weight: 800;
+}
 
 .search-composer { margin-bottom: 22px; }
 .search-composer > label, .save-title-field, .review-strip > label {

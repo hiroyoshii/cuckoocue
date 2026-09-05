@@ -429,7 +429,7 @@ export function CuckooCueWebApp() {
       <aside className="product-rail">
         <a className="brand-lockup" href="#top" aria-label="Cuckoo Cue">
           <BrandLockup priority />
-          <small>完了リストを再利用</small>
+          <small>リスト検索・公開</small>
         </a>
         <nav aria-label="主な操作">
           <button className={view === "search" ? "active" : ""} onClick={() => changeView("search")}>
@@ -509,7 +509,7 @@ function AuthWorkspace({
       <section className="auth-workspace">
         <BrandMark size={184} priority />
         <BrandLockup priority />
-        <span><strong>完了リストを検索・再利用</strong><small>公開されたリストを検索し、Androidに取り込めます。</small></span>
+        <span><strong>完了リストを検索</strong><small>タスク管理はiOS/Androidアプリで行います。</small></span>
         {loading ? (
           <Loader2 className="spin" size={22} aria-label="接続状態を確認中" />
         ) : (
@@ -585,11 +585,12 @@ function SearchWorkspace(props: SearchWorkspaceProps) {
   return (
     <div className="workspace">
       <header className="workspace-heading">
-        <p>リスト検索</p><h1>完了リストを検索</h1>
-        <span>目的や状況を入力して、再利用できるタスクリストを検索します。</span>
+        <p>リスト検索</p><h1>完了リストを探す</h1>
+        <span>ほかのユーザーが完了・公開したタスクリストを検索できます。</span>
+        <small className="app-role-note"><Smartphone size={15} aria-hidden="true" />タスクの作成・実行はiOS/Androidアプリで行います</small>
       </header>
       <form className="search-composer" onSubmit={props.onSearch} autoComplete="off">
-        <label><span>目的・状況</span><textarea aria-label="Search query" value={props.searchMessage} onChange={(event) => props.setSearchMessage(event.target.value)} placeholder="東京から名古屋へ引っ越す。役所、ライフライン、住所変更を整理したい。" rows={3} /></label>
+        <label><span>やりたいこと</span><textarea aria-label="Search query" value={props.searchMessage} onChange={(event) => props.setSearchMessage(event.target.value)} placeholder="東京から名古屋へ引っ越す。役所、ライフライン、住所変更を整理したい。" rows={3} /></label>
         <div>
           <button className="primary-action" type="submit" disabled={!props.canSearch}>{props.busyAction === "search" ? <Loader2 className="spin" size={18} /> : <Search size={18} />}検索</button>
         </div>
@@ -677,12 +678,12 @@ function ImportDateDialog({
         </header>
         <div className="import-date-copy">
           <CalendarCheck2 size={22} aria-hidden="true" />
-          <span><h2 id="import-date-title">完了予定日を設定</h2><p>各項目の日付を、指定した完了予定日に合わせて計算します。</p></span>
+          <span><h2 id="import-date-title">完了日を選ぶ</h2><p>この日を基準に、タスクの日付を設定します。</p></span>
         </div>
         <label htmlFor="target-anchor-day"><span>完了予定日</span><input id="target-anchor-day" type="date" required value={targetAnchorDay} onChange={(event) => setTargetAnchorDay(event.target.value)} /></label>
         <footer>
           <button type="button" className="secondary-action" onClick={onCancel}>キャンセル</button>
-          <button type="submit" className="primary-action"><ArrowDownToLine size={17} />取り込む</button>
+          <button type="submit" className="primary-action"><ArrowDownToLine size={17} />Androidに取り込む</button>
         </footer>
       </form>
     </dialog>
@@ -693,7 +694,7 @@ function EmptySearch({ hasSearched }: { hasSearched: boolean }) {
   return (
     <div className={`empty-state ${hasSearched ? "" : "brand-empty"}`}>
       {hasSearched ? <Search size={28} /> : <BrandMark size={168} priority />}
-      <span className="empty-copy"><strong>{hasSearched ? "一致するリストがありません" : "検索条件を入力してください"}</strong><span>{hasSearched ? "検索条件を変えて、もう一度検索してください。" : "場所、制度、状況を含めると、関連性の高いリストから表示されます。"}</span></span>
+      <span className="empty-copy"><strong>{hasSearched ? "一致するリストがありません" : "やりたいことを入力"}</strong><span>{hasSearched ? "検索条件を変えて、もう一度検索してください。" : "場所や状況も入力すると、近いリストから表示されます。"}</span></span>
     </div>
   );
 }
@@ -755,7 +756,7 @@ function SaveWorkspace(props: SaveWorkspaceProps) {
   }
   return (
     <div className="workspace">
-      <header className="workspace-heading"><p>リスト公開</p><h1>完了リストを公開</h1><span>Androidから取得した内容を確認し、検索可能なタスクリストとして公開します。</span></header>
+      <header className="workspace-heading"><p>リスト公開</p><h1>完了リストを公開</h1><span>アプリで完了したリストを、ほかのユーザーが検索できるようにします。</span></header>
       <form className="save-form" onSubmit={props.onSave} autoComplete="off">
         <label className="save-title-field" htmlFor="save-title"><span>タイトル</span><input id="save-title" value={props.title} onChange={(event) => props.setTitle(event.target.value)} placeholder="完了したことの名前" /></label>
         <div className="completion-anchor"><CalendarCheck2 size={17} /><span><strong>{formatIsoDay(props.anchorDay)}</strong><small>再利用時の日付計算に使う完了日</small></span></div>
@@ -822,7 +823,7 @@ function CueResult({ result, importBusy, importDisabled, onImport }: { result: S
     <article className="cue-result">
       <header className="result-title-row">
         <span className="cue-card-mark" aria-hidden="true" /><span><small>{result.domain ?? "未分類"}</small><h2>{result.title}</h2></span>
-        <button type="button" className="import-action" disabled={importDisabled} onClick={onImport} aria-label={`${result.title}をAndroidに取り込む`}>{importBusy ? <Loader2 className="spin" size={17} /> : <ArrowDownToLine size={17} />}取り込む</button>
+        <button type="button" className="import-action" disabled={importDisabled} onClick={onImport} aria-label={`${result.title}をAndroidに取り込む`}>{importBusy ? <Loader2 className="spin" size={17} /> : <ArrowDownToLine size={17} />}Androidに取り込む</button>
       </header>
       <div className="fit-summary">
         <strong>対象となる状況</strong>

@@ -28,7 +28,7 @@ try {
   await searchPage.setViewportSize({ width: 1440, height: 1050 });
   await searchPage.locator(".import-action").first().click();
   await searchPage.locator("#target-anchor-day").fill("2026-10-01");
-  await searchPage.getByRole("button", { name: "取り込む", exact: true }).click();
+  await searchPage.getByRole("button", { name: "Androidに取り込む", exact: true }).click();
   await searchPage.locator(".handoff-panel").waitFor({ timeout: 15_000 });
   await searchPage.screenshot({ path: output("03-import-ready-desktop.png"), fullPage: true });
   await searchContext.close();
