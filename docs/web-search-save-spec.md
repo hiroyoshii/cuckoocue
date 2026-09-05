@@ -167,7 +167,7 @@ Desktop Web does not automatically open Android. Android Web opens the HTTPS App
 ## Identity Contract
 
 - Web automatically establishes a Firebase Anonymous Authentication session, so search and public-list import do not present a login gate.
-- Choosing `残す`, opening an Android `run_id`, enrichment, publication and Memory Bank operations require a non-anonymous Firebase user. Web asks for Google login only at that boundary.
+- Choosing `公開`, opening an Android `run_id`, enrichment, publication and Memory Bank operations require a non-anonymous Firebase user. Web asks for Google login only at that boundary.
 - Android signs in with Google. Web must use the same Google account to retrieve Android-owned completed runs.
 - API calls always send a Firebase ID token as a bearer token. Anonymous tokens can search and fetch public import payloads; registered-user tokens additionally scope BigQuery provenance, Firestore runs and Memory Bank.
 - Search remains a shared-corpus operation and is not filtered by owner UID.
@@ -182,7 +182,7 @@ Desktop Web does not automatically open Android. Android Web opens the HTTPS App
 - The horizontal `Cuckoo Cue` lockup is used in desktop and mobile navigation. A small amber card stamp identifies reusable search-result cards.
 - Shared colors use the supplied brand assets: warm cream surfaces, mint, deep teal, cuckoo blue, amber and dark brown outlines.
 - Web search results retain the Android list-row grammar for task text, relative date ranges and priority bars while presenting each reusable list as a restrained card.
-- `run` remains an internal data-model term. User-facing labels use `リスト`, `項目`, `完了した内容`, `探す`, `残す` and `使う`.
+- `run` remains an internal data-model term. Web labels actions by their actual operation: `検索`, `取り込む`, and `公開`.
 - Search failure is explicit and retryable. It does not silently fall back to a different ranking path.
 
 ## Paging Contract

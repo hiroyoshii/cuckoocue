@@ -11,7 +11,7 @@ const zenKakuGothicNew = Zen_Kaku_Gothic_New({
 
 export const metadata: Metadata = {
   title: "Cuckoo Cue",
-  description: "完了したリストを見つけて、次の自分の手元に置く。",
+  description: "完了したタスクリストを検索し、Androidに取り込めます。",
   icons: {
     icon: "/favicon.ico",
     apple: "/apple-touch-icon.png",

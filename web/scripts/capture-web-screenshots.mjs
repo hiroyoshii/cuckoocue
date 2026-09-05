@@ -76,7 +76,7 @@ try {
       await submitSearch(cdp, "東京から名古屋へ引っ越す。役所、ライフライン、郵便転送、住所変更を整理したい。");
       await waitForText(cdp, "東京から名古屋への引っ越し手続き", 30000);
       await cdp.eval(`document.querySelector('.import-action')?.click()`);
-      await waitForText(cdp, "いつ完了する予定ですか？", 10000);
+      await waitForText(cdp, "完了予定日を設定", 10000);
       await cdp.eval(`
         const input = document.querySelector('#target-anchor-day');
         if (input) {
@@ -99,7 +99,7 @@ try {
       await waitForReady(cdp);
       await waitFor(cdp, () => Boolean(document.querySelector('#save-title')), 5000);
       await cdp.eval(`
-        setTimeout(() => [...document.querySelectorAll('button')].find((button) => button.textContent.includes('検索情報を作る')).click(), 100);
+        setTimeout(() => [...document.querySelectorAll('button')].find((button) => button.textContent.includes('検索情報を準備')).click(), 100);
       `);
       await waitForText(cdp, "検索情報を確認", 30000);
     },
@@ -136,7 +136,7 @@ try {
       await cdp.send("Page.navigate", { url: `${baseUrl}/?run_id=${screenshotRunId}` });
       await waitForReady(cdp);
       await cdp.eval(`
-        setTimeout(() => [...document.querySelectorAll('button')].find((button) => button.textContent.includes('検索情報を作る'))?.click(), 100);
+        setTimeout(() => [...document.querySelectorAll('button')].find((button) => button.textContent.includes('検索情報を準備'))?.click(), 100);
       `);
       await waitForText(cdp, "検索情報を確認", 30000);
       await cdp.eval(`
@@ -144,7 +144,7 @@ try {
         checkbox?.click();
         setTimeout(() => document.querySelector('.publish-action')?.click(), 100);
       `);
-      await waitForText(cdp, "残しました", 30000);
+      await waitForText(cdp, "公開しました", 30000);
     },
   );
 } finally {

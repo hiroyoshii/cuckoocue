@@ -429,14 +429,14 @@ export function CuckooCueWebApp() {
       <aside className="product-rail">
         <a className="brand-lockup" href="#top" aria-label="Cuckoo Cue">
           <BrandLockup priority />
-          <small>次の自分へ渡す</small>
+          <small>完了リストを再利用</small>
         </a>
         <nav aria-label="主な操作">
           <button className={view === "search" ? "active" : ""} onClick={() => changeView("search")}>
-            <Search size={18} aria-hidden="true" />探す
+            <Search size={18} aria-hidden="true" />検索
           </button>
           <button className={view === "save" ? "active" : ""} onClick={() => changeView("save")}>
-            <ListChecks size={18} aria-hidden="true" />残す
+            <ListChecks size={18} aria-hidden="true" />公開
           </button>
         </nav>
         <details className="connection-panel">
@@ -509,7 +509,7 @@ function AuthWorkspace({
       <section className="auth-workspace">
         <BrandMark size={184} priority />
         <BrandLockup priority />
-        <span><strong>できた手順を、次に渡す。</strong><small>完了したリストを見つけて、自分の日程で使えます。</small></span>
+        <span><strong>完了リストを検索・再利用</strong><small>公開されたリストを検索し、Androidに取り込めます。</small></span>
         {loading ? (
           <Loader2 className="spin" size={22} aria-label="接続状態を確認中" />
         ) : (
@@ -524,9 +524,9 @@ function AuthWorkspace({
 function SignInRequired({ onBack, onSignIn }: { onBack: () => void; onSignIn: () => void }) {
   return (
     <div className="workspace sign-in-required">
-      <p>次へ渡す</p>
-      <h1>完了した内容を残す</h1>
-      <span>Androidで完了した内容を確認するため、同じGoogleアカウントでログインしてください。</span>
+      <p>リスト公開</p>
+      <h1>完了リストを公開</h1>
+      <span>Androidの完了リストを取得するため、同じGoogleアカウントでログインしてください。</span>
       <button type="button" onClick={onSignIn}><LogIn size={18} />Googleでログイン</button>
       <button type="button" className="text-action" onClick={onBack}>検索に戻る</button>
     </div>
@@ -538,8 +538,8 @@ function MobileHeader({ view, onChange }: { view: "search" | "save"; onChange: (
     <header className="mobile-header">
       <a className="brand-lockup" href="#top" aria-label="Cuckoo Cue"><BrandLockup priority /></a>
       <nav aria-label="主な操作">
-        <button className={view === "search" ? "active" : ""} onClick={() => onChange("search")} aria-label="探す"><Search size={18} /></button>
-        <button className={view === "save" ? "active" : ""} onClick={() => onChange("save")} aria-label="残す"><ListChecks size={18} /></button>
+        <button className={view === "search" ? "active" : ""} onClick={() => onChange("search")} aria-label="検索"><Search size={18} /></button>
+        <button className={view === "save" ? "active" : ""} onClick={() => onChange("save")} aria-label="公開"><ListChecks size={18} /></button>
       </nav>
     </header>
   );
@@ -585,13 +585,13 @@ function SearchWorkspace(props: SearchWorkspaceProps) {
   return (
     <div className="workspace">
       <header className="workspace-heading">
-        <p>受け取る</p><h1>やることを探す</h1>
-        <span>完了して残されたリストを、自分の日程に合わせて使えます。</span>
+        <p>リスト検索</p><h1>完了リストを検索</h1>
+        <span>目的や状況を入力して、再利用できるタスクリストを検索します。</span>
       </header>
       <form className="search-composer" onSubmit={props.onSearch} autoComplete="off">
-        <label><span>これからすること</span><textarea aria-label="Search query" value={props.searchMessage} onChange={(event) => props.setSearchMessage(event.target.value)} placeholder="東京から名古屋へ引っ越す。役所、ライフライン、住所変更を整理したい。" rows={3} /></label>
+        <label><span>目的・状況</span><textarea aria-label="Search query" value={props.searchMessage} onChange={(event) => props.setSearchMessage(event.target.value)} placeholder="東京から名古屋へ引っ越す。役所、ライフライン、住所変更を整理したい。" rows={3} /></label>
         <div>
-          <button className="primary-action" type="submit" disabled={!props.canSearch}>{props.busyAction === "search" ? <Loader2 className="spin" size={18} /> : <Search size={18} />}探す</button>
+          <button className="primary-action" type="submit" disabled={!props.canSearch}>{props.busyAction === "search" ? <Loader2 className="spin" size={18} /> : <Search size={18} />}検索</button>
         </div>
       </form>
       {props.busyAction === "search" ? (
@@ -677,12 +677,12 @@ function ImportDateDialog({
         </header>
         <div className="import-date-copy">
           <CalendarCheck2 size={22} aria-hidden="true" />
-          <span><h2 id="import-date-title">いつ完了する予定ですか？</h2><p>保存された日程を、この日に合わせて組み直します。</p></span>
+          <span><h2 id="import-date-title">完了予定日を設定</h2><p>各項目の日付を、指定した完了予定日に合わせて計算します。</p></span>
         </div>
         <label htmlFor="target-anchor-day"><span>完了予定日</span><input id="target-anchor-day" type="date" required value={targetAnchorDay} onChange={(event) => setTargetAnchorDay(event.target.value)} /></label>
         <footer>
           <button type="button" className="secondary-action" onClick={onCancel}>キャンセル</button>
-          <button type="submit" className="primary-action"><ArrowDownToLine size={17} />この日程で使う</button>
+          <button type="submit" className="primary-action"><ArrowDownToLine size={17} />取り込む</button>
         </footer>
       </form>
     </dialog>
@@ -693,7 +693,7 @@ function EmptySearch({ hasSearched }: { hasSearched: boolean }) {
   return (
     <div className={`empty-state ${hasSearched ? "" : "brand-empty"}`}>
       {hasSearched ? <Search size={28} /> : <BrandMark size={168} priority />}
-      <span className="empty-copy"><strong>{hasSearched ? "一致するリストがありません" : "どんなことを始めますか？"}</strong><span>{hasSearched ? "言葉を変えて、もう一度検索してください。" : "場所や制度、状況まで自然な文章で書くと、近いカードから並びます。"}</span></span>
+      <span className="empty-copy"><strong>{hasSearched ? "一致するリストがありません" : "検索条件を入力してください"}</strong><span>{hasSearched ? "検索条件を変えて、もう一度検索してください。" : "場所、制度、状況を含めると、関連性の高いリストから表示されます。"}</span></span>
     </div>
   );
 }
@@ -751,14 +751,14 @@ function SaveWorkspace(props: SaveWorkspaceProps) {
     props.setEnrichment({ ...props.enrichment, task_groupings: groups });
   }
   if (props.savedTitle) {
-    return <div className="workspace save-success"><p>公開完了</p><h1>残しました</h1><span>「{props.savedTitle}」は、次の検索から見つけて使えます。</span><button onClick={props.onReset}><Plus size={17} />別のリストを残す</button></div>;
+    return <div className="workspace save-success"><p>公開完了</p><h1>公開しました</h1><span>「{props.savedTitle}」が検索結果に表示されます。</span><button onClick={props.onReset}><Plus size={17} />別のリストを公開</button></div>;
   }
   return (
     <div className="workspace">
-      <header className="workspace-heading"><p>次へ渡す</p><h1>完了した内容を残す</h1><span>Android から受け取った内容を確認し、次に使えるカードとして公開します。</span></header>
+      <header className="workspace-heading"><p>リスト公開</p><h1>完了リストを公開</h1><span>Androidから取得した内容を確認し、検索可能なタスクリストとして公開します。</span></header>
       <form className="save-form" onSubmit={props.onSave} autoComplete="off">
         <label className="save-title-field" htmlFor="save-title"><span>タイトル</span><input id="save-title" value={props.title} onChange={(event) => props.setTitle(event.target.value)} placeholder="完了したことの名前" /></label>
-        <div className="completion-anchor"><CalendarCheck2 size={17} /><span><strong>{formatIsoDay(props.anchorDay)}</strong><small>この完了日を基準に、次回の日程へ置き換えます</small></span></div>
+        <div className="completion-anchor"><CalendarCheck2 size={17} /><span><strong>{formatIsoDay(props.anchorDay)}</strong><small>再利用時の日付計算に使う完了日</small></span></div>
         <div className="task-edit-list" aria-label="残す項目">
           {props.tasks.map((task, index) => (
             <div className="task-edit-row" key={index}>
@@ -767,7 +767,7 @@ function SaveWorkspace(props: SaveWorkspaceProps) {
                 <button type="button" aria-label={`${index + 1}件目を下へ`} disabled={index === props.tasks.length - 1} onClick={() => moveTask(index, 1)}><ArrowDown size={15} /></button>
               </div>
               <label><span>項目</span><input aria-label={`Task ${index + 1}`} value={task.text} onChange={(event) => updateTask(index, { text: event.target.value })} placeholder="手続きや確認事項" /></label>
-              <label><span>強さ</span><select aria-label={`Priority ${index + 1}`} value={task.default_priority ?? ""} onChange={(event) => updateTask(index, { default_priority: nullableNumber(event.target.value) })}><option value="">なし</option><option value="0">強</option><option value="1">中</option><option value="2">弱</option></select></label>
+              <label><span>優先度</span><select aria-label={`Priority ${index + 1}`} value={task.default_priority ?? ""} onChange={(event) => updateTask(index, { default_priority: nullableNumber(event.target.value) })}><option value="">なし</option><option value="0">強</option><option value="1">中</option><option value="2">弱</option></select></label>
               <label><span>開始日</span><input aria-label={`Start date ${index + 1}`} type="date" value={relativeToIsoDay(props.anchorDay, task.relative_start_day)} onChange={(event) => updateTask(index, { relative_start_day: isoDayToRelative(props.anchorDay, event.target.value) })} /></label>
               <label><span>終了日</span><input aria-label={`End date ${index + 1}`} type="date" value={relativeToIsoDay(props.anchorDay, task.relative_end_day)} onChange={(event) => updateTask(index, { relative_end_day: isoDayToRelative(props.anchorDay, event.target.value) })} /></label>
               <button type="button" className="icon-button" aria-label={`${index + 1}件目を削除`} onClick={() => removeTask(index)}><Trash2 size={16} /></button>
@@ -783,7 +783,7 @@ function SaveWorkspace(props: SaveWorkspaceProps) {
           <section className="review-strip" aria-label="保存前の確認">
             <header><Check size={18} /><span><strong>検索情報を確認</strong><small>明らかな個人情報や不正確な内容がないか確認してください。</small></span></header>
             <label htmlFor="review-domain"><span>分野</span><input id="review-domain" value={props.enrichment.domain} onChange={(event) => props.setEnrichment({ ...props.enrichment!, domain: event.target.value })} /></label>
-            <label htmlFor="review-context"><span>利用状況</span><textarea id="review-context" value={props.enrichment.context_text} onChange={(event) => props.setEnrichment({ ...props.enrichment!, context_text: event.target.value })} rows={3} /></label>
+            <label htmlFor="review-context"><span>対象となる状況</span><textarea id="review-context" value={props.enrichment.context_text} onChange={(event) => props.setEnrichment({ ...props.enrichment!, context_text: event.target.value })} rows={3} /></label>
             <div className="group-edit-list" aria-label="項目のまとまり">
               <span className="field-label">項目のまとまり</span>
               {props.enrichment.task_groupings.map((group, groupIndex) => (
@@ -807,7 +807,7 @@ function SaveWorkspace(props: SaveWorkspaceProps) {
               ))}
             </div>
             <label className="publish-confirm"><input type="checkbox" checked={publishConfirmed} onChange={(event) => setPublishConfirmed(event.target.checked)} /><span>個人情報が含まれていないことを確認し、検索可能なリストとして公開する</span></label>
-            <button className="publish-action" type="submit" disabled={!props.canSave || !publishConfirmed}>{props.busyAction === "save" ? <Loader2 className="spin" size={16} /> : <Check size={16} />}{props.busyAction === "save" ? "公開しています" : "確認して残す"}</button>
+            <button className="publish-action" type="submit" disabled={!props.canSave || !publishConfirmed}>{props.busyAction === "save" ? <Loader2 className="spin" size={16} /> : <Check size={16} />}{props.busyAction === "save" ? "公開しています" : "公開する"}</button>
             {props.busyAction === "save" ? <ProgressNotice label={progressLabel("save", props.busySeconds)} /> : null}
           </section>
         ) : null}
@@ -822,10 +822,10 @@ function CueResult({ result, importBusy, importDisabled, onImport }: { result: S
     <article className="cue-result">
       <header className="result-title-row">
         <span className="cue-card-mark" aria-hidden="true" /><span><small>{result.domain ?? "未分類"}</small><h2>{result.title}</h2></span>
-        <button type="button" className="import-action" disabled={importDisabled} onClick={onImport} aria-label={`${result.title}をAndroidに取り込む`}>{importBusy ? <Loader2 className="spin" size={17} /> : <ArrowDownToLine size={17} />}使う</button>
+        <button type="button" className="import-action" disabled={importDisabled} onClick={onImport} aria-label={`${result.title}をAndroidに取り込む`}>{importBusy ? <Loader2 className="spin" size={17} /> : <ArrowDownToLine size={17} />}取り込む</button>
       </header>
       <div className="fit-summary">
-        <strong>このリストが向いている状況</strong>
+        <strong>対象となる状況</strong>
         {result.context_text ? <p>{result.context_text}</p> : null}
         <div><span><ListChecks size={14} />{result.tasks.length}件</span><span><CalendarDays size={14} />{resultRangeLabel(result.tasks)}</span></div>
       </div>
