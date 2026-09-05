@@ -2,7 +2,7 @@
 
 import {
   AlertCircle, ArrowDown, ArrowDownToLine, ArrowUp, CalendarCheck2,
-  CalendarDays, Check, ChevronDown, Circle, Layers3, ListChecks, Loader2,
+  CalendarDays, Check, ChevronDown, Layers3, ListChecks, Loader2,
   LogIn, LogOut, MoreHorizontal, Plus, RotateCcw, Search, Smartphone, Tag,
   Trash2, User, WandSparkles, X,
 } from "lucide-react";
@@ -586,8 +586,7 @@ function SearchWorkspace(props: SearchWorkspaceProps) {
     <div className="workspace">
       <header className="workspace-heading">
         <p>リスト検索</p><h1>完了リストを探す</h1>
-        <span>ほかのユーザーが完了・公開したタスクリストを検索できます。</span>
-        <small className="app-role-note"><Smartphone size={15} aria-hidden="true" />タスクの作成・実行はiOS/Androidアプリで行います</small>
+        <span>完了・公開されたタスクリストを検索できます。</span>
       </header>
       <form className="search-composer" onSubmit={props.onSearch} autoComplete="off">
         <label><span>やりたいこと</span><textarea aria-label="Search query" value={props.searchMessage} onChange={(event) => props.setSearchMessage(event.target.value)} placeholder="東京から名古屋へ引っ越す。役所、ライフライン、住所変更を整理したい。" rows={3} /></label>
@@ -830,8 +829,8 @@ function CueResult({ result, importBusy, importDisabled, onImport }: { result: S
         {result.context_text ? <p>{result.context_text}</p> : null}
         <div><span><ListChecks size={14} />{result.tasks.length}件</span><span><CalendarDays size={14} />{resultRangeLabel(result.tasks)}</span></div>
       </div>
-      <div className="task-preview">
-        {previewTasks.map((task, index) => <div className="task-row" key={`${result.id}-${index}`}><span className="task-index">{index + 1}</span><Circle className="exposure-dot muted-dot" size={9} /><p>{task.text}</p><span className="task-meta"><small>{formatDayRange(task.relative_start_day, task.relative_end_day)}</small><i data-priority={task.default_priority ?? "none"} /></span></div>)}
+      <div className="task-preview" aria-label="タスクリストのプレビュー">
+        {previewTasks.map((task, index) => <div className="task-row" key={`${result.id}-${index}`}><span className="task-index">{index + 1}</span><p>{task.text}</p><span className="task-meta"><small>{formatDayRange(task.relative_start_day, task.relative_end_day)}</small></span></div>)}
       </div>
       <details className="context-details">
         <summary><span><Tag size={15} />グループと全項目</span><ChevronDown size={15} /></summary>
