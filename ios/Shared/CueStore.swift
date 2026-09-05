@@ -96,11 +96,15 @@ private extension CueSnapshot {
                 state.undoTitle = state.runs[runIndex].tasks[taskIndex].title
             }
         }
-        if arguments.contains("state-filtered") {
-            state.selectedFilterTaskID = "demo-2"
-        }
         if arguments.contains("state-paged") {
             state.footerOffset = 3
+        }
+        if arguments.contains("state-priority-empty") {
+            for runIndex in state.runs.indices {
+                for taskIndex in state.runs[runIndex].tasks.indices {
+                    state.runs[runIndex].tasks[taskIndex].userPriority = .quiet
+                }
+            }
         }
         return state
     }

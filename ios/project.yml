@@ -37,6 +37,10 @@ targets:
           - UIInterfaceOrientationPortrait
         NSAppTransportSecurity:
           NSAllowsArbitraryLoads: false
+        CFBundleURLTypes:
+          - CFBundleURLName: app.cuckoocue.queue
+            CFBundleURLSchemes:
+              - cuckoocue
     entitlements:
       path: CuckooCue/CuckooCue.entitlements
       properties:

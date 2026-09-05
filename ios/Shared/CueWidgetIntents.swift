@@ -28,6 +28,16 @@ struct CompleteCueIntent: AppIntent {
     }
 }
 
+struct OpenCueQueueIntent: AppIntent {
+    static var title: LocalizedStringResource = "Cuckoo Cueを開く"
+    static var description = IntentDescription("Cuckoo Cueの項目一覧を開きます。")
+    static var openAppWhenRun = true
+
+    func perform() async throws -> some IntentResult {
+        .result()
+    }
+}
+
 struct UndoCueIntent: AppIntent {
     static var title: LocalizedStringResource = "完了を戻す"
 
@@ -48,31 +58,28 @@ struct UndoCueIntent: AppIntent {
     }
 }
 
-struct ToggleCueFilterIntent: AppIntent {
-    static var title: LocalizedStringResource = "表示を絞り込む"
-    @Parameter(title: "項目ID") var taskID: String
-
-    init() {}
-    init(taskID: String) { self.taskID = taskID }
-
-    func perform() async throws -> some IntentResult {
-        CueStorage.update { state in
-            state.selectedFilterTaskID = state.selectedFilterTaskID == taskID ? nil : taskID
-            state.undoTaskID = nil
-            state.undoTitle = nil
-        }
-        WidgetCenter.shared.reloadTimelines(ofKind: CueWidgetConstants.kind)
-        return .result()
-    }
-}
-
 struct AdvanceCuePageIntent: AppIntent {
     static var title: LocalizedStringResource = "次の項目を表示"
 
+    @Parameter(title: "表示範囲") var scopeID: String
+    @Parameter(title: "表示件数") var pageSize: Int
+
+    init() {
+        scopeID = "all-medium"
+        pageSize = 3
+    }
+
+    init(scopeID: String, pageSize: Int) {
+        self.scopeID = scopeID
+        self.pageSize = pageSize
+    }
+
     func perform() async throws -> some IntentResult {
         CueStorage.update { state in
-            let count = max(state.widgetCues.count, 1)
-            state.footerOffset = (state.footerOffset + 1) % count
+            let current = state.widgetPageOffsets?[scopeID] ?? 0
+            var offsets = state.widgetPageOffsets ?? [:]
+            offsets[scopeID] = current + max(pageSize, 1)
+            state.widgetPageOffsets = offsets
             state.undoTaskID = nil
             state.undoTitle = nil
         }
@@ -80,4 +87,3 @@ struct AdvanceCuePageIntent: AppIntent {
         return .result()
     }
 }
-

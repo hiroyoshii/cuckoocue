@@ -75,11 +75,15 @@ jobs:
           capture widget-small --screenshot-gallery small
           capture widget-medium --screenshot-gallery medium
           capture widget-large --screenshot-gallery large
+          capture widget-lock-screen --screenshot-gallery lock
           capture widget-states/widget-dark-medium --screenshot-gallery medium state-dark
           capture widget-states/widget-large-text-medium --screenshot-gallery medium state-large-text
           capture widget-states/widget-empty-medium --screenshot-gallery medium state-empty
+          capture widget-states/widget-priority-empty-medium --screenshot-gallery medium state-priority-empty
+          capture widget-states/widget-include-quiet-medium --screenshot-gallery medium state-priority-empty state-include-quiet
+          capture widget-states/widget-undo-small --screenshot-gallery small state-undo
           capture widget-states/widget-undo-medium --screenshot-gallery medium state-undo
-          capture widget-states/widget-filtered-medium --screenshot-gallery medium state-filtered
+          capture widget-states/widget-scoped-run-medium --screenshot-gallery medium state-scoped-run
           capture widget-states/widget-paged-medium --screenshot-gallery medium state-paged
           capture app/app-list
           capture app/app-detail --screenshot-detail

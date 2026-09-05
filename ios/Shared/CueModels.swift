@@ -83,8 +83,10 @@ enum WidgetTextScale: String, Codable, CaseIterable, Identifiable {
 
 struct CueSnapshot: Codable, Equatable {
     var runs: [CueRun] = []
+    // Retained for decoding snapshots written by the first WidgetKit implementation.
     var selectedFilterTaskID: String?
     var footerOffset = 0
+    var widgetPageOffsets: [String: Int]?
     var undoTaskID: String?
     var undoTitle: String?
     var widgetTheme: WidgetTheme = .system
@@ -92,19 +94,62 @@ struct CueSnapshot: Codable, Equatable {
     var updatedAt: Date = .now
 
     var widgetCues: [CueTask] {
-        runs
-            .filter { $0.archivedAt == nil }
+        widgetCues(runID: nil, includeQuiet: false)
+    }
+
+    /// Mirrors Android's widget ordering: priority, due date, run order, task order, creation time.
+    func widgetCues(runID: String?, includeQuiet: Bool, now: Date = .now) -> [CueTask] {
+        let activeRuns = runs.filter { run in
+            run.archivedAt == nil && (runID == nil || run.id == runID)
+        }
+        let runOrders = Dictionary(uniqueKeysWithValues: activeRuns.map { ($0.id, $0.sortOrder) })
+
+        return activeRuns
             .flatMap(\.tasks)
             .filter { task in
                 task.completedAt == nil &&
                     !task.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-                    task.effectivePriority() != .quiet
+                    (includeQuiet || task.effectivePriority(now: now) != .quiet)
             }
-            .sorted {
-                let left = $0.effectivePriority().rawValue
-                let right = $1.effectivePriority().rawValue
-                return left == right ? $0.sortOrder < $1.sortOrder : left < right
+            .sorted { left, right in
+                let leftPriority = left.effectivePriority(now: now).rawValue
+                let rightPriority = right.effectivePriority(now: now).rawValue
+                if leftPriority != rightPriority { return leftPriority < rightPriority }
+
+                switch (left.dueAt, right.dueAt) {
+                case let (leftDue?, rightDue?) where leftDue != rightDue:
+                    return leftDue < rightDue
+                case (_?, nil):
+                    return true
+                case (nil, _?):
+                    return false
+                default:
+                    break
+                }
+
+                let leftRunOrder = runOrders[left.runID] ?? .max
+                let rightRunOrder = runOrders[right.runID] ?? .max
+                if leftRunOrder != rightRunOrder { return leftRunOrder < rightRunOrder }
+                if left.sortOrder != right.sortOrder { return left.sortOrder < right.sortOrder }
+                return left.createdAt < right.createdAt
             }
+    }
+
+    func pageOffset(for scopeID: String) -> Int {
+        widgetPageOffsets?[scopeID] ?? 0
+    }
+
+    func pendingTaskCount(runID: String?) -> Int {
+        runs
+            .filter { $0.archivedAt == nil && (runID == nil || $0.id == runID) }
+            .flatMap(\.tasks)
+            .filter { $0.completedAt == nil && !$0.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+            .count
+    }
+
+    func configuredRunTitle(runID: String?) -> String {
+        guard let runID else { return "すべて" }
+        return runs.first(where: { $0.id == runID })?.title ?? "リスト"
     }
 
     func runTitle(for task: CueTask) -> String {
@@ -128,4 +173,3 @@ struct CueSnapshot: Codable, Equatable {
         ])
     }()
 }
-

@@ -4,17 +4,23 @@ import WidgetKit
 struct ScreenshotGalleryView: View {
     @EnvironmentObject private var store: CueStore
     @State private var family: WidgetFamily
+    private let configuredRunID: String?
+    private let includeQuiet: Bool
 
     init() {
         let arguments = ProcessInfo.processInfo.arguments
         let selected: WidgetFamily = if arguments.contains("small") {
             .systemSmall
+        } else if arguments.contains("lock") {
+            .accessoryRectangular
         } else if arguments.contains("large") {
             .systemLarge
         } else {
             .systemMedium
         }
         _family = State(initialValue: selected)
+        configuredRunID = arguments.contains("state-scoped-run") ? "demo-home" : nil
+        includeQuiet = arguments.contains("state-include-quiet")
     }
 
     var body: some View {
@@ -26,11 +32,18 @@ struct ScreenshotGalleryView: View {
                         Text("Small").tag(WidgetFamily.systemSmall)
                         Text("Medium").tag(WidgetFamily.systemMedium)
                         Text("Large").tag(WidgetFamily.systemLarge)
+                        Text("Lock").tag(WidgetFamily.accessoryRectangular)
                     }
                     .pickerStyle(.segmented)
                     .accessibilityIdentifier("widget-family-picker")
 
-                    CueWidgetCard(snapshot: store.snapshot, family: family, interactive: false)
+                    CueWidgetCard(
+                        snapshot: store.snapshot,
+                        family: family,
+                        interactive: false,
+                        configuredRunID: configuredRunID,
+                        includeQuiet: includeQuiet
+                    )
                         .frame(width: widgetSize.width, height: widgetSize.height)
                         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
                         .shadow(color: .black.opacity(0.12), radius: 18, y: 8)
@@ -49,8 +62,9 @@ struct ScreenshotGalleryView: View {
         switch family {
         case .systemSmall: CGSize(width: 170, height: 170)
         case .systemMedium: CGSize(width: 364, height: 170)
-        default: CGSize(width: 364, height: 382)
+        case .systemLarge: CGSize(width: 364, height: 382)
+        case .accessoryRectangular: CGSize(width: 170, height: 72)
+        default: CGSize(width: 170, height: 170)
         }
     }
 }
-
