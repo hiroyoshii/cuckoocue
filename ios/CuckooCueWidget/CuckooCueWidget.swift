@@ -12,11 +12,11 @@ struct CueTimelineProvider: TimelineProvider {
     }
 
     func getSnapshot(in context: Context, completion: @escaping (CueTimelineEntry) -> Void) {
-        completion(CueTimelineEntry(date: .now, snapshot: context.isPreview ? .demo : CueStorage.load()))
+        completion(CueTimelineEntry(date: .now, snapshot: context.isPreview ? .demo : widgetSnapshot()))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<CueTimelineEntry>) -> Void) {
-        let snapshot = CueStorage.load()
+        let snapshot = widgetSnapshot()
         let calendar = Calendar.current
         let nextMidnight = calendar.nextDate(
             after: .now,
@@ -24,6 +24,14 @@ struct CueTimelineProvider: TimelineProvider {
             matchingPolicy: .nextTime
         ) ?? .now.addingTimeInterval(86_400)
         completion(Timeline(entries: [CueTimelineEntry(date: .now, snapshot: snapshot)], policy: .after(nextMidnight)))
+    }
+
+    private func widgetSnapshot() -> CueSnapshot {
+#if SCREENSHOT_TESTING
+        .demo
+#else
+        CueStorage.load()
+#endif
     }
 }
 
