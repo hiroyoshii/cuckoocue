@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  AlertCircle, AppWindow, ArrowDown, ArrowDownToLine, ArrowUp, CalendarCheck2,
+  AlertCircle, ArrowDown, ArrowDownToLine, ArrowUp, CalendarCheck2,
   CalendarDays, Check, ChevronDown, Layers3, ListChecks, Loader2,
   LogIn, LogOut, MoreHorizontal, Plus, RotateCcw, Search, Smartphone, Tag,
   Trash2, User, WandSparkles, X,
@@ -553,8 +553,6 @@ function MobileHeader({ view, onChange, onManage }: { view: "search" | "save"; o
 
 function AppLinksDialog({ onClose }: { onClose: () => void }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const iosAppUrl = process.env.NEXT_PUBLIC_IOS_APP_URL?.trim();
-  const androidAppUrl = process.env.NEXT_PUBLIC_ANDROID_APP_URL?.trim();
 
   useEffect(() => {
     dialogRef.current?.showModal();
@@ -567,16 +565,15 @@ function AppLinksDialog({ onClose }: { onClose: () => void }) {
         <button type="button" className="icon-button" onClick={onClose} aria-label="閉じる"><X size={18} /></button>
       </header>
       <div className="app-link-list">
-        <AppLink icon={<AppWindow size={21} />} platform="iPhone / iPad" store="App Store" url={iosAppUrl} />
-        <AppLink icon={<Smartphone size={21} />} platform="Android" store="Google Play" url={androidAppUrl} />
+        <AppLink platform="iPhone / iPad" />
+        <AppLink platform="Android" />
       </div>
     </dialog>
   );
 }
 
-function AppLink({ icon, platform, store, url }: { icon: React.ReactNode; platform: string; store: string; url?: string }) {
-  const content = <>{icon}<span><strong>{platform}</strong><small>{url ? store : "公開準備中"}</small></span></>;
-  return url ? <a href={url} target="_blank" rel="noreferrer">{content}<ArrowDownToLine size={17} /></a> : <div aria-disabled="true">{content}</div>;
+function AppLink({ platform }: { platform: string }) {
+  return <div aria-disabled="true"><span><strong>{platform}</strong><small>公開準備中</small></span></div>;
 }
 
 type SearchWorkspaceProps = {
