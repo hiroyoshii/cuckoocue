@@ -30,13 +30,12 @@ final class CuckooCueHomeScreenTests: XCTestCase {
         searchField.tap()
         searchField.typeText("Cuckoo Cue")
 
-        let widgetResult = springboard.staticTexts["Cuckoo Cue"].firstMatch
+        let widgetResult = springboard.cells
+            .containing(.staticText, identifier: "Cuckoo Cue")
+            .firstMatch
         XCTAssertTrue(widgetResult.waitForExistence(timeout: 8))
         widgetResult.tap()
 
-        let widgetGallery = springboard.scrollViews.firstMatch
-        XCTAssertTrue(widgetGallery.waitForExistence(timeout: 8))
-        widgetGallery.swipeLeft()
         let addWidgetButton = springboard.buttons["Add Widget"]
         XCTAssertTrue(addWidgetButton.waitForExistence(timeout: 8))
         addWidgetButton.tap()
