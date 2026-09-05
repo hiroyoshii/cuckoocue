@@ -126,21 +126,16 @@ input:focus, textarea:focus, select:focus, button:focus-visible, summary:focus-v
 .app-links-dialog h2 { margin: 0; font-size: 22px; }
 .app-links-dialog .icon-button { width: 40px; height: 40px; border: 0; border-radius: 7px; display: grid; place-items: center; color: var(--muted); background: transparent; }
 .app-link-list { display: grid; gap: 8px; }
-.app-link-list > a, .app-link-list > div {
+.app-link-list > div {
   min-height: 64px;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  display: flex;
   align-items: center;
-  gap: 12px;
   border: 1px solid var(--line);
   border-radius: 7px;
   padding: 10px 12px;
-  color: var(--ink);
-  background: #fffefa;
-  text-decoration: none;
+  color: var(--muted);
+  background: var(--surface-base);
 }
-.app-link-list > div { color: var(--muted); background: var(--surface-base); }
-.app-link-list > a > svg:first-child { color: var(--teal); }
 .app-link-list span { display: grid; gap: 2px; }
 .app-link-list strong { font-size: 14px; }
 .app-link-list small { color: var(--muted); font-size: 11px; font-weight: 700; }
