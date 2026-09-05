@@ -27,7 +27,7 @@ export default defineConfig({
   webServer: {
     command: "/home/hiroyoshii/.local/share/devbox/global/default/.devbox/nix/profile/default/bin/node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3111",
     url: "http://127.0.0.1:3111",
-    reuseExistingServer: false,
+    reuseExistingServer: !process.env.CI,
     env: {
       CUE_ALLOW_DEV_AUTH: "true",
       NEXT_PUBLIC_FIREBASE_API_KEY: "",

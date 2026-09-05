@@ -142,7 +142,8 @@ Current API returns:
 
 ```text
 Web search result
-  -> user chooses target_anchor_day
+  -> user chooses a result
+  -> Web asks for the target completion day
   -> Web fetches import payload by corpus id
   -> Web opens https://cuckoocue.hiyozoo.com/import with entry_id and target_anchor_day only
   -> Android receives the verified HTTPS App Link

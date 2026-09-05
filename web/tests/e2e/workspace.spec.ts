@@ -48,8 +48,8 @@ test("search is scannable, accessible, and restored after reload", async ({ page
   await page.goto("/");
   await expect(page.locator('img[alt="Cuckoo Cue"]:visible')).toBeVisible();
   await expect(page.locator(".brand-empty .brand-mark")).toBeVisible();
+  await expect(page.getByLabel("完了予定日")).toHaveCount(0);
   await page.getByLabel("Search query").fill("東京から名古屋へ引っ越す。役所とライフラインを整理したい");
-  await page.locator("#target-anchor-day").fill("2026-10-01");
   const searchButton = page.locator("form").getByRole("button", { name: "探す", exact: true });
   await searchButton.focus();
   await expect(searchButton).toBeFocused();
@@ -62,6 +62,9 @@ test("search is scannable, accessible, and restored after reload", async ({ page
   await expect(page.locator(".cue-result").first().locator(".task-row")).toHaveCount(3);
 
   await page.getByRole("button", { name: `${searchResults[0].title}をAndroidに取り込む` }).click();
+  await expect(page.getByRole("heading", { name: "いつ完了する予定ですか？" })).toBeVisible();
+  await page.getByLabel("完了予定日").fill("2026-10-01");
+  await page.getByRole("button", { name: "この日程で使う" }).click();
   await expect(page.getByRole("heading", { name: searchResults[0].title })).toBeVisible();
   await expect(page.locator(".handoff-panel")).toContainText("2026/10/01を基準");
   await expect(page.getByRole("link", { name: "Androidで開く" })).toHaveCount(0);

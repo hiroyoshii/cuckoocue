@@ -4,7 +4,7 @@ import {
   AlertCircle, ArrowDown, ArrowDownToLine, ArrowUp, CalendarCheck2,
   CalendarDays, Check, ChevronDown, Circle, Layers3, ListChecks, Loader2,
   LogIn, LogOut, MoreHorizontal, Plus, RotateCcw, Search, Smartphone, Tag,
-  Trash2, User, WandSparkles,
+  Trash2, User, WandSparkles, X,
 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -560,6 +560,7 @@ type SearchWorkspaceProps = {
 function SearchWorkspace(props: SearchWorkspaceProps) {
   const pagingSentinel = useRef<HTMLDivElement>(null);
   const handoffPanel = useRef<HTMLElement>(null);
+  const [selectedImport, setSelectedImport] = useState<SearchResult | null>(null);
   const { busyAction, nextCursor, onMore } = props;
 
   useEffect(() => {
@@ -590,7 +591,6 @@ function SearchWorkspace(props: SearchWorkspaceProps) {
       <form className="search-composer" onSubmit={props.onSearch} autoComplete="off">
         <label><span>これからすること</span><textarea aria-label="Search query" value={props.searchMessage} onChange={(event) => props.setSearchMessage(event.target.value)} placeholder="東京から名古屋へ引っ越す。役所、ライフライン、住所変更を整理したい。" rows={3} /></label>
         <div>
-          <label className="anchor-field" htmlFor="target-anchor-day"><CalendarDays size={17} /><span>基準日</span><input id="target-anchor-day" type="date" value={props.targetAnchorDay} onChange={(event) => props.setTargetAnchorDay(event.target.value)} /></label>
           <button className="primary-action" type="submit" disabled={!props.canSearch}>{props.busyAction === "search" ? <Loader2 className="spin" size={18} /> : <Search size={18} />}探す</button>
         </div>
       </form>
@@ -624,12 +624,68 @@ function SearchWorkspace(props: SearchWorkspaceProps) {
       <section className="cue-surface" aria-label="検索結果">
         {props.results.length === 0 ? <EmptySearch hasSearched={props.hasSearched} /> : (
           <div className="cue-stack">
-            {props.results.map((result) => <CueResult key={result.id} result={result} importBusy={props.importingId === result.id} importDisabled={props.busyAction !== null} onImport={() => props.onImport(result.id)} />)}
+            {props.results.map((result) => <CueResult key={result.id} result={result} importBusy={props.importingId === result.id} importDisabled={props.busyAction !== null} onImport={() => setSelectedImport(result)} />)}
             {props.nextCursor ? <div ref={pagingSentinel}><button className="more-button" type="button" disabled={props.busyAction !== null} onClick={props.onMore}>{props.busyAction === "more" ? <Loader2 className="spin" size={16} /> : <MoreHorizontal size={16} />}続きを読み込む</button></div> : null}
           </div>
         )}
       </section>
+      {selectedImport ? (
+        <ImportDateDialog
+          result={selectedImport}
+          targetAnchorDay={props.targetAnchorDay}
+          setTargetAnchorDay={props.setTargetAnchorDay}
+          onCancel={() => setSelectedImport(null)}
+          onConfirm={() => {
+            const id = selectedImport.id;
+            setSelectedImport(null);
+            props.onImport(id);
+          }}
+        />
+      ) : null}
     </div>
+  );
+}
+
+function ImportDateDialog({
+  result,
+  targetAnchorDay,
+  setTargetAnchorDay,
+  onCancel,
+  onConfirm,
+}: {
+  result: SearchResult;
+  targetAnchorDay: string;
+  setTargetAnchorDay: (value: string) => void;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    dialogRef.current?.showModal();
+  }, []);
+
+  return (
+    <dialog className="import-date-dialog" ref={dialogRef} onClose={onCancel} aria-labelledby="import-date-title">
+      <form method="dialog" onSubmit={(event) => {
+        event.preventDefault();
+        onConfirm();
+      }}>
+        <header>
+          <span><small>取り込むリスト</small><strong>{result.title}</strong></span>
+          <button type="button" className="icon-button" onClick={onCancel} aria-label="閉じる"><X size={18} /></button>
+        </header>
+        <div className="import-date-copy">
+          <CalendarCheck2 size={22} aria-hidden="true" />
+          <span><h2 id="import-date-title">いつ完了する予定ですか？</h2><p>保存された日程を、この日に合わせて組み直します。</p></span>
+        </div>
+        <label htmlFor="target-anchor-day"><span>完了予定日</span><input id="target-anchor-day" type="date" required value={targetAnchorDay} onChange={(event) => setTargetAnchorDay(event.target.value)} /></label>
+        <footer>
+          <button type="button" className="secondary-action" onClick={onCancel}>キャンセル</button>
+          <button type="submit" className="primary-action"><ArrowDownToLine size={17} />この日程で使う</button>
+        </footer>
+      </form>
+    </dialog>
   );
 }
 
