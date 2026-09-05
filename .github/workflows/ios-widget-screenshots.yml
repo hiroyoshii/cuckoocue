@@ -88,6 +88,8 @@ jobs:
           capture app/app-new-task --screenshot-new-task
 
       - name: Capture actual Home Screen widget
+        id: home-screen
+        continue-on-error: true
         shell: bash
         run: |
           set -o pipefail
@@ -104,7 +106,7 @@ jobs:
             build/ios-widget-screenshots/widget-states/widget-actual-home-screen.png
 
       - name: Persist screenshots on branch
-        if: github.event_name == 'push'
+        if: always() && github.event_name == 'push'
         shell: bash
         run: |
           set -euo pipefail
@@ -112,6 +114,7 @@ jobs:
           cp build/ios-widget-screenshots/*.png docs/review-screenshots/ios/
           cp build/ios-widget-screenshots/widget-states/*.png docs/review-screenshots/ios/widget-states/
           cp build/ios-widget-screenshots/app/*.png docs/review-screenshots/ios/app/
+          cp build/CuckooCueHomeScreenTests.log docs/review-screenshots/ios/home-screen-test.log
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add docs/review-screenshots/ios
@@ -119,6 +122,10 @@ jobs:
             git commit -m "Update iOS widget screenshots"
             git push
           fi
+
+      - name: Require actual Home Screen screenshot
+        if: steps.home-screen.outcome == 'failure'
+        run: exit 1
 
       - name: Upload widget screenshots
         if: always()
