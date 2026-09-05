@@ -48,9 +48,9 @@ test("search is scannable, accessible, and restored after reload", async ({ page
   await page.goto("/");
   await expect(page.locator('img[alt="Cuckoo Cue"]:visible')).toBeVisible();
   await expect(page.locator(".brand-empty .brand-mark")).toBeVisible();
-  await expect(page.getByLabel("完了予定日")).toHaveCount(0);
+  await expect(page.locator("#target-anchor-day")).toHaveCount(0);
   await page.getByLabel("Search query").fill("東京から名古屋へ引っ越す。役所とライフラインを整理したい");
-  const searchButton = page.locator("form").getByRole("button", { name: "探す", exact: true });
+  const searchButton = page.locator("form").getByRole("button", { name: "検索", exact: true });
   await searchButton.focus();
   await expect(searchButton).toBeFocused();
   await page.keyboard.press("Enter");
@@ -58,13 +58,13 @@ test("search is scannable, accessible, and restored after reload", async ({ page
   await expect(page.getByRole("heading", { name: searchResults[0].title })).toBeVisible();
   await expect(page.locator(".cue-result")).toHaveCount(2);
   await expect(page.locator(".task-preview input, .task-preview button")).toHaveCount(0);
-  await expect(page.getByText("このリストが向いている状況").first()).toBeVisible();
+  await expect(page.getByText("対象となる状況").first()).toBeVisible();
   await expect(page.locator(".cue-result").first().locator(".task-row")).toHaveCount(3);
 
   await page.getByRole("button", { name: `${searchResults[0].title}をAndroidに取り込む` }).click();
-  await expect(page.getByRole("heading", { name: "いつ完了する予定ですか？" })).toBeVisible();
-  await page.getByLabel("完了予定日").fill("2026-10-01");
-  await page.getByRole("button", { name: "この日程で使う" }).click();
+  await expect(page.getByRole("heading", { name: "完了予定日を設定" })).toBeVisible();
+  await page.locator("#target-anchor-day").fill("2026-10-01");
+  await page.getByRole("button", { name: "取り込む", exact: true }).click();
   await expect(page.getByRole("heading", { name: searchResults[0].title })).toBeVisible();
   await expect(page.locator(".handoff-panel")).toContainText("2026/10/01を基準");
   await expect(page.getByRole("link", { name: "Androidで開く" })).toHaveCount(0);
@@ -95,7 +95,7 @@ test("completed-list review uses dates and named task groups", async ({ page }) 
   });
 
   await page.goto("/?run_id=completed-run");
-  await expect(page.getByRole("heading", { name: "完了した内容を残す" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "完了リストを公開" })).toBeVisible();
   await expect(page.locator(".save-form .brand-mark")).toHaveCount(0);
   await expect(page.getByText("2026/10/01")).toBeVisible();
   await expect(page.getByLabel("Start date 1")).toHaveValue("2026-08-27");
@@ -113,8 +113,8 @@ test("completed-list review uses dates and named task groups", async ({ page }) 
   await expect(page.getByLabel("Group label 1")).toHaveValue("日程と業者");
 
   await page.getByRole("checkbox", { name: /個人情報が含まれていない/ }).check();
-  await page.getByRole("button", { name: "確認して残す" }).click();
-  await expect(page.getByRole("heading", { name: "残しました" })).toBeVisible();
+  await page.getByRole("button", { name: "公開する" }).click();
+  await expect(page.getByRole("heading", { name: "公開しました" })).toBeVisible();
   expect(savedBody).toHaveProperty("operation_id");
   expect(savedBody.operation_id).toBe(operationId);
   expect((savedBody as { tasks: typeof tasks }).tasks[0].relative_start_day).toBe(-35);
