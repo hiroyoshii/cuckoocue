@@ -68,12 +68,17 @@ struct CuckooCueWidgetEntryView: View {
     let entry: CueTimelineEntry
 
     var body: some View {
-        CueWidgetCard(
+        let card = CueWidgetCard(
             snapshot: entry.snapshot,
             family: family,
             configuredRunID: entry.configuredRunID,
             includeQuiet: entry.includeQuiet
         )
+#if SCREENSHOT_TESTING
+        card.unredacted()
+#else
+        card
+#endif
     }
 }
 

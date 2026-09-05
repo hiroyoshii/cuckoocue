@@ -107,7 +107,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             SWIFT_ACTIVE_COMPILATION_CONDITIONS='$(inherited) SCREENSHOT_TESTING' \
             | tee build/CuckooCueHomeScreenTests.log
-          sleep 2
+          sleep 8
           xcrun simctl uninstall "$simulator_id" app.cuckoocue.ios.uitests.xctrunner 2>/dev/null || true
           xcrun simctl uninstall "$simulator_id" app.cuckoocue.ios.homescreen-uitests.xctrunner 2>/dev/null || true
           xcrun simctl io "$simulator_id" screenshot \

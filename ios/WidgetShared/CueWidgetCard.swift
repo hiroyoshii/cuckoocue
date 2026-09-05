@@ -41,7 +41,7 @@ struct CueWidgetCard: View {
     }
 
     private var pageSize: Int {
-        family == .systemSmall ? visibleCount : max(visibleCount - (undoTask == nil ? 0 : 1), 1)
+        visibleCount
     }
 
     private var scopeID: String {
