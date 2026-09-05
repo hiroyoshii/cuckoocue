@@ -100,5 +100,12 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.cuckoocue.ios.homescreen-uitests
-    scheme: {}
-
+schemes:
+  CuckooCueHomeScreenUITests:
+    build:
+      targets:
+        CuckooCue: all
+        CuckooCueHomeScreenUITests: [test]
+    test:
+      targets:
+        - CuckooCueHomeScreenUITests
