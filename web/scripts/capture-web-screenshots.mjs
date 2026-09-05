@@ -76,7 +76,7 @@ try {
       await submitSearch(cdp, "東京から名古屋へ引っ越す。役所、ライフライン、郵便転送、住所変更を整理したい。");
       await waitForText(cdp, "東京から名古屋への引っ越し手続き", 30000);
       await cdp.eval(`document.querySelector('.import-action')?.click()`);
-      await waitForText(cdp, "完了予定日を設定", 10000);
+      await waitForText(cdp, "完了日を選ぶ", 10000);
       await cdp.eval(`
         const input = document.querySelector('#target-anchor-day');
         if (input) {
