@@ -25,7 +25,7 @@ final class CuckooCueHomeScreenTests: XCTestCase {
         XCTAssertTrue(addWidgetMenuButton.waitForExistence(timeout: 5))
         addWidgetMenuButton.tap()
 
-        let searchField = springboard.searchFields.firstMatch
+        let searchField = springboard.searchFields["Search Widgets"]
         XCTAssertTrue(searchField.waitForExistence(timeout: 8))
         searchField.tap()
         searchField.typeText("Cuckoo Cue")
