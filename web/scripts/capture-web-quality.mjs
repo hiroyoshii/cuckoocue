@@ -18,7 +18,6 @@ try {
   await searchPage.screenshot({ path: output("08-empty-mobile.png"), fullPage: true });
   await searchPage.setViewportSize({ width: 1440, height: 1050 });
   await searchPage.getByLabel("Search query").fill("東京から名古屋へ引っ越す。役所、ライフライン、郵便転送、住所変更を整理したい。");
-  await searchPage.locator("#target-anchor-day").fill("2026-10-01");
   await searchPage.locator("form").getByRole("button", { name: "探す", exact: true }).click();
   await searchPage.locator(".cue-result").first().waitFor({ timeout: 45_000 });
   await searchPage.screenshot({ path: output("02-search-results-desktop.png"), fullPage: true });
@@ -28,6 +27,8 @@ try {
 
   await searchPage.setViewportSize({ width: 1440, height: 1050 });
   await searchPage.locator(".import-action").first().click();
+  await searchPage.getByLabel("完了予定日").fill("2026-10-01");
+  await searchPage.getByRole("button", { name: "この日程で使う" }).click();
   await searchPage.locator(".handoff-panel").waitFor({ timeout: 15_000 });
   await searchPage.screenshot({ path: output("03-import-ready-desktop.png"), fullPage: true });
   await searchContext.close();

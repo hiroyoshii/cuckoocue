@@ -177,20 +177,10 @@ input:focus, textarea:focus, select:focus, button:focus-visible, summary:focus-v
 .search-composer > div {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 16px;
   margin-top: 12px;
 }
-.anchor-field {
-  min-height: 44px;
-  display: grid;
-  grid-template-columns: auto auto 148px;
-  align-items: center;
-  gap: 8px;
-  color: var(--muted);
-}
-.anchor-field > span { font-size: 12px; font-weight: 800; }
-.anchor-field input { padding: 9px; }
 .primary-action, .save-actions > button:not(.secondary-action), .publish-action, .save-success button {
   min-height: 44px;
   border: 0;
@@ -204,6 +194,32 @@ input:focus, textarea:focus, select:focus, button:focus-visible, summary:focus-v
   background: var(--teal-dark);
   font-weight: 800;
 }
+.import-date-dialog {
+  width: min(460px, calc(100% - 32px));
+  max-height: calc(100dvh - 32px);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0;
+  color: var(--ink);
+  background: var(--surface);
+  box-shadow: 0 18px 52px rgb(59 33 23 / 18%);
+}
+.import-date-dialog::backdrop { background: rgb(59 33 23 / 32%); }
+.import-date-dialog form { display: grid; gap: 22px; padding: 22px; }
+.import-date-dialog header { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 12px; }
+.import-date-dialog header > span { min-width: 0; display: grid; gap: 3px; }
+.import-date-dialog header small { color: var(--teal); font-size: 10px; font-weight: 850; }
+.import-date-dialog header strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
+.import-date-dialog .icon-button { width: 40px; height: 40px; border: 0; border-radius: 7px; display: grid; place-items: center; color: var(--muted); background: transparent; }
+.import-date-copy { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 12px; }
+.import-date-copy > svg { margin-top: 2px; color: var(--teal); }
+.import-date-copy h2 { margin: 0; font-size: 21px; line-height: 1.35; }
+.import-date-copy p { margin: 5px 0 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
+.import-date-dialog form > label { display: grid; gap: 7px; }
+.import-date-dialog form > label > span { color: var(--muted); font-size: 12px; font-weight: 800; }
+.import-date-dialog input { min-height: 46px; }
+.import-date-dialog footer { display: flex; justify-content: flex-end; gap: 8px; }
+.import-date-dialog footer button { min-height: 44px; }
 
 .error-banner {
   width: min(820px, 100%);
@@ -474,9 +490,10 @@ input:focus, textarea:focus, select:focus, button:focus-visible, summary:focus-v
   .workspace-heading { margin-bottom: 22px; }
   .workspace-heading h1 { font-size: 30px; }
   .search-composer textarea { min-height: 128px; padding: 14px; font-size: 19px; }
-  .search-composer > div { align-items: stretch; flex-direction: column; }
-  .anchor-field { grid-template-columns: auto auto minmax(0, 1fr); }
+  .search-composer > div { align-items: stretch; }
   .primary-action { width: 100%; }
+  .import-date-dialog form { padding: 18px; }
+  .import-date-dialog footer { display: grid; grid-template-columns: 1fr 1fr; }
   .handoff-panel > header { grid-template-columns: minmax(0, 1fr); }
   .handoff-panel a { justify-content: center; }
   .handoff-summary, .handoff-panel ol, .handoff-rest { margin-left: 0; }

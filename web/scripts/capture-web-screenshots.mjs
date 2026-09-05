@@ -76,7 +76,17 @@ try {
       await submitSearch(cdp, "東京から名古屋へ引っ越す。役所、ライフライン、郵便転送、住所変更を整理したい。");
       await waitForText(cdp, "東京から名古屋への引っ越し手続き", 30000);
       await cdp.eval(`document.querySelector('.import-action')?.click()`);
-      await waitForText(cdp, "件を準備しました", 10000);
+      await waitForText(cdp, "いつ完了する予定ですか？", 10000);
+      await cdp.eval(`
+        const input = document.querySelector('#target-anchor-day');
+        if (input) {
+          const setter = Object.getOwnPropertyDescriptor(input.constructor.prototype, 'value').set;
+          setter.call(input, '2026-10-01');
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        document.querySelector('.import-date-dialog .primary-action')?.click();
+      `);
+      await waitFor(cdp, () => Boolean(document.querySelector('.handoff-panel')), 10000);
     },
   );
 
