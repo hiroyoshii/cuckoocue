@@ -1,5 +1,5 @@
 Command line invocation:
-    /Applications/Xcode_16.4.app/Contents/Developer/usr/bin/xcodebuild test -project ios/CuckooCue.xcodeproj -scheme CuckooCueHomeScreenUITests -destination "platform=iOS Simulator,id=6B8F11A8-8449-438F-B166-D8B7296DD37C" -derivedDataPath build/ios-home-derived-data -resultBundlePath build/CuckooCueHomeScreenTests.xcresult CODE_SIGNING_ALLOWED=NO
+    /Applications/Xcode_16.4.app/Contents/Developer/usr/bin/xcodebuild test -project ios/CuckooCue.xcodeproj -scheme CuckooCueHomeScreenUITests -destination "platform=iOS Simulator,id=4E403244-2DFC-47F4-A8D3-FE0EDFF41CCC" -derivedDataPath build/ios-home-derived-data -resultBundlePath build/CuckooCueHomeScreenTests.xcresult CODE_SIGNING_ALLOWED=NO
 
 Build settings from command line:
     CODE_SIGNING_ALLOWED = NO
@@ -40,8 +40,12 @@ ExecuteExternalTool /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/X
 
 ExecuteExternalTool /Applications/Xcode_16.4.app/Contents/Developer/usr/bin/actool --version --output-format xml1
 
-Build description signature: 3b7fc7d50428dae3023df0cf25c38030
-Build description path: /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/XCBuildData/3b7fc7d50428dae3023df0cf25c38030.xcbuilddata
+Build description signature: cbcc8e3b9c9253dda412edcb8a91a305
+Build description path: /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/XCBuildData/cbcc8e3b9c9253dda412edcb8a91a305.xcbuilddata
+ClangStatCache /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator18.5.sdk /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/SDKStatCaches.noindex/iphonesimulator18.5-22F76-96ae0914227b19deccb34b33ba7b5dea.sdkstatcache
+    cd /Users/runner/work/cuckoocue/cuckoocue/ios/CuckooCue.xcodeproj
+    /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator18.5.sdk -o /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/SDKStatCaches.noindex/iphonesimulator18.5-22F76-96ae0914227b19deccb34b33ba7b5dea.sdkstatcache
+
 CreateBuildDirectory /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products
     cd /Users/runner/work/cuckoocue/cuckoocue/ios/CuckooCue.xcodeproj
     builtin-create-build-directory /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products
@@ -50,17 +54,13 @@ CreateBuildDirectory /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-deriv
     cd /Users/runner/work/cuckoocue/cuckoocue/ios/CuckooCue.xcodeproj
     builtin-create-build-directory /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex
 
-ClangStatCache /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator18.5.sdk /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/SDKStatCaches.noindex/iphonesimulator18.5-22F76-96ae0914227b19deccb34b33ba7b5dea.sdkstatcache
+CreateBuildDirectory /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator
     cd /Users/runner/work/cuckoocue/cuckoocue/ios/CuckooCue.xcodeproj
-    /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator18.5.sdk -o /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/SDKStatCaches.noindex/iphonesimulator18.5-22F76-96ae0914227b19deccb34b33ba7b5dea.sdkstatcache
+    builtin-create-build-directory /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator
 
 WriteAuxiliaryFile /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue-c7396aa5c5db8fd928bf699cea97fa9f-VFS-iphonesimulator/all-product-headers.yaml
     cd /Users/runner/work/cuckoocue/cuckoocue/ios/CuckooCue.xcodeproj
     write-file /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue-c7396aa5c5db8fd928bf699cea97fa9f-VFS-iphonesimulator/all-product-headers.yaml
-
-CreateBuildDirectory /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator
-    cd /Users/runner/work/cuckoocue/cuckoocue/ios/CuckooCue.xcodeproj
-    builtin-create-build-directory /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator
 
 CreateBuildDirectory /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator
     cd /Users/runner/work/cuckoocue/cuckoocue/ios/CuckooCue.xcodeproj
@@ -276,27 +276,7 @@ EmitSwiftModule normal arm64 (in target 'CuckooCueWidgetExtension' from project 
     cd /Users/runner/work/cuckoocue/cuckoocue/ios
     
 
-SwiftCompile normal arm64 Compiling\ CueStorage.swift,\ CueStore.swift /Users/runner/work/cuckoocue/cuckoocue/ios/Shared/CueStorage.swift /Users/runner/work/cuckoocue/cuckoocue/ios/Shared/CueStore.swift (in target 'CuckooCueWidgetExtension' from project 'CuckooCue')
-SwiftCompile normal arm64 /Users/runner/work/cuckoocue/cuckoocue/ios/Shared/CueStorage.swift (in target 'CuckooCueWidgetExtension' from project 'CuckooCue')
-    cd /Users/runner/work/cuckoocue/cuckoocue/ios
-    
-
-SwiftCompile normal arm64 /Users/runner/work/cuckoocue/cuckoocue/ios/Shared/CueStore.swift (in target 'CuckooCueWidgetExtension' from project 'CuckooCue')
-    cd /Users/runner/work/cuckoocue/cuckoocue/ios
-    
-
-SwiftCompile normal arm64 Compiling\ CuckooCueWidget.swift,\ CueModels.swift /Users/runner/work/cuckoocue/cuckoocue/ios/CuckooCueWidget/CuckooCueWidget.swift /Users/runner/work/cuckoocue/cuckoocue/ios/Shared/CueModels.swift (in target 'CuckooCueWidgetExtension' from project 'CuckooCue')
-
-SwiftCompile normal arm64 /Users/runner/work/cuckoocue/cuckoocue/ios/CuckooCueWidget/CuckooCueWidget.swift (in target 'CuckooCueWidgetExtension' from project 'CuckooCue')
-    cd /Users/runner/work/cuckoocue/cuckoocue/ios
-    
-
-SwiftCompile normal arm64 /Users/runner/work/cuckoocue/cuckoocue/ios/Shared/CueModels.swift (in target 'CuckooCueWidgetExtension' from project 'CuckooCue')
-    cd /Users/runner/work/cuckoocue/cuckoocue/ios
-    
-
 SwiftCompile normal arm64 Compiling\ CueWidgetCard.swift,\ CueWidgetIntents.swift /Users/runner/work/cuckoocue/cuckoocue/ios/WidgetShared/CueWidgetCard.swift /Users/runner/work/cuckoocue/cuckoocue/ios/Shared/CueWidgetIntents.swift (in target 'CuckooCueWidgetExtension' from project 'CuckooCue')
-
 SwiftCompile normal arm64 /Users/runner/work/cuckoocue/cuckoocue/ios/WidgetShared/CueWidgetCard.swift (in target 'CuckooCueWidgetExtension' from project 'CuckooCue')
     cd /Users/runner/work/cuckoocue/cuckoocue/ios
     
@@ -305,11 +285,32 @@ SwiftCompile normal arm64 /Users/runner/work/cuckoocue/cuckoocue/ios/Shared/CueW
     cd /Users/runner/work/cuckoocue/cuckoocue/ios
     
 
+SwiftCompile normal arm64 Compiling\ CuckooCueWidget.swift,\ CueModels.swift /Users/runner/work/cuckoocue/cuckoocue/ios/CuckooCueWidget/CuckooCueWidget.swift /Users/runner/work/cuckoocue/cuckoocue/ios/Shared/CueModels.swift (in target 'CuckooCueWidgetExtension' from project 'CuckooCue')
+SwiftCompile normal arm64 /Users/runner/work/cuckoocue/cuckoocue/ios/CuckooCueWidget/CuckooCueWidget.swift (in target 'CuckooCueWidgetExtension' from project 'CuckooCue')
+    cd /Users/runner/work/cuckoocue/cuckoocue/ios
+    
+
+SwiftCompile normal arm64 /Users/runner/work/cuckoocue/cuckoocue/ios/Shared/CueModels.swift (in target 'CuckooCueWidgetExtension' from project 'CuckooCue')
+    cd /Users/runner/work/cuckoocue/cuckoocue/ios
+    
+
+SwiftCompile normal arm64 Compiling\ CueStorage.swift,\ CueStore.swift /Users/runner/work/cuckoocue/cuckoocue/ios/Shared/CueStorage.swift /Users/runner/work/cuckoocue/cuckoocue/ios/Shared/CueStore.swift (in target 'CuckooCueWidgetExtension' from project 'CuckooCue')
+
+SwiftCompile normal arm64 /Users/runner/work/cuckoocue/cuckoocue/ios/Shared/CueStorage.swift (in target 'CuckooCueWidgetExtension' from project 'CuckooCue')
+    cd /Users/runner/work/cuckoocue/cuckoocue/ios
+    
+
+SwiftCompile normal arm64 /Users/runner/work/cuckoocue/cuckoocue/ios/Shared/CueStore.swift (in target 'CuckooCueWidgetExtension' from project 'CuckooCue')
+    cd /Users/runner/work/cuckoocue/cuckoocue/ios
+    
+
 SwiftDriverJobDiscovery normal arm64 Emitting module for CuckooCueWidget (in target 'CuckooCueWidgetExtension' from project 'CuckooCue')
 
 SwiftDriver\ Compilation\ Requirements CuckooCueWidgetExtension normal arm64 com.apple.xcode.tools.swift.compiler (in target 'CuckooCueWidgetExtension' from project 'CuckooCue')
     cd /Users/runner/work/cuckoocue/cuckoocue/ios
     builtin-Swift-Compilation-Requirements -- /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name CuckooCueWidget -Onone -enforce-exclusivity\=checked @/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/Objects-normal/arm64/CuckooCueWidget.SwiftFileList -DDEBUG -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator18.5.sdk -target arm64-apple-ios17.0-simulator -g -module-cache-path /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/ModuleCache.noindex -Xfrontend -serialize-debugging-options -application-extension -enable-testing -index-store-path /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Index.noindex/DataStore -swift-version 5 -I /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator -F /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator -c -j3 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/SDKStatCaches.noindex/iphonesimulator18.5-22F76-96ae0914227b19deccb34b33ba7b5dea.sdkstatcache -output-file-map /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/Objects-normal/arm64/CuckooCueWidgetExtension-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/Objects-normal/arm64/CuckooCueWidget.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/Objects-normal/arm64/CuckooCueWidgetExtension_const_extract_protocols.json -Xcc -iquote -Xcc /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/CuckooCueWidget-generated-files.hmap -Xcc -I/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/CuckooCueWidget-own-target-headers.hmap -Xcc -I/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/CuckooCueWidget-all-target-headers.hmap -Xcc -iquote -Xcc /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/CuckooCueWidget-project-headers.hmap -Xcc -I/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/include -Xcc -I/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/DerivedSources-normal/arm64 -Xcc -I/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/DerivedSources/arm64 -Xcc -I/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/Objects-normal/arm64/CuckooCueWidget-Swift.h -working-directory /Users/runner/work/cuckoocue/cuckoocue/ios -experimental-emit-module-separately -disable-cmo
+
+SwiftDriverJobDiscovery normal arm64 Compiling CueStorage.swift, CueStore.swift (in target 'CuckooCueWidgetExtension' from project 'CuckooCue')
 
 SwiftDriverJobDiscovery normal arm64 Compiling CueWidgetCard.swift, CueWidgetIntents.swift (in target 'CuckooCueWidgetExtension' from project 'CuckooCue')
 
@@ -334,6 +335,14 @@ Copy /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Pr
 Copy /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueWidget.swiftmodule/Project/arm64-apple-ios-simulator.swiftsourceinfo /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/Objects-normal/arm64/CuckooCueWidget.swiftsourceinfo (in target 'CuckooCueWidgetExtension' from project 'CuckooCue')
     cd /Users/runner/work/cuckoocue/cuckoocue/ios
     builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/Objects-normal/arm64/CuckooCueWidget.swiftsourceinfo /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueWidget.swiftmodule/Project/arm64-apple-ios-simulator.swiftsourceinfo
+
+SwiftDriver\ Compilation CuckooCueWidgetExtension normal arm64 com.apple.xcode.tools.swift.compiler (in target 'CuckooCueWidgetExtension' from project 'CuckooCue')
+    cd /Users/runner/work/cuckoocue/cuckoocue/ios
+    builtin-Swift-Compilation -- /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name CuckooCueWidget -Onone -enforce-exclusivity\=checked @/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/Objects-normal/arm64/CuckooCueWidget.SwiftFileList -DDEBUG -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator18.5.sdk -target arm64-apple-ios17.0-simulator -g -module-cache-path /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/ModuleCache.noindex -Xfrontend -serialize-debugging-options -application-extension -enable-testing -index-store-path /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Index.noindex/DataStore -swift-version 5 -I /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator -F /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator -c -j3 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/SDKStatCaches.noindex/iphonesimulator18.5-22F76-96ae0914227b19deccb34b33ba7b5dea.sdkstatcache -output-file-map /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/Objects-normal/arm64/CuckooCueWidgetExtension-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/Objects-normal/arm64/CuckooCueWidget.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/Objects-normal/arm64/CuckooCueWidgetExtension_const_extract_protocols.json -Xcc -iquote -Xcc /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/CuckooCueWidget-generated-files.hmap -Xcc -I/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/CuckooCueWidget-own-target-headers.hmap -Xcc -I/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/CuckooCueWidget-all-target-headers.hmap -Xcc -iquote -Xcc /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/CuckooCueWidget-project-headers.hmap -Xcc -I/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/include -Xcc -I/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/DerivedSources-normal/arm64 -Xcc -I/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/DerivedSources/arm64 -Xcc -I/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/Objects-normal/arm64/CuckooCueWidget-Swift.h -working-directory /Users/runner/work/cuckoocue/cuckoocue/ios -experimental-emit-module-separately -disable-cmo
+
+Ld /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueWidget.appex/CuckooCueWidget.debug.dylib normal (in target 'CuckooCueWidgetExtension' from project 'CuckooCue')
+    cd /Users/runner/work/cuckoocue/cuckoocue/ios
+    /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-ios17.0-simulator -dynamiclib -isysroot /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator18.5.sdk -O0 -L/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator -L/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator -F/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator -F/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator -filelist /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/Objects-normal/arm64/CuckooCueWidget.LinkFileList -install_name @rpath/CuckooCueWidget.debug.dylib -Xlinker -rpath -Xlinker @executable_path/Frameworks -Xlinker -rpath -Xlinker @executable_path/../../Frameworks -dead_strip -Xlinker -object_path_lto -Xlinker /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/Objects-normal/arm64/CuckooCueWidget_lto.o -rdynamic -Xlinker -no_deduplicate -Xlinker -objc_abi_version -Xlinker 2 -Xlinker -dependency_info -Xlinker /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/Objects-normal/arm64/CuckooCueWidget_dependency_info.dat -fapplication-extension -fobjc-link-runtime -L/Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphonesimulator -L/usr/lib/swift -Xlinker -add_ast_path -Xlinker /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/Objects-normal/arm64/CuckooCueWidget.swiftmodule -Xlinker -alias -Xlinker _NSExtensionMain -Xlinker ___debug_main_executable_dylib_entry_point -o /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueWidget.appex/CuckooCueWidget.debug.dylib
 
 MkDir /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/assetcatalog_output/unthinned (in target 'CuckooCue' from project 'CuckooCue')
     cd /Users/runner/work/cuckoocue/cuckoocue/ios
@@ -360,28 +369,51 @@ CompileAssetCatalogVariant thinned /Users/runner/work/cuckoocue/cuckoocue/build/
 /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/assetcatalog_output/thinned/Assets.car
 
 
-SwiftDriverJobDiscovery normal arm64 Compiling CueStorage.swift, CueStore.swift (in target 'CuckooCueWidgetExtension' from project 'CuckooCue')
-
-SwiftDriver\ Compilation CuckooCueWidgetExtension normal arm64 com.apple.xcode.tools.swift.compiler (in target 'CuckooCueWidgetExtension' from project 'CuckooCue')
+ConstructStubExecutorLinkFileList /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/CuckooCueWidget-ExecutorLinkFileList-normal-arm64.txt (in target 'CuckooCueWidgetExtension' from project 'CuckooCue')
     cd /Users/runner/work/cuckoocue/cuckoocue/ios
-    builtin-Swift-Compilation -- /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name CuckooCueWidget -Onone -enforce-exclusivity\=checked @/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/Objects-normal/arm64/CuckooCueWidget.SwiftFileList -DDEBUG -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator18.5.sdk -target arm64-apple-ios17.0-simulator -g -module-cache-path /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/ModuleCache.noindex -Xfrontend -serialize-debugging-options -application-extension -enable-testing -index-store-path /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Index.noindex/DataStore -swift-version 5 -I /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator -F /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator -c -j3 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/SDKStatCaches.noindex/iphonesimulator18.5-22F76-96ae0914227b19deccb34b33ba7b5dea.sdkstatcache -output-file-map /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/Objects-normal/arm64/CuckooCueWidgetExtension-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/Objects-normal/arm64/CuckooCueWidget.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/Objects-normal/arm64/CuckooCueWidgetExtension_const_extract_protocols.json -Xcc -iquote -Xcc /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/CuckooCueWidget-generated-files.hmap -Xcc -I/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/CuckooCueWidget-own-target-headers.hmap -Xcc -I/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/CuckooCueWidget-all-target-headers.hmap -Xcc -iquote -Xcc /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/CuckooCueWidget-project-headers.hmap -Xcc -I/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/include -Xcc -I/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/DerivedSources-normal/arm64 -Xcc -I/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/DerivedSources/arm64 -Xcc -I/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/Objects-normal/arm64/CuckooCueWidget-Swift.h -working-directory /Users/runner/work/cuckoocue/cuckoocue/ios -experimental-emit-module-separately -disable-cmo
+    construct-stub-executor-link-file-list /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueWidget.appex/CuckooCueWidget.debug.dylib /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/libPreviewsJITStubExecutor_no_swift_entry_point.a /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/libPreviewsJITStubExecutor.a --output /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/CuckooCueWidget-ExecutorLinkFileList-normal-arm64.txt
+note: Using stub executor library with Swift entry point. (in target 'CuckooCueWidgetExtension' from project 'CuckooCue')
 
-Ld /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueWidget.appex/CuckooCueWidget.debug.dylib normal (in target 'CuckooCueWidgetExtension' from project 'CuckooCue')
+Ld /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueWidget.appex/CuckooCueWidget normal (in target 'CuckooCueWidgetExtension' from project 'CuckooCue')
     cd /Users/runner/work/cuckoocue/cuckoocue/ios
-    /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-ios17.0-simulator -dynamiclib -isysroot /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator18.5.sdk -O0 -L/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator -L/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator -F/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator -F/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator -filelist /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/Objects-normal/arm64/CuckooCueWidget.LinkFileList -install_name @rpath/CuckooCueWidget.debug.dylib -Xlinker -rpath -Xlinker @executable_path/Frameworks -Xlinker -rpath -Xlinker @executable_path/../../Frameworks -dead_strip -Xlinker -object_path_lto -Xlinker /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/Objects-normal/arm64/CuckooCueWidget_lto.o -rdynamic -Xlinker -no_deduplicate -Xlinker -objc_abi_version -Xlinker 2 -Xlinker -dependency_info -Xlinker /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/Objects-normal/arm64/CuckooCueWidget_dependency_info.dat -fapplication-extension -fobjc-link-runtime -L/Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphonesimulator -L/usr/lib/swift -Xlinker -add_ast_path -Xlinker /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/Objects-normal/arm64/CuckooCueWidget.swiftmodule -Xlinker -alias -Xlinker _NSExtensionMain -Xlinker ___debug_main_executable_dylib_entry_point -o /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueWidget.appex/CuckooCueWidget.debug.dylib
+    /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-ios17.0-simulator -isysroot /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator18.5.sdk -O0 -L/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator -F/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator -Xlinker -rpath -Xlinker @executable_path -Xlinker -rpath -Xlinker @executable_path/Frameworks -Xlinker -rpath -Xlinker @executable_path/../../Frameworks -rdynamic -Xlinker -no_deduplicate -Xlinker -objc_abi_version -Xlinker 2 -e ___debug_blank_executor_main -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __debug_dylib -Xlinker /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/CuckooCueWidget-DebugDylibPath-normal-arm64.txt -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __debug_entry -Xlinker /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/CuckooCueWidget-DebugEntryPoint-normal-arm64.txt -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __debug_instlnm -Xlinker /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/CuckooCueWidget-DebugDylibInstallName-normal-arm64.txt -Xlinker -filelist -Xlinker /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/CuckooCueWidget-ExecutorLinkFileList-normal-arm64.txt /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueWidget.appex/CuckooCueWidget.debug.dylib -o /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueWidget.appex/CuckooCueWidget
+
+ExtractAppIntentsMetadata (in target 'CuckooCueWidgetExtension' from project 'CuckooCue')
+    cd /Users/runner/work/cuckoocue/cuckoocue/ios
+    /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsmetadataprocessor --toolchain-dir /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --module-name CuckooCueWidget --sdk-root /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator18.5.sdk --xcode-version 16F6 --platform-family iOS --deployment-target 17.0 --bundle-identifier app.cuckoocue.ios.widget --output /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueWidget.appex --target-triple arm64-apple-ios17.0-simulator --binary-file /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueWidget.appex/CuckooCueWidget --dependency-file /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/Objects-normal/arm64/CuckooCueWidget_dependency_info.dat --stringsdata-file /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/Objects-normal/arm64/ExtractedAppShortcutsMetadata.stringsdata --source-file-list /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/Objects-normal/arm64/CuckooCueWidget.SwiftFileList --metadata-file-list /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/CuckooCueWidget.DependencyMetadataFileList --static-metadata-file-list /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/CuckooCueWidget.DependencyStaticMetadataFileList --swift-const-vals-list /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/Objects-normal/arm64/CuckooCueWidget.SwiftConstValuesFileList --compile-time-extraction --deployment-aware-processing --validate-assistant-intents --no-app-shortcuts-localization
+2026-09-05 02:45:15.813 appintentsmetadataprocessor[18946:56519] Starting appintentsmetadataprocessor export
+2026-09-05 02:45:15.951 appintentsmetadataprocessor[18946:56519] Writing Metadata.appintents
+2026-09-05 02:45:15.951 appintentsmetadataprocessor[18946:56519] Metadata root: /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueWidget.appex/Metadata.appintents
+
+AppIntentsSSUTraining (in target 'CuckooCueWidgetExtension' from project 'CuckooCue')
+    cd /Users/runner/work/cuckoocue/cuckoocue/ios
+    /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsnltrainingprocessor --infoplist-path /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueWidget.appex/Info.plist --temp-dir-path /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/ssu --bundle-id app.cuckoocue.ios.widget --product-path /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueWidget.appex --extracted-metadata-path /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueWidget.appex/Metadata.appintents --metadata-file-list /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/CuckooCueWidget.DependencyMetadataFileList --archive-ssu-assets
+2026-09-05 02:45:15.990 appintentsnltrainingprocessor[18980:56606] Parsing options for appintentsnltrainingprocessor
+2026-09-05 02:45:15.993 appintentsnltrainingprocessor[18980:56606] Starting AppIntents SSU YAML Generation
+2026-09-05 02:45:16.011 appintentsnltrainingprocessor[18980:56606] No AppShortcuts found - Skipping.
+
+RegisterExecutionPolicyException /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueWidget.appex (in target 'CuckooCueWidgetExtension' from project 'CuckooCue')
+    cd /Users/runner/work/cuckoocue/cuckoocue/ios
+    builtin-RegisterExecutionPolicyException /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueWidget.appex
+
+Touch /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueWidget.appex (in target 'CuckooCueWidgetExtension' from project 'CuckooCue')
+    cd /Users/runner/work/cuckoocue/cuckoocue/ios
+    /usr/bin/touch -c /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueWidget.appex
+
+Ld /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCue.app/__preview.dylib normal (in target 'CuckooCue' from project 'CuckooCue')
+    cd /Users/runner/work/cuckoocue/cuckoocue/ios
+    /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-ios17.0-simulator -dynamiclib -isysroot /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator18.5.sdk -O0 -L/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator -F/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator -install_name @rpath/CuckooCue.debug.dylib -dead_strip -rdynamic -Xlinker -no_deduplicate -Xlinker -objc_abi_version -Xlinker 2 -Xlinker -dependency_info -Xlinker /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/Objects-normal/arm64/CuckooCue_dependency_info.dat -o /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCue.app/__preview.dylib
 
 SwiftDriver CuckooCue normal arm64 com.apple.xcode.tools.swift.compiler (in target 'CuckooCue' from project 'CuckooCue')
     cd /Users/runner/work/cuckoocue/cuckoocue/ios
     builtin-SwiftDriver -- /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name CuckooCue -Onone -enforce-exclusivity\=checked @/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/Objects-normal/arm64/CuckooCue.SwiftFileList -DDEBUG -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator18.5.sdk -target arm64-apple-ios17.0-simulator -g -module-cache-path /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Index.noindex/DataStore -swift-version 5 -I /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator -F /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator -c -j3 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/SDKStatCaches.noindex/iphonesimulator18.5-22F76-96ae0914227b19deccb34b33ba7b5dea.sdkstatcache -output-file-map /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/Objects-normal/arm64/CuckooCue-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/Objects-normal/arm64/CuckooCue.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/Objects-normal/arm64/CuckooCue_const_extract_protocols.json -Xcc -iquote -Xcc /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/CuckooCue-generated-files.hmap -Xcc -I/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/CuckooCue-own-target-headers.hmap -Xcc -I/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/CuckooCue-all-target-headers.hmap -Xcc -iquote -Xcc /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/CuckooCue-project-headers.hmap -Xcc -I/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/include -Xcc -I/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/DerivedSources-normal/arm64 -Xcc -I/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/DerivedSources/arm64 -Xcc -I/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/Objects-normal/arm64/CuckooCue-Swift.h -working-directory /Users/runner/work/cuckoocue/cuckoocue/ios -experimental-emit-module-separately -disable-cmo
 
 SwiftEmitModule normal arm64 Emitting\ module\ for\ CuckooCue (in target 'CuckooCue' from project 'CuckooCue')
-
 EmitSwiftModule normal arm64 (in target 'CuckooCue' from project 'CuckooCue')
     cd /Users/runner/work/cuckoocue/cuckoocue/ios
     
 
 SwiftCompile normal arm64 Compiling\ MainTabView.swift,\ ScreenshotGalleryView.swift,\ GeneratedAssetSymbols.swift /Users/runner/work/cuckoocue/cuckoocue/ios/CuckooCue/MainTabView.swift /Users/runner/work/cuckoocue/cuckoocue/ios/CuckooCue/ScreenshotGalleryView.swift /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/DerivedSources/GeneratedAssetSymbols.swift (in target 'CuckooCue' from project 'CuckooCue')
-
 SwiftCompile normal arm64 /Users/runner/work/cuckoocue/cuckoocue/ios/CuckooCue/MainTabView.swift (in target 'CuckooCue' from project 'CuckooCue')
     cd /Users/runner/work/cuckoocue/cuckoocue/ios
     
@@ -391,55 +423,6 @@ SwiftCompile normal arm64 /Users/runner/work/cuckoocue/cuckoocue/ios/CuckooCue/S
     
 
 SwiftCompile normal arm64 /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/DerivedSources/GeneratedAssetSymbols.swift (in target 'CuckooCue' from project 'CuckooCue')
-    cd /Users/runner/work/cuckoocue/cuckoocue/ios
-    
-
-ConstructStubExecutorLinkFileList /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/CuckooCueWidget-ExecutorLinkFileList-normal-arm64.txt (in target 'CuckooCueWidgetExtension' from project 'CuckooCue')
-    cd /Users/runner/work/cuckoocue/cuckoocue/ios
-    construct-stub-executor-link-file-list /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueWidget.appex/CuckooCueWidget.debug.dylib /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/libPreviewsJITStubExecutor_no_swift_entry_point.a /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/libPreviewsJITStubExecutor.a --output /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/CuckooCueWidget-ExecutorLinkFileList-normal-arm64.txt
-note: Using stub executor library with Swift entry point. (in target 'CuckooCueWidgetExtension' from project 'CuckooCue')
-
-SwiftDriverJobDiscovery normal arm64 Emitting module for CuckooCue (in target 'CuckooCue' from project 'CuckooCue')
-
-SwiftDriver\ Compilation\ Requirements CuckooCue normal arm64 com.apple.xcode.tools.swift.compiler (in target 'CuckooCue' from project 'CuckooCue')
-    cd /Users/runner/work/cuckoocue/cuckoocue/ios
-    builtin-Swift-Compilation-Requirements -- /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name CuckooCue -Onone -enforce-exclusivity\=checked @/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/Objects-normal/arm64/CuckooCue.SwiftFileList -DDEBUG -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator18.5.sdk -target arm64-apple-ios17.0-simulator -g -module-cache-path /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Index.noindex/DataStore -swift-version 5 -I /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator -F /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator -c -j3 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/SDKStatCaches.noindex/iphonesimulator18.5-22F76-96ae0914227b19deccb34b33ba7b5dea.sdkstatcache -output-file-map /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/Objects-normal/arm64/CuckooCue-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/Objects-normal/arm64/CuckooCue.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/Objects-normal/arm64/CuckooCue_const_extract_protocols.json -Xcc -iquote -Xcc /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/CuckooCue-generated-files.hmap -Xcc -I/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/CuckooCue-own-target-headers.hmap -Xcc -I/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/CuckooCue-all-target-headers.hmap -Xcc -iquote -Xcc /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/CuckooCue-project-headers.hmap -Xcc -I/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/include -Xcc -I/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/DerivedSources-normal/arm64 -Xcc -I/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/DerivedSources/arm64 -Xcc -I/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/Objects-normal/arm64/CuckooCue-Swift.h -working-directory /Users/runner/work/cuckoocue/cuckoocue/ios -experimental-emit-module-separately -disable-cmo
-
-Ld /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueWidget.appex/CuckooCueWidget normal (in target 'CuckooCueWidgetExtension' from project 'CuckooCue')
-    cd /Users/runner/work/cuckoocue/cuckoocue/ios
-    /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-ios17.0-simulator -isysroot /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator18.5.sdk -O0 -L/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator -F/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator -Xlinker -rpath -Xlinker @executable_path -Xlinker -rpath -Xlinker @executable_path/Frameworks -Xlinker -rpath -Xlinker @executable_path/../../Frameworks -rdynamic -Xlinker -no_deduplicate -Xlinker -objc_abi_version -Xlinker 2 -e ___debug_blank_executor_main -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __debug_dylib -Xlinker /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/CuckooCueWidget-DebugDylibPath-normal-arm64.txt -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __debug_entry -Xlinker /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/CuckooCueWidget-DebugEntryPoint-normal-arm64.txt -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __debug_instlnm -Xlinker /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/CuckooCueWidget-DebugDylibInstallName-normal-arm64.txt -Xlinker -filelist -Xlinker /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/CuckooCueWidget-ExecutorLinkFileList-normal-arm64.txt /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueWidget.appex/CuckooCueWidget.debug.dylib -o /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueWidget.appex/CuckooCueWidget
-
-SwiftMergeGeneratedHeaders /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/DerivedSources/CuckooCue-Swift.h /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/Objects-normal/arm64/CuckooCue-Swift.h (in target 'CuckooCue' from project 'CuckooCue')
-    cd /Users/runner/work/cuckoocue/cuckoocue/ios
-    builtin-swiftHeaderTool -arch arm64 /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/Objects-normal/arm64/CuckooCue-Swift.h -o /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/DerivedSources/CuckooCue-Swift.h
-
-Copy /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCue.swiftmodule/arm64-apple-ios-simulator.swiftmodule /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/Objects-normal/arm64/CuckooCue.swiftmodule (in target 'CuckooCue' from project 'CuckooCue')
-    cd /Users/runner/work/cuckoocue/cuckoocue/ios
-    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/Objects-normal/arm64/CuckooCue.swiftmodule /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCue.swiftmodule/arm64-apple-ios-simulator.swiftmodule
-
-Copy /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCue.swiftmodule/arm64-apple-ios-simulator.swiftdoc /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/Objects-normal/arm64/CuckooCue.swiftdoc (in target 'CuckooCue' from project 'CuckooCue')
-    cd /Users/runner/work/cuckoocue/cuckoocue/ios
-    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/Objects-normal/arm64/CuckooCue.swiftdoc /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCue.swiftmodule/arm64-apple-ios-simulator.swiftdoc
-
-Copy /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCue.swiftmodule/arm64-apple-ios-simulator.abi.json /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/Objects-normal/arm64/CuckooCue.abi.json (in target 'CuckooCue' from project 'CuckooCue')
-    cd /Users/runner/work/cuckoocue/cuckoocue/ios
-    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/Objects-normal/arm64/CuckooCue.abi.json /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCue.swiftmodule/arm64-apple-ios-simulator.abi.json
-
-Copy /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCue.swiftmodule/Project/arm64-apple-ios-simulator.swiftsourceinfo /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/Objects-normal/arm64/CuckooCue.swiftsourceinfo (in target 'CuckooCue' from project 'CuckooCue')
-    cd /Users/runner/work/cuckoocue/cuckoocue/ios
-    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/Objects-normal/arm64/CuckooCue.swiftsourceinfo /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCue.swiftmodule/Project/arm64-apple-ios-simulator.swiftsourceinfo
-
-SwiftCompile normal arm64 Compiling\ CueStore.swift,\ CueWidgetCard.swift,\ CueWidgetIntents.swift /Users/runner/work/cuckoocue/cuckoocue/ios/Shared/CueStore.swift /Users/runner/work/cuckoocue/cuckoocue/ios/WidgetShared/CueWidgetCard.swift /Users/runner/work/cuckoocue/cuckoocue/ios/Shared/CueWidgetIntents.swift (in target 'CuckooCue' from project 'CuckooCue')
-
-SwiftCompile normal arm64 /Users/runner/work/cuckoocue/cuckoocue/ios/Shared/CueStore.swift (in target 'CuckooCue' from project 'CuckooCue')
-    cd /Users/runner/work/cuckoocue/cuckoocue/ios
-    
-
-SwiftCompile normal arm64 /Users/runner/work/cuckoocue/cuckoocue/ios/WidgetShared/CueWidgetCard.swift (in target 'CuckooCue' from project 'CuckooCue')
-    cd /Users/runner/work/cuckoocue/cuckoocue/ios
-    
-
-SwiftCompile normal arm64 /Users/runner/work/cuckoocue/cuckoocue/ios/Shared/CueWidgetIntents.swift (in target 'CuckooCue' from project 'CuckooCue')
     cd /Users/runner/work/cuckoocue/cuckoocue/ios
     
 
@@ -457,23 +440,51 @@ SwiftCompile normal arm64 /Users/runner/work/cuckoocue/cuckoocue/ios/Shared/CueS
     cd /Users/runner/work/cuckoocue/cuckoocue/ios
     
 
-SwiftDriverJobDiscovery normal arm64 Compiling MainTabView.swift, ScreenshotGalleryView.swift, GeneratedAssetSymbols.swift (in target 'CuckooCue' from project 'CuckooCue')
-
-SwiftDriverJobDiscovery normal arm64 Compiling CueStore.swift, CueWidgetCard.swift, CueWidgetIntents.swift (in target 'CuckooCue' from project 'CuckooCue')
-
-ExtractAppIntentsMetadata (in target 'CuckooCueWidgetExtension' from project 'CuckooCue')
+LinkAssetCatalog /Users/runner/work/cuckoocue/cuckoocue/ios/CuckooCue/Assets.xcassets (in target 'CuckooCue' from project 'CuckooCue')
     cd /Users/runner/work/cuckoocue/cuckoocue/ios
-    /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsmetadataprocessor --toolchain-dir /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --module-name CuckooCueWidget --sdk-root /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator18.5.sdk --xcode-version 16F6 --platform-family iOS --deployment-target 17.0 --bundle-identifier app.cuckoocue.ios.widget --output /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueWidget.appex --target-triple arm64-apple-ios17.0-simulator --binary-file /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueWidget.appex/CuckooCueWidget --dependency-file /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/Objects-normal/arm64/CuckooCueWidget_dependency_info.dat --stringsdata-file /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/Objects-normal/arm64/ExtractedAppShortcutsMetadata.stringsdata --source-file-list /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/Objects-normal/arm64/CuckooCueWidget.SwiftFileList --metadata-file-list /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/CuckooCueWidget.DependencyMetadataFileList --static-metadata-file-list /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/CuckooCueWidget.DependencyStaticMetadataFileList --swift-const-vals-list /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/Objects-normal/arm64/CuckooCueWidget.SwiftConstValuesFileList --compile-time-extraction --deployment-aware-processing --validate-assistant-intents --no-app-shortcuts-localization
-2026-09-05 02:37:24.065 appintentsmetadataprocessor[21079:62205] Starting appintentsmetadataprocessor export
-2026-09-05 02:37:24.157 appintentsmetadataprocessor[21079:62205] Writing Metadata.appintents
-2026-09-05 02:37:24.158 appintentsmetadataprocessor[21079:62205] Metadata root: /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueWidget.appex/Metadata.appintents
+    builtin-linkAssetCatalog --thinned /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/assetcatalog_output/thinned --thinned-dependencies /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/assetcatalog_dependencies_thinned --thinned-info-plist-content /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/assetcatalog_generated_info.plist_thinned --unthinned /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/assetcatalog_output/unthinned --unthinned-dependencies /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/assetcatalog_dependencies_unthinned --unthinned-info-plist-content /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/assetcatalog_generated_info.plist_unthinned --output /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCue.app --plist-output /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/assetcatalog_generated_info.plist
+note: Emplaced /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCue.app/Assets.car (in target 'CuckooCue' from project 'CuckooCue')
 
-AppIntentsSSUTraining (in target 'CuckooCueWidgetExtension' from project 'CuckooCue')
+SwiftDriverJobDiscovery normal arm64 Emitting module for CuckooCue (in target 'CuckooCue' from project 'CuckooCue')
+
+SwiftDriver\ Compilation\ Requirements CuckooCue normal arm64 com.apple.xcode.tools.swift.compiler (in target 'CuckooCue' from project 'CuckooCue')
     cd /Users/runner/work/cuckoocue/cuckoocue/ios
-    /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsnltrainingprocessor --infoplist-path /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueWidget.appex/Info.plist --temp-dir-path /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/ssu --bundle-id app.cuckoocue.ios.widget --product-path /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueWidget.appex --extracted-metadata-path /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueWidget.appex/Metadata.appintents --metadata-file-list /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueWidgetExtension.build/CuckooCueWidget.DependencyMetadataFileList --archive-ssu-assets
-2026-09-05 02:37:24.219 appintentsnltrainingprocessor[21080:62210] Parsing options for appintentsnltrainingprocessor
-2026-09-05 02:37:24.229 appintentsnltrainingprocessor[21080:62210] Starting AppIntents SSU YAML Generation
-2026-09-05 02:37:24.258 appintentsnltrainingprocessor[21080:62210] No AppShortcuts found - Skipping.
+    builtin-Swift-Compilation-Requirements -- /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name CuckooCue -Onone -enforce-exclusivity\=checked @/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/Objects-normal/arm64/CuckooCue.SwiftFileList -DDEBUG -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator18.5.sdk -target arm64-apple-ios17.0-simulator -g -module-cache-path /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Index.noindex/DataStore -swift-version 5 -I /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator -F /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator -c -j3 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/SDKStatCaches.noindex/iphonesimulator18.5-22F76-96ae0914227b19deccb34b33ba7b5dea.sdkstatcache -output-file-map /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/Objects-normal/arm64/CuckooCue-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/Objects-normal/arm64/CuckooCue.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/Objects-normal/arm64/CuckooCue_const_extract_protocols.json -Xcc -iquote -Xcc /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/CuckooCue-generated-files.hmap -Xcc -I/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/CuckooCue-own-target-headers.hmap -Xcc -I/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/CuckooCue-all-target-headers.hmap -Xcc -iquote -Xcc /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/CuckooCue-project-headers.hmap -Xcc -I/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/include -Xcc -I/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/DerivedSources-normal/arm64 -Xcc -I/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/DerivedSources/arm64 -Xcc -I/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/Objects-normal/arm64/CuckooCue-Swift.h -working-directory /Users/runner/work/cuckoocue/cuckoocue/ios -experimental-emit-module-separately -disable-cmo
+
+SwiftCompile normal arm64 Compiling\ CueStore.swift,\ CueWidgetCard.swift,\ CueWidgetIntents.swift /Users/runner/work/cuckoocue/cuckoocue/ios/Shared/CueStore.swift /Users/runner/work/cuckoocue/cuckoocue/ios/WidgetShared/CueWidgetCard.swift /Users/runner/work/cuckoocue/cuckoocue/ios/Shared/CueWidgetIntents.swift (in target 'CuckooCue' from project 'CuckooCue')
+SwiftCompile normal arm64 /Users/runner/work/cuckoocue/cuckoocue/ios/Shared/CueStore.swift (in target 'CuckooCue' from project 'CuckooCue')
+    cd /Users/runner/work/cuckoocue/cuckoocue/ios
+    
+
+SwiftCompile normal arm64 /Users/runner/work/cuckoocue/cuckoocue/ios/WidgetShared/CueWidgetCard.swift (in target 'CuckooCue' from project 'CuckooCue')
+    cd /Users/runner/work/cuckoocue/cuckoocue/ios
+    
+
+SwiftCompile normal arm64 /Users/runner/work/cuckoocue/cuckoocue/ios/Shared/CueWidgetIntents.swift (in target 'CuckooCue' from project 'CuckooCue')
+    cd /Users/runner/work/cuckoocue/cuckoocue/ios
+    
+
+SwiftMergeGeneratedHeaders /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/DerivedSources/CuckooCue-Swift.h /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/Objects-normal/arm64/CuckooCue-Swift.h (in target 'CuckooCue' from project 'CuckooCue')
+    cd /Users/runner/work/cuckoocue/cuckoocue/ios
+    builtin-swiftHeaderTool -arch arm64 /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/Objects-normal/arm64/CuckooCue-Swift.h -o /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/DerivedSources/CuckooCue-Swift.h
+
+SwiftDriverJobDiscovery normal arm64 Compiling CuckooCueApp.swift, CueModels.swift, CueStorage.swift (in target 'CuckooCue' from project 'CuckooCue')
+
+Copy /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCue.swiftmodule/arm64-apple-ios-simulator.swiftmodule /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/Objects-normal/arm64/CuckooCue.swiftmodule (in target 'CuckooCue' from project 'CuckooCue')
+    cd /Users/runner/work/cuckoocue/cuckoocue/ios
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/Objects-normal/arm64/CuckooCue.swiftmodule /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCue.swiftmodule/arm64-apple-ios-simulator.swiftmodule
+
+Copy /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCue.swiftmodule/arm64-apple-ios-simulator.swiftdoc /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/Objects-normal/arm64/CuckooCue.swiftdoc (in target 'CuckooCue' from project 'CuckooCue')
+    cd /Users/runner/work/cuckoocue/cuckoocue/ios
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/Objects-normal/arm64/CuckooCue.swiftdoc /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCue.swiftmodule/arm64-apple-ios-simulator.swiftdoc
+
+Copy /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCue.swiftmodule/arm64-apple-ios-simulator.abi.json /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/Objects-normal/arm64/CuckooCue.abi.json (in target 'CuckooCue' from project 'CuckooCue')
+    cd /Users/runner/work/cuckoocue/cuckoocue/ios
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/Objects-normal/arm64/CuckooCue.abi.json /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCue.swiftmodule/arm64-apple-ios-simulator.abi.json
+
+Copy /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCue.swiftmodule/Project/arm64-apple-ios-simulator.swiftsourceinfo /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/Objects-normal/arm64/CuckooCue.swiftsourceinfo (in target 'CuckooCue' from project 'CuckooCue')
+    cd /Users/runner/work/cuckoocue/cuckoocue/ios
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/Objects-normal/arm64/CuckooCue.swiftsourceinfo /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCue.swiftmodule/Project/arm64-apple-ios-simulator.swiftsourceinfo
 
 SwiftDriver CuckooCueHomeScreenUITests normal arm64 com.apple.xcode.tools.swift.compiler (in target 'CuckooCueHomeScreenUITests' from project 'CuckooCue')
     cd /Users/runner/work/cuckoocue/cuckoocue/ios
@@ -489,28 +500,13 @@ SwiftCompile normal arm64 /Users/runner/work/cuckoocue/cuckoocue/ios/CuckooCueHo
     cd /Users/runner/work/cuckoocue/cuckoocue/ios
     
 
-SwiftDriverJobDiscovery normal arm64 Compiling CuckooCueApp.swift, CueModels.swift, CueStorage.swift (in target 'CuckooCue' from project 'CuckooCue')
+SwiftDriverJobDiscovery normal arm64 Compiling MainTabView.swift, ScreenshotGalleryView.swift, GeneratedAssetSymbols.swift (in target 'CuckooCue' from project 'CuckooCue')
+
+SwiftDriverJobDiscovery normal arm64 Compiling CueStore.swift, CueWidgetCard.swift, CueWidgetIntents.swift (in target 'CuckooCue' from project 'CuckooCue')
 
 SwiftDriver\ Compilation CuckooCue normal arm64 com.apple.xcode.tools.swift.compiler (in target 'CuckooCue' from project 'CuckooCue')
     cd /Users/runner/work/cuckoocue/cuckoocue/ios
     builtin-Swift-Compilation -- /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name CuckooCue -Onone -enforce-exclusivity\=checked @/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/Objects-normal/arm64/CuckooCue.SwiftFileList -DDEBUG -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator18.5.sdk -target arm64-apple-ios17.0-simulator -g -module-cache-path /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Index.noindex/DataStore -swift-version 5 -I /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator -F /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator -c -j3 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/SDKStatCaches.noindex/iphonesimulator18.5-22F76-96ae0914227b19deccb34b33ba7b5dea.sdkstatcache -output-file-map /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/Objects-normal/arm64/CuckooCue-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/Objects-normal/arm64/CuckooCue.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/Objects-normal/arm64/CuckooCue_const_extract_protocols.json -Xcc -iquote -Xcc /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/CuckooCue-generated-files.hmap -Xcc -I/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/CuckooCue-own-target-headers.hmap -Xcc -I/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/CuckooCue-all-target-headers.hmap -Xcc -iquote -Xcc /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/CuckooCue-project-headers.hmap -Xcc -I/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/include -Xcc -I/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/DerivedSources-normal/arm64 -Xcc -I/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/DerivedSources/arm64 -Xcc -I/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/Objects-normal/arm64/CuckooCue-Swift.h -working-directory /Users/runner/work/cuckoocue/cuckoocue/ios -experimental-emit-module-separately -disable-cmo
-
-LinkAssetCatalog /Users/runner/work/cuckoocue/cuckoocue/ios/CuckooCue/Assets.xcassets (in target 'CuckooCue' from project 'CuckooCue')
-    cd /Users/runner/work/cuckoocue/cuckoocue/ios
-    builtin-linkAssetCatalog --thinned /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/assetcatalog_output/thinned --thinned-dependencies /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/assetcatalog_dependencies_thinned --thinned-info-plist-content /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/assetcatalog_generated_info.plist_thinned --unthinned /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/assetcatalog_output/unthinned --unthinned-dependencies /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/assetcatalog_dependencies_unthinned --unthinned-info-plist-content /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/assetcatalog_generated_info.plist_unthinned --output /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCue.app --plist-output /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/assetcatalog_generated_info.plist
-note: Emplaced /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCue.app/Assets.car (in target 'CuckooCue' from project 'CuckooCue')
-
-RegisterExecutionPolicyException /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueWidget.appex (in target 'CuckooCueWidgetExtension' from project 'CuckooCue')
-    cd /Users/runner/work/cuckoocue/cuckoocue/ios
-    builtin-RegisterExecutionPolicyException /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueWidget.appex
-
-Touch /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueWidget.appex (in target 'CuckooCueWidgetExtension' from project 'CuckooCue')
-    cd /Users/runner/work/cuckoocue/cuckoocue/ios
-    /usr/bin/touch -c /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueWidget.appex
-
-Ld /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCue.app/__preview.dylib normal (in target 'CuckooCue' from project 'CuckooCue')
-    cd /Users/runner/work/cuckoocue/cuckoocue/ios
-    /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-ios17.0-simulator -dynamiclib -isysroot /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator18.5.sdk -O0 -L/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator -F/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator -install_name @rpath/CuckooCue.debug.dylib -dead_strip -rdynamic -Xlinker -no_deduplicate -Xlinker -objc_abi_version -Xlinker 2 -Xlinker -dependency_info -Xlinker /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/Objects-normal/arm64/CuckooCue_dependency_info.dat -o /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCue.app/__preview.dylib
 
 Ld /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCue.app/CuckooCue.debug.dylib normal (in target 'CuckooCue' from project 'CuckooCue')
     cd /Users/runner/work/cuckoocue/cuckoocue/ios
@@ -540,9 +536,9 @@ ValidateEmbeddedBinary /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-der
 ExtractAppIntentsMetadata (in target 'CuckooCue' from project 'CuckooCue')
     cd /Users/runner/work/cuckoocue/cuckoocue/ios
     /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsmetadataprocessor --toolchain-dir /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --module-name CuckooCue --sdk-root /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator18.5.sdk --xcode-version 16F6 --platform-family iOS --deployment-target 17.0 --bundle-identifier app.cuckoocue.ios --output /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCue.app --target-triple arm64-apple-ios17.0-simulator --binary-file /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCue.app/CuckooCue --dependency-file /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/Objects-normal/arm64/CuckooCue_dependency_info.dat --stringsdata-file /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/Objects-normal/arm64/ExtractedAppShortcutsMetadata.stringsdata --source-file-list /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/Objects-normal/arm64/CuckooCue.SwiftFileList --metadata-file-list /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/CuckooCue.DependencyMetadataFileList --static-metadata-file-list /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/CuckooCue.DependencyStaticMetadataFileList --swift-const-vals-list /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/Objects-normal/arm64/CuckooCue.SwiftConstValuesFileList --compile-time-extraction --deployment-aware-processing --validate-assistant-intents --no-app-shortcuts-localization
-2026-09-05 02:37:29.620 appintentsmetadataprocessor[21111:62560] Starting appintentsmetadataprocessor export
-2026-09-05 02:37:29.672 appintentsmetadataprocessor[21111:62560] Writing Metadata.appintents
-2026-09-05 02:37:29.672 appintentsmetadataprocessor[21111:62560] Metadata root: /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCue.app/Metadata.appintents
+2026-09-05 02:45:29.612 appintentsmetadataprocessor[19042:57200] Starting appintentsmetadataprocessor export
+2026-09-05 02:45:29.663 appintentsmetadataprocessor[19042:57200] Writing Metadata.appintents
+2026-09-05 02:45:29.663 appintentsmetadataprocessor[19042:57200] Metadata root: /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCue.app/Metadata.appintents
 
 CopySwiftLibs /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCue.app (in target 'CuckooCue' from project 'CuckooCue')
     cd /Users/runner/work/cuckoocue/cuckoocue/ios
@@ -552,9 +548,9 @@ Ignoring --strip-bitcode because --sign was not passed
 AppIntentsSSUTraining (in target 'CuckooCue' from project 'CuckooCue')
     cd /Users/runner/work/cuckoocue/cuckoocue/ios
     /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsnltrainingprocessor --infoplist-path /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCue.app/Info.plist --temp-dir-path /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/ssu --bundle-id app.cuckoocue.ios --product-path /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCue.app --extracted-metadata-path /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCue.app/Metadata.appintents --metadata-file-list /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCue.build/CuckooCue.DependencyMetadataFileList --archive-ssu-assets
-2026-09-05 02:37:29.776 appintentsnltrainingprocessor[21113:62565] Parsing options for appintentsnltrainingprocessor
-2026-09-05 02:37:29.781 appintentsnltrainingprocessor[21113:62565] Starting AppIntents SSU YAML Generation
-2026-09-05 02:37:29.808 appintentsnltrainingprocessor[21113:62565] No AppShortcuts found - Skipping.
+2026-09-05 02:45:29.748 appintentsnltrainingprocessor[19043:57216] Parsing options for appintentsnltrainingprocessor
+2026-09-05 02:45:29.749 appintentsnltrainingprocessor[19043:57216] Starting AppIntents SSU YAML Generation
+2026-09-05 02:45:29.760 appintentsnltrainingprocessor[19043:57216] No AppShortcuts found - Skipping.
 
 RegisterExecutionPolicyException /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCue.app (in target 'CuckooCue' from project 'CuckooCue')
     cd /Users/runner/work/cuckoocue/cuckoocue/ios
@@ -604,28 +600,28 @@ Ld /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Prod
     cd /Users/runner/work/cuckoocue/cuckoocue/ios
     /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-ios17.0-simulator -bundle -isysroot /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator18.5.sdk -O0 -L/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator -L/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator -L/Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib -F/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator -F/Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator -iframework /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks -iframework /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator18.5.sdk/Developer/Library/Frameworks -filelist /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueHomeScreenUITests.build/Objects-normal/arm64/CuckooCueHomeScreenUITests.LinkFileList -Xlinker -rpath -Xlinker @loader_path/Frameworks -Xlinker -rpath -Xlinker @executable_path/Frameworks -dead_strip -Xlinker -object_path_lto -Xlinker /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueHomeScreenUITests.build/Objects-normal/arm64/CuckooCueHomeScreenUITests_lto.o -rdynamic -Xlinker -no_deduplicate -Xlinker -objc_abi_version -Xlinker 2 -Xlinker -dependency_info -Xlinker /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueHomeScreenUITests.build/Objects-normal/arm64/CuckooCueHomeScreenUITests_dependency_info.dat -fobjc-link-runtime -L/Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphonesimulator -L/usr/lib/swift -Xlinker -add_ast_path -Xlinker /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueHomeScreenUITests.build/Objects-normal/arm64/CuckooCueHomeScreenUITests.swiftmodule -framework XCTest -lXCTestSwiftSupport -o /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueHomeScreenUITests-Runner.app/PlugIns/CuckooCueHomeScreenUITests.xctest/CuckooCueHomeScreenUITests
 
-ExtractAppIntentsMetadata (in target 'CuckooCueHomeScreenUITests' from project 'CuckooCue')
-    cd /Users/runner/work/cuckoocue/cuckoocue/ios
-    /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsmetadataprocessor --toolchain-dir /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --module-name CuckooCueHomeScreenUITests --sdk-root /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator18.5.sdk --xcode-version 16F6 --platform-family iOS --deployment-target 17.0 --bundle-identifier app.cuckoocue.ios.homescreen-uitests --output /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueHomeScreenUITests-Runner.app/PlugIns/CuckooCueHomeScreenUITests.xctest --target-triple arm64-apple-ios17.0-simulator --binary-file /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueHomeScreenUITests-Runner.app/PlugIns/CuckooCueHomeScreenUITests.xctest/CuckooCueHomeScreenUITests --dependency-file /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueHomeScreenUITests.build/Objects-normal/arm64/CuckooCueHomeScreenUITests_dependency_info.dat --stringsdata-file /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueHomeScreenUITests.build/Objects-normal/arm64/ExtractedAppShortcutsMetadata.stringsdata --source-file-list /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueHomeScreenUITests.build/Objects-normal/arm64/CuckooCueHomeScreenUITests.SwiftFileList --metadata-file-list /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueHomeScreenUITests.build/CuckooCueHomeScreenUITests.DependencyMetadataFileList --static-metadata-file-list /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueHomeScreenUITests.build/CuckooCueHomeScreenUITests.DependencyStaticMetadataFileList --swift-const-vals-list /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueHomeScreenUITests.build/Objects-normal/arm64/CuckooCueHomeScreenUITests.SwiftConstValuesFileList --compile-time-extraction --deployment-aware-processing --validate-assistant-intents --no-app-shortcuts-localization
-2026-09-05 02:37:34.917 appintentsmetadataprocessor[21137:62799] Starting appintentsmetadataprocessor export
-2026-09-05 02:37:34.921 appintentsmetadataprocessor[21137:62799] warning: Metadata extraction skipped. No AppIntents.framework dependency found.
-
 CopySwiftLibs /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueHomeScreenUITests-Runner.app/PlugIns/CuckooCueHomeScreenUITests.xctest (in target 'CuckooCueHomeScreenUITests' from project 'CuckooCue')
     cd /Users/runner/work/cuckoocue/cuckoocue/ios
     builtin-swiftStdLibTool --copy --verbose --scan-executable /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueHomeScreenUITests-Runner.app/PlugIns/CuckooCueHomeScreenUITests.xctest/CuckooCueHomeScreenUITests --scan-folder /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueHomeScreenUITests-Runner.app/PlugIns/CuckooCueHomeScreenUITests.xctest/Frameworks --scan-folder /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueHomeScreenUITests-Runner.app/PlugIns/CuckooCueHomeScreenUITests.xctest/PlugIns --scan-folder /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueHomeScreenUITests-Runner.app/PlugIns/CuckooCueHomeScreenUITests.xctest/SystemExtensions --scan-folder /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueHomeScreenUITests-Runner.app/PlugIns/CuckooCueHomeScreenUITests.xctest/Extensions --platform iphonesimulator --toolchain /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueHomeScreenUITests-Runner.app/PlugIns/CuckooCueHomeScreenUITests.xctest/Frameworks --strip-bitcode --scan-executable /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/libXCTestSwiftSupport.dylib --strip-bitcode-tool /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueHomeScreenUITests.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os
 Ignoring --strip-bitcode because --sign was not passed
 
+ExtractAppIntentsMetadata (in target 'CuckooCueHomeScreenUITests' from project 'CuckooCue')
+    cd /Users/runner/work/cuckoocue/cuckoocue/ios
+    /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsmetadataprocessor --toolchain-dir /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --module-name CuckooCueHomeScreenUITests --sdk-root /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator18.5.sdk --xcode-version 16F6 --platform-family iOS --deployment-target 17.0 --bundle-identifier app.cuckoocue.ios.homescreen-uitests --output /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueHomeScreenUITests-Runner.app/PlugIns/CuckooCueHomeScreenUITests.xctest --target-triple arm64-apple-ios17.0-simulator --binary-file /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueHomeScreenUITests-Runner.app/PlugIns/CuckooCueHomeScreenUITests.xctest/CuckooCueHomeScreenUITests --dependency-file /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueHomeScreenUITests.build/Objects-normal/arm64/CuckooCueHomeScreenUITests_dependency_info.dat --stringsdata-file /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueHomeScreenUITests.build/Objects-normal/arm64/ExtractedAppShortcutsMetadata.stringsdata --source-file-list /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueHomeScreenUITests.build/Objects-normal/arm64/CuckooCueHomeScreenUITests.SwiftFileList --metadata-file-list /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueHomeScreenUITests.build/CuckooCueHomeScreenUITests.DependencyMetadataFileList --static-metadata-file-list /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueHomeScreenUITests.build/CuckooCueHomeScreenUITests.DependencyStaticMetadataFileList --swift-const-vals-list /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Intermediates.noindex/CuckooCue.build/Debug-iphonesimulator/CuckooCueHomeScreenUITests.build/Objects-normal/arm64/CuckooCueHomeScreenUITests.SwiftConstValuesFileList --compile-time-extraction --deployment-aware-processing --validate-assistant-intents --no-app-shortcuts-localization
+2026-09-05 02:45:33.402 appintentsmetadataprocessor[19061:57365] Starting appintentsmetadataprocessor export
+2026-09-05 02:45:33.405 appintentsmetadataprocessor[19061:57365] warning: Metadata extraction skipped. No AppIntents.framework dependency found.
+
 MkDir /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueHomeScreenUITests-Runner.app (in target 'CuckooCueHomeScreenUITests' from project 'CuckooCue')
     cd /Users/runner/work/cuckoocue/cuckoocue/ios
     /bin/mkdir -p /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueHomeScreenUITests-Runner.app
 
-CopyPlistFile /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueHomeScreenUITests-Runner.app/Info.plist /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Xcode/Agents/XCTRunner.app/Info.plist (in target 'CuckooCueHomeScreenUITests' from project 'CuckooCue')
-    cd /Users/runner/work/cuckoocue/cuckoocue/ios
-    builtin-copyPlist --validate --convert xml1 --macro-expansion WRAPPEDPRODUCTNAME CuckooCueHomeScreenUITests-Runner --macro-expansion WRAPPEDPRODUCTBUNDLEIDENTIFIER app.cuckoocue.ios.homescreen-uitests.xctrunner --macro-expansion TESTPRODUCTNAME CuckooCueHomeScreenUITests --macro-expansion TESTPRODUCTBUNDLEIDENTIFIER app.cuckoocue.ios.homescreen-uitests --outdir /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueHomeScreenUITests-Runner.app -- /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Xcode/Agents/XCTRunner.app/Info.plist
-
 CopyAndPreserveArchs /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueHomeScreenUITests-Runner.app/CuckooCueHomeScreenUITests-Runner (in target 'CuckooCueHomeScreenUITests' from project 'CuckooCue')
     cd /Users/runner/work/cuckoocue/cuckoocue/ios
     /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/lipo /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Xcode/Agents/XCTRunner.app/XCTRunner -output /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueHomeScreenUITests-Runner.app/CuckooCueHomeScreenUITests-Runner -extract arm64
+
+CopyPlistFile /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueHomeScreenUITests-Runner.app/Info.plist /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Xcode/Agents/XCTRunner.app/Info.plist (in target 'CuckooCueHomeScreenUITests' from project 'CuckooCue')
+    cd /Users/runner/work/cuckoocue/cuckoocue/ios
+    builtin-copyPlist --validate --convert xml1 --macro-expansion WRAPPEDPRODUCTNAME CuckooCueHomeScreenUITests-Runner --macro-expansion WRAPPEDPRODUCTBUNDLEIDENTIFIER app.cuckoocue.ios.homescreen-uitests.xctrunner --macro-expansion TESTPRODUCTNAME CuckooCueHomeScreenUITests --macro-expansion TESTPRODUCTBUNDLEIDENTIFIER app.cuckoocue.ios.homescreen-uitests --outdir /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueHomeScreenUITests-Runner.app -- /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Xcode/Agents/XCTRunner.app/Info.plist
 
 Copy /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueHomeScreenUITests-Runner.app/PkgInfo /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Xcode/Agents/XCTRunner.app/PkgInfo (in target 'CuckooCueHomeScreenUITests' from project 'CuckooCue')
     cd /Users/runner/work/cuckoocue/cuckoocue/ios
@@ -671,302 +667,209 @@ Touch /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/P
     cd /Users/runner/work/cuckoocue/cuckoocue/ios
     /usr/bin/touch -c /Users/runner/work/cuckoocue/cuckoocue/build/ios-home-derived-data/Build/Products/Debug-iphonesimulator/CuckooCueHomeScreenUITests-Runner.app/PlugIns/CuckooCueHomeScreenUITests.xctest
 
-2026-09-05 02:37:43.700625+0000 CuckooCueHomeScreenUITests-Runner[21759:64268] [Default] Running tests...
+2026-09-05 02:45:40.462810+0000 CuckooCueHomeScreenUITests-Runner[19517:58486] [Default] Running tests...
     t =      nans Interface orientation changed to Portrait
-Test Suite 'All tests' started at 2026-09-05 02:37:47.129.
-Test Suite 'CuckooCueHomeScreenUITests.xctest' started at 2026-09-05 02:37:47.130.
-Test Suite 'CuckooCueHomeScreenTests' started at 2026-09-05 02:37:47.130.
+Test Suite 'All tests' started at 2026-09-05 02:45:44.379.
+Test Suite 'CuckooCueHomeScreenUITests.xctest' started at 2026-09-05 02:45:44.379.
+Test Suite 'CuckooCueHomeScreenTests' started at 2026-09-05 02:45:44.379.
 Test Case '-[CuckooCueHomeScreenUITests.CuckooCueHomeScreenTests testAddMediumWidgetToHomeScreen]' started.
-    t =     0.00s Start Test at 2026-09-05 02:37:47.130
-    t =     0.16s Set Up
-    t =     0.16s Open app.cuckoocue.ios
-    t =     0.16s     Launch app.cuckoocue.ios
-    t =     0.17s         Terminate app.cuckoocue.ios:18833
-    t =     4.70s         Setting up automation session
-    t =     5.85s         Wait for app.cuckoocue.ios to idle
-    t =     7.97s Waiting 8.0s for "Cuckoo Cue" NavigationBar to exist
-    t =     8.99s     Checking `Expect predicate `existsNoRetry == 1` for object "Cuckoo Cue" NavigationBar`
-    t =     9.00s         Checking existence of `"Cuckoo Cue" NavigationBar`
-    t =     9.10s Pressing Home button
-    t =     9.61s Waiting 8.0s for "Cuckoo Cue" Icon to exist
-    t =    10.68s     Checking `Expect predicate `existsNoRetry == 1` for object "Cuckoo Cue" Icon`
-    t =    10.68s         Checking existence of `"Cuckoo Cue" Icon`
-    t =    11.01s Press "Cuckoo Cue" Icon for 1.5 seconds
-    t =    11.01s     Wait for com.apple.springboard to idle
-    t =    11.02s     Find the "Cuckoo Cue" Icon
-    t =    11.10s     Check for interrupting elements affecting "Cuckoo Cue" Icon
-    t =    11.15s     Synthesize event
-    t =    12.89s     Wait for com.apple.springboard to idle
-    t =    12.90s Waiting 5.0s for "Edit Home Screen" Button to exist
-    t =    13.93s     Checking `Expect predicate `existsNoRetry == 1` for object "Edit Home Screen" Button`
-    t =    13.93s         Checking existence of `"Edit Home Screen" Button`
-    t =    14.04s Ignoring failure to get hierarchy for remote element in process 22433 (Error getting main window kAXErrorServerNotFound)
-    t =    14.04s Ignoring failure to get hierarchy for remote element in process 22433 (Error getting main window kAXErrorServerNotFound)
-    t =    14.05s Tap "Edit Home Screen" Button
-    t =    14.05s     Wait for com.apple.springboard to idle
-    t =    14.05s     Find the "Edit Home Screen" Button
-    t =    14.11s Ignoring failure to get hierarchy for remote element in process 22433 (Error getting main window kAXErrorServerNotFound)
-    t =    14.11s Ignoring failure to get hierarchy for remote element in process 22433 (Error getting main window kAXErrorServerNotFound)
-    t =    14.11s     Check for interrupting elements affecting "com.apple.springboardhome.application-shortcut-item.rearrange-icons" Button
-    t =    14.16s Ignoring failure to get hierarchy for remote element in process 22433 (Error getting main window kAXErrorServerNotFound)
-    t =    14.16s Ignoring failure to get hierarchy for remote element in process 22433 (Error getting main window kAXErrorServerNotFound)
-    t =    14.18s     Synthesize event
-    t =    14.63s     Wait for com.apple.springboard to idle
-    t =    14.72s Waiting 5.0s for "Edit" Button to exist
-    t =    15.76s     Checking `Expect predicate `existsNoRetry == 1` for object "Edit" Button`
-    t =    15.76s         Checking existence of `"Edit" Button`
-    t =    15.94s Ignoring failure to get hierarchy for remote element in process 22433 (Error getting main window kAXErrorServerNotFound)
-    t =    15.94s Ignoring failure to get hierarchy for remote element in process 22433 (Error getting main window kAXErrorServerNotFound)
-    t =    15.95s Tap "Edit" Button
-    t =    15.95s     Wait for com.apple.springboard to idle
-    t =    15.95s     Find the "Edit" Button
-    t =    16.12s Ignoring failure to get hierarchy for remote element in process 22433 (Error getting main window kAXErrorServerNotFound)
-    t =    16.13s Ignoring failure to get hierarchy for remote element in process 22433 (Error getting main window kAXErrorServerNotFound)
-    t =    16.14s     Check for interrupting elements affecting "Edit" Button
-    t =    16.27s Ignoring failure to get hierarchy for remote element in process 22433 (Error getting main window kAXErrorServerNotFound)
-    t =    16.28s Ignoring failure to get hierarchy for remote element in process 22433 (Error getting main window kAXErrorServerNotFound)
-    t =    16.29s     Synthesize event
-    t =    16.62s     Wait for com.apple.springboard to idle
-    t =    16.76s Waiting 5.0s for "Add Widget" Button to exist
-    t =    17.83s     Checking `Expect predicate `existsNoRetry == 1` for object "Add Widget" Button`
-    t =    17.84s         Checking existence of `"Add Widget" Button`
-    t =    17.99s Ignoring failure to get hierarchy for remote element in process 22433 (Error getting main window kAXErrorServerNotFound)
-    t =    18.00s Ignoring failure to get hierarchy for remote element in process 22433 (Error getting main window kAXErrorServerNotFound)
-    t =    18.01s Tap "Add Widget" Button
-    t =    18.01s     Wait for com.apple.springboard to idle
-    t =    18.02s     Find the "Add Widget" Button
-    t =    18.12s Ignoring failure to get hierarchy for remote element in process 22433 (Error getting main window kAXErrorServerNotFound)
-    t =    18.12s Ignoring failure to get hierarchy for remote element in process 22433 (Error getting main window kAXErrorServerNotFound)
-    t =    18.13s     Check for interrupting elements affecting "Add Widget" Button
-    t =    18.27s Ignoring failure to get hierarchy for remote element in process 22433 (Error getting main window kAXErrorServerNotFound)
-    t =    18.28s Ignoring failure to get hierarchy for remote element in process 22433 (Error getting main window kAXErrorServerNotFound)
-    t =    18.30s     Synthesize event
-    t =    18.88s     Wait for com.apple.springboard to idle
-    t =    19.39s Waiting 8.0s for SearchField (First Match) to exist
-    t =    20.48s     Checking `Expect predicate `existsNoRetry == 1` for object SearchField (First Match)`
-    t =    20.48s         Checking existence of `SearchField (First Match)`
-    t =    20.57s Ignoring failure to get hierarchy for remote element in process 22433 (Error getting main window kAXErrorServerNotFound)
-    t =    20.58s Ignoring failure to get hierarchy for remote element in process 22433 (Error getting main window kAXErrorServerNotFound)
-    t =    20.58s Tap SearchField (First Match)
-    t =    20.58s     Wait for com.apple.springboard to idle
-    t =    20.59s     Find the SearchField (First Match)
-    t =    20.69s Ignoring failure to get hierarchy for remote element in process 22433 (Error getting main window kAXErrorServerNotFound)
-    t =    20.70s Ignoring failure to get hierarchy for remote element in process 22433 (Error getting main window kAXErrorServerNotFound)
-    t =    20.71s     Check for interrupting elements affecting "Search Widgets" SearchField
-    t =    20.75s Ignoring failure to get hierarchy for remote element in process 22433 (Error getting main window kAXErrorServerNotFound)
-    t =    20.75s Ignoring failure to get hierarchy for remote element in process 22433 (Error getting main window kAXErrorServerNotFound)
-    t =    20.76s     Synthesize event
-    t =    22.10s     Wait for com.apple.springboard to idle
-    t =    22.17s Type 'Cuckoo Cue' into "Search Widgets" SearchField
-    t =    22.17s     Wait for com.apple.springboard to idle
-    t =    22.48s     Find the "Search Widgets" SearchField
-    t =    22.71s Ignoring failure to get hierarchy for remote element in process 22433 (Error getting main window kAXErrorServerNotFound)
-    t =    22.71s Ignoring failure to get hierarchy for remote element in process 22433 (Error getting main window kAXErrorServerNotFound)
-    t =    22.72s     Check for interrupting elements affecting "dewey-search-field" SearchField
-    t =    22.85s Ignoring failure to get hierarchy for remote element in process 22433 (Error getting main window kAXErrorServerNotFound)
-    t =    22.98s Ignoring failure to get hierarchy for remote element in process 22433 (Error getting main window kAXErrorServerNotFound)
-    t =    22.99s     Synthesize event
-    t =    22.99s         Get number of matches for: Elements containing elements matching predicate 'hasKeyboardFocus == 1'
-    t =    23.19s             Ignoring failure to get hierarchy for remote element in process 22433 (Error getting main window kAXErrorServerNotFound)
-    t =    23.19s             Ignoring failure to get hierarchy for remote element in process 22433 (Error getting main window kAXErrorServerNotFound)
-    t =    23.21s         Requesting snapshot of accessibility hierarchy for app with pid 7344
-    t =    23.67s         Requesting snapshot of accessibility hierarchy for app with pid 7344
-    t =    23.85s         Requesting snapshot of accessibility hierarchy for app with pid 7344
-    t =    24.07s         Find: Descendants matching type SearchField
-    t =    24.08s         Requesting snapshot of accessibility hierarchy for app with pid 7344
-    t =    24.26s         Requesting snapshot of accessibility hierarchy for app with pid 7344
-    t =    24.55s         Requesting snapshot of accessibility hierarchy for app with pid 7344
-    t =    24.81s         Requesting snapshot of accessibility hierarchy for app with pid 7344
-    t =    25.01s         Find: Descendants matching type SearchField
-    t =    25.02s         Requesting snapshot of accessibility hierarchy for app with pid 7344
-    t =    25.27s         Failed: Neither element nor any descendant has keyboard focus. Event dispatch snapshot: SearchField, {{836.0, 90.0}, {338.0, 48.0}}, identifier: 'dewey-search-field', placeholderValue: 'App Library', value: App Library
-Element debug description:
-Attributes: SearchField, 0x104e6cba0, {{836.0, 90.0}, {338.0, 48.0}}, identifier: 'dewey-search-field', placeholderValue: 'App Library', value: App Library
-Element subtree:
- →SearchField, 0x104e6cba0, {{836.0, 90.0}, {338.0, 48.0}}, identifier: 'dewey-search-field', placeholderValue: 'App Library', value: App Library
-    Image, 0x104e6cef0, {{937.3, 103.0}, {22.0, 22.0}}, identifier: 'magnifyingglass', label: 'Search'
-Path to element:
- →Application, 0x10485d2c0, pid: 7344, label: ' '
-  ↳Window, 0x104e6a580, {{0.0, 0.0}, {402.0, 874.0}}
-   ↳Other, 0x104e68da0, {{0.0, 0.0}, {402.0, 874.0}}
-    ↳Other, 0x104e6b710, {{0.0, 0.0}, {402.0, 874.0}}, identifier: 'Home screen icons'
-     ↳Other, 0x104e69110, {{0.0, 0.0}, {402.0, 874.0}}
-      ↳Other, 0x104e69b10, {{0.0, 0.0}, {402.0, 874.0}}
-       ↳Other, 0x104e69450, {{804.0, 0.0}, {402.0, 874.0}}
-        ↳Other, 0x104e6ba70, {{804.0, 0.0}, {402.0, 874.0}}
-         ↳Other, 0x104e6c4d0, {{804.0, 0.0}, {402.0, 874.0}}
-          ↳Other, 0x104e6c840, {{804.0, 0.0}, {402.0, 162.0}}, identifier: 'dewey-search-bar'
-           ↳SearchField, 0x104e6cba0, {{836.0, 90.0}, {338.0, 48.0}}, identifier: 'dewey-search-field', placeholderValue: 'App Library', value: App Library
-Query chain:
- →Find: Application 'com.apple.springboard'
-  Output: {
-    Application, 0x1048898b0, pid: 7344, label: ' '
-  }
-  ↪︎Find: Descendants matching type SearchField
-    Output: {
-      SearchField, 0x104883570, {{836.0, 90.0}, {338.0, 48.0}}, identifier: 'dewey-search-field', placeholderValue: 'App Library', value: App Library
-      SearchField, 0x11411e1c0, {{32.0, 158.0}, {274.0, 36.0}}, label: 'Search Widgets', placeholderValue: 'Search Widgets', Keyboard Focused, Focused
-    }
-    ↪︎Find: First Match
-      Output: {
-        SearchField, 0x10487e820, {{836.0, 90.0}, {338.0, 48.0}}, identifier: 'dewey-search-field', placeholderValue: 'App Library', value: App Library
-      }
-
-    t =    25.47s     Wait for com.apple.springboard to idle
-    t =    26.48s     Retrying `Type 'Cuckoo Cue' into "Search Widgets" SearchField` (attempt #2)
-    t =    26.48s         Wait for com.apple.springboard to idle
-    t =    26.48s         Find the "dewey-search-field" SearchField
-    t =    26.65s Ignoring failure to get hierarchy for remote element in process 22433 (Error getting main window kAXErrorServerNotFound)
-    t =    26.65s Ignoring failure to get hierarchy for remote element in process 22433 (Error getting main window kAXErrorServerNotFound)
-    t =    26.66s         Check for interrupting elements affecting "dewey-search-field" SearchField
-    t =    26.73s Ignoring failure to get hierarchy for remote element in process 22433 (Error getting main window kAXErrorServerNotFound)
-    t =    26.74s Ignoring failure to get hierarchy for remote element in process 22433 (Error getting main window kAXErrorServerNotFound)
-    t =    26.74s         Synthesize event
-    t =    26.74s             Get number of matches for: Elements containing elements matching predicate 'hasKeyboardFocus == 1'
-    t =    26.91s                 Ignoring failure to get hierarchy for remote element in process 22433 (Error getting main window kAXErrorServerNotFound)
-    t =    26.91s                 Ignoring failure to get hierarchy for remote element in process 22433 (Error getting main window kAXErrorServerNotFound)
-    t =    26.92s             Requesting snapshot of accessibility hierarchy for app with pid 7344
-    t =    27.14s             Requesting snapshot of accessibility hierarchy for app with pid 7344
-    t =    27.40s             Requesting snapshot of accessibility hierarchy for app with pid 7344
-    t =    27.64s             Find: Descendants matching type SearchField
-    t =    27.65s             Requesting snapshot of accessibility hierarchy for app with pid 7344
-    t =    27.91s             Requesting snapshot of accessibility hierarchy for app with pid 7344
-    t =    28.21s             Requesting snapshot of accessibility hierarchy for app with pid 7344
-    t =    28.40s             Requesting snapshot of accessibility hierarchy for app with pid 7344
-    t =    28.56s             Find: Descendants matching type SearchField
-    t =    28.57s             Requesting snapshot of accessibility hierarchy for app with pid 7344
-    t =    28.74s             Failed: Neither element nor any descendant has keyboard focus. Event dispatch snapshot: SearchField, {{836.0, 90.0}, {338.0, 48.0}}, identifier: 'dewey-search-field', placeholderValue: 'App Library', value: App Library
-Element debug description:
-Attributes: SearchField, 0x104e974f0, {{836.0, 90.0}, {338.0, 48.0}}, identifier: 'dewey-search-field', placeholderValue: 'App Library', value: App Library
-Element subtree:
- →SearchField, 0x104e974f0, {{836.0, 90.0}, {338.0, 48.0}}, identifier: 'dewey-search-field', placeholderValue: 'App Library', value: App Library
-    Image, 0x104e963a0, {{937.3, 103.0}, {22.0, 22.0}}, identifier: 'magnifyingglass', label: 'Search'
-Path to element:
- →Application, 0x104e993d0, pid: 7344, label: ' '
-  ↳Window, 0x104e98950, {{0.0, 0.0}, {402.0, 874.0}}
-   ↳Other, 0x104e982a0, {{0.0, 0.0}, {402.0, 874.0}}
-    ↳Other, 0x104e98600, {{0.0, 0.0}, {402.0, 874.0}}, identifier: 'Home screen icons'
-     ↳Other, 0x104e83530, {{0.0, 0.0}, {402.0, 874.0}}
-      ↳Other, 0x104e97bc0, {{0.0, 0.0}, {402.0, 874.0}}
-       ↳Other, 0x104e96a90, {{804.0, 0.0}, {402.0, 874.0}}
-        ↳Other, 0x104e97860, {{804.0, 0.0}, {402.0, 874.0}}
-         ↳Other, 0x104e96e00, {{804.0, 0.0}, {402.0, 874.0}}
-          ↳Other, 0x104e97180, {{804.0, 0.0}, {402.0, 162.0}}, identifier: 'dewey-search-bar'
-           ↳SearchField, 0x104e974f0, {{836.0, 90.0}, {338.0, 48.0}}, identifier: 'dewey-search-field', placeholderValue: 'App Library', value: App Library
-Query chain:
- →Find: Application 'com.apple.springboard'
-  Output: {
-    Application, 0x10488bf30, pid: 7344, label: ' '
-  }
-  ↪︎Find: Descendants matching type SearchField
-    Output: {
-      SearchField, 0x1048b3870, {{836.0, 90.0}, {338.0, 48.0}}, identifier: 'dewey-search-field', placeholderValue: 'App Library', value: App Library
-      SearchField, 0x1048c6ed0, {{32.0, 158.0}, {274.0, 36.0}}, label: 'Search Widgets', placeholderValue: 'Search Widgets', Keyboard Focused, Focused
-    }
-    ↪︎Find: First Match
-      Output: {
-        SearchField, 0x104e9b600, {{836.0, 90.0}, {338.0, 48.0}}, identifier: 'dewey-search-field', placeholderValue: 'App Library', value: App Library
-      }
-
-    t =    28.75s         Wait for com.apple.springboard to idle
-    t =    29.76s     Retrying `Type 'Cuckoo Cue' into "Search Widgets" SearchField` (attempt #3)
-    t =    29.76s         Wait for com.apple.springboard to idle
-    t =    29.76s         Find the "dewey-search-field" SearchField
-    t =    30.01s Ignoring failure to get hierarchy for remote element in process 22433 (Error getting main window kAXErrorServerNotFound)
-    t =    30.01s Ignoring failure to get hierarchy for remote element in process 22433 (Error getting main window kAXErrorServerNotFound)
-    t =    30.02s         Check for interrupting elements affecting "dewey-search-field" SearchField
-    t =    30.11s Ignoring failure to get hierarchy for remote element in process 22433 (Error getting main window kAXErrorServerNotFound)
-    t =    30.11s Ignoring failure to get hierarchy for remote element in process 22433 (Error getting main window kAXErrorServerNotFound)
-    t =    30.12s         Synthesize event
-    t =    30.12s             Get number of matches for: Elements containing elements matching predicate 'hasKeyboardFocus == 1'
-    t =    30.40s                 Ignoring failure to get hierarchy for remote element in process 22433 (Error getting main window kAXErrorServerNotFound)
-    t =    30.41s                 Ignoring failure to get hierarchy for remote element in process 22433 (Error getting main window kAXErrorServerNotFound)
-    t =    30.41s             Requesting snapshot of accessibility hierarchy for app with pid 7344
-    t =    30.76s             Requesting snapshot of accessibility hierarchy for app with pid 7344
-    t =    31.04s             Requesting snapshot of accessibility hierarchy for app with pid 7344
-    t =    31.29s             Find: Descendants matching type SearchField
-    t =    31.31s             Requesting snapshot of accessibility hierarchy for app with pid 7344
-    t =    31.55s             Requesting snapshot of accessibility hierarchy for app with pid 7344
-    t =    31.87s             Requesting snapshot of accessibility hierarchy for app with pid 7344
-    t =    32.10s             Requesting snapshot of accessibility hierarchy for app with pid 7344
-    t =    32.28s             Find: Descendants matching type SearchField
-    t =    32.29s             Requesting snapshot of accessibility hierarchy for app with pid 7344
-    t =    32.51s             Failed: Neither element nor any descendant has keyboard focus. Event dispatch snapshot: SearchField, {{836.0, 90.0}, {338.0, 48.0}}, identifier: 'dewey-search-field', placeholderValue: 'App Library', value: App Library
-Element debug description:
-Attributes: SearchField, 0x10485ff70, {{836.0, 90.0}, {338.0, 48.0}}, identifier: 'dewey-search-field', placeholderValue: 'App Library', value: App Library
-Element subtree:
- →SearchField, 0x10485ff70, {{836.0, 90.0}, {338.0, 48.0}}, identifier: 'dewey-search-field', placeholderValue: 'App Library', value: App Library
-    Image, 0x1048ce170, {{937.3, 103.0}, {22.0, 22.0}}, identifier: 'magnifyingglass', label: 'Search'
-Path to element:
- →Application, 0x104fb50b0, pid: 7344, label: ' '
-  ↳Window, 0x1048ccab0, {{0.0, 0.0}, {402.0, 874.0}}
-   ↳Other, 0x1048f9890, {{0.0, 0.0}, {402.0, 874.0}}
-    ↳Other, 0x104e7b9c0, {{0.0, 0.0}, {402.0, 874.0}}, identifier: 'Home screen icons'
-     ↳Other, 0x10484ce20, {{0.0, 0.0}, {402.0, 874.0}}
-      ↳Other, 0x1048cbd50, {{0.0, 0.0}, {402.0, 874.0}}
-       ↳Other, 0x1048f9270, {{804.0, 0.0}, {402.0, 874.0}}
-        ↳Other, 0x10485e590, {{804.0, 0.0}, {402.0, 874.0}}
-         ↳Other, 0x10485e6b0, {{804.0, 0.0}, {402.0, 874.0}}
-          ↳Other, 0x10485fe50, {{804.0, 0.0}, {402.0, 162.0}}, identifier: 'dewey-search-bar'
-           ↳SearchField, 0x10485ff70, {{836.0, 90.0}, {338.0, 48.0}}, identifier: 'dewey-search-field', placeholderValue: 'App Library', value: App Library
-Query chain:
- →Find: Application 'com.apple.springboard'
-  Output: {
-    Application, 0x104ef1990, pid: 7344, label: ' '
-  }
-  ↪︎Find: Descendants matching type SearchField
-    Output: {
-      SearchField, 0x104f80ce0, {{836.0, 90.0}, {338.0, 48.0}}, identifier: 'dewey-search-field', placeholderValue: 'App Library', value: App Library
-      SearchField, 0x104858f50, {{32.0, 158.0}, {274.0, 36.0}}, label: 'Search Widgets', placeholderValue: 'Search Widgets', Keyboard Focused, Focused
-    }
-    ↪︎Find: First Match
-      Output: {
-        SearchField, 0x104fd5f10, {{836.0, 90.0}, {338.0, 48.0}}, identifier: 'dewey-search-field', placeholderValue: 'App Library', value: App Library
-      }
-
-    t =    32.52s         Wait for com.apple.springboard to idle
-    t =    32.52s     Requesting snapshot of accessibility hierarchy for app with pid 7344
-/Users/runner/work/cuckoocue/cuckoocue/ios/CuckooCueHomeScreenUITests/CuckooCueHomeScreenTests.swift:31: error: -[CuckooCueHomeScreenUITests.CuckooCueHomeScreenTests testAddMediumWidgetToHomeScreen] : Failed to synthesize event: Neither element nor any descendant has keyboard focus. Event dispatch snapshot: SearchField, {{836.0, 90.0}, {338.0, 48.0}}, identifier: 'dewey-search-field', placeholderValue: 'App Library', value: App Library
-Element debug description:
-Attributes: SearchField, 0x10485ff70, {{836.0, 90.0}, {338.0, 48.0}}, identifier: 'dewey-search-field', placeholderValue: 'App Library', value: App Library
-Element subtree:
- →SearchField, 0x10485ff70, {{836.0, 90.0}, {338.0, 48.0}}, identifier: 'dewey-search-field', placeholderValue: 'App Library', value: App Library
-    Image, 0x1048ce170, {{937.3, 103.0}, {22.0, 22.0}}, identifier: 'magnifyingglass', label: 'Search'
-Path to element:
- →Application, 0x104fb50b0, pid: 7344, label: ' '
-  ↳Window, 0x1048ccab0, {{0.0, 0.0}, {402.0, 874.0}}
-   ↳Other, 0x1048f9890, {{0.0, 0.0}, {402.0, 874.0}}
-    ↳Other, 0x104e7b9c0, {{0.0, 0.0}, {402.0, 874.0}}, identifier: 'Home screen icons'
-     ↳Other, 0x10484ce20, {{0.0, 0.0}, {402.0, 874.0}}
-      ↳Other, 0x1048cbd50, {{0.0, 0.0}, {402.0, 874.0}}
-       ↳Other, 0x1048f9270, {{804.0, 0.0}, {402.0, 874.0}}
-        ↳Other, 0x10485e590, {{804.0, 0.0}, {402.0, 874.0}}
-         ↳Other, 0x10485e6b0, {{804.0, 0.0}, {402.0, 874.0}}
-          ↳Other, 0x10485fe50, {{804.0, 0.0}, {402.0, 162.0}}, identifier: 'dewey-search-bar'
-           ↳SearchField, 0x10485ff70, {{836.0, 90.0}, {338.0, 48.0}}, identifier: 'dewey-search-field', placeholderValue: 'App Library', value: App Library
-Query chain:
- →Find: Application 'com.apple.springboard'
-  Output: {
-    Application, 0x104ef1990, pid: 7344, label: ' '
-  }
-  ↪︎Find: Descendants matching type SearchField
-    Output: {
-      SearchField, 0x104f80ce0, {{836.0, 90.0}, {338.0, 48.0}}, identifier: 'dewey-search-field', placeholderValue: 'App Library', value: App Library
-      SearchField, 0x104858f50, {{32.0, 158.0}, {274.0, 36.0}}, label: 'Search Widgets', placeholderValue: 'Search Widgets', Keyboard Focused, Focused
-    }
-    ↪︎Find: First Match
-      Output: {
-        SearchField, 0x104fd5f10, {{836.0, 90.0}, {338.0, 48.0}}, identifier: 'dewey-search-field', placeholderValue: 'App Library', value: App Library
-      }
-
-    t =    33.33s Tear Down
-Test Case '-[CuckooCueHomeScreenUITests.CuckooCueHomeScreenTests testAddMediumWidgetToHomeScreen]' failed (33.683 seconds).
-Test Suite 'CuckooCueHomeScreenTests' failed at 2026-09-05 02:38:20.814.
-	 Executed 1 test, with 1 failure (0 unexpected) in 33.683 (33.684) seconds
-Test Suite 'CuckooCueHomeScreenUITests.xctest' failed at 2026-09-05 02:38:20.814.
-	 Executed 1 test, with 1 failure (0 unexpected) in 33.683 (33.685) seconds
-Test Suite 'All tests' failed at 2026-09-05 02:38:20.815.
-	 Executed 1 test, with 1 failure (0 unexpected) in 33.683 (33.685) seconds
+    t =     0.00s Start Test at 2026-09-05 02:45:44.380
+    t =     0.11s Set Up
+    t =     0.15s Open app.cuckoocue.ios
+    t =     0.15s     Launch app.cuckoocue.ios
+    t =     0.15s         Terminate app.cuckoocue.ios:16630
+    t =     3.01s         Setting up automation session
+    t =     3.64s         Wait for app.cuckoocue.ios to idle
+    t =     5.69s Waiting 8.0s for "Cuckoo Cue" NavigationBar to exist
+    t =     6.72s     Checking `Expect predicate `existsNoRetry == 1` for object "Cuckoo Cue" NavigationBar`
+    t =     6.72s         Checking existence of `"Cuckoo Cue" NavigationBar`
+    t =     6.88s Pressing Home button
+    t =     7.39s Waiting 8.0s for "Cuckoo Cue" Icon to exist
+    t =     8.41s     Checking `Expect predicate `existsNoRetry == 1` for object "Cuckoo Cue" Icon`
+    t =     8.42s         Checking existence of `"Cuckoo Cue" Icon`
+    t =     8.73s Press "Cuckoo Cue" Icon for 1.5 seconds
+    t =     8.74s     Wait for com.apple.springboard to idle
+    t =     8.74s     Find the "Cuckoo Cue" Icon
+    t =     8.80s     Check for interrupting elements affecting "Cuckoo Cue" Icon
+    t =     8.86s     Synthesize event
+    t =    10.59s     Wait for com.apple.springboard to idle
+    t =    10.60s Waiting 5.0s for "Edit Home Screen" Button to exist
+    t =    11.63s     Checking `Expect predicate `existsNoRetry == 1` for object "Edit Home Screen" Button`
+    t =    11.63s         Checking existence of `"Edit Home Screen" Button`
+    t =    11.72s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    11.72s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    11.73s Tap "Edit Home Screen" Button
+    t =    11.73s     Wait for com.apple.springboard to idle
+    t =    11.73s     Find the "Edit Home Screen" Button
+    t =    11.78s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    11.78s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    11.78s     Check for interrupting elements affecting "com.apple.springboardhome.application-shortcut-item.rearrange-icons" Button
+    t =    11.84s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    11.84s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    11.85s     Synthesize event
+    t =    12.27s     Wait for com.apple.springboard to idle
+    t =    12.39s Waiting 5.0s for "Edit" Button to exist
+    t =    13.45s     Checking `Expect predicate `existsNoRetry == 1` for object "Edit" Button`
+    t =    13.45s         Checking existence of `"Edit" Button`
+    t =    13.59s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    13.59s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    13.60s Tap "Edit" Button
+    t =    13.60s     Wait for com.apple.springboard to idle
+    t =    13.61s     Find the "Edit" Button
+    t =    13.75s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    13.75s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    13.76s     Check for interrupting elements affecting "Edit" Button
+    t =    13.84s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    13.85s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    13.85s     Synthesize event
+    t =    14.27s     Wait for com.apple.springboard to idle
+    t =    14.38s Waiting 5.0s for "Add Widget" Button to exist
+    t =    15.40s     Checking `Expect predicate `existsNoRetry == 1` for object "Add Widget" Button`
+    t =    15.40s         Checking existence of `"Add Widget" Button`
+    t =    15.50s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    15.50s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    15.51s Tap "Add Widget" Button
+    t =    15.51s     Wait for com.apple.springboard to idle
+    t =    15.52s     Find the "Add Widget" Button
+    t =    15.68s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    15.68s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    15.69s     Check for interrupting elements affecting "Add Widget" Button
+    t =    15.93s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    15.94s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    15.98s     Synthesize event
+    t =    16.53s     Wait for com.apple.springboard to idle
+    t =    17.01s Waiting 8.0s for "Search Widgets" SearchField to exist
+    t =    18.07s     Checking `Expect predicate `existsNoRetry == 1` for object "Search Widgets" SearchField`
+    t =    18.07s         Checking existence of `"Search Widgets" SearchField`
+    t =    18.15s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    18.16s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    18.17s Tap "Search Widgets" SearchField
+    t =    18.17s     Wait for com.apple.springboard to idle
+    t =    18.19s     Find the "Search Widgets" SearchField
+    t =    18.26s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    18.27s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    18.27s     Check for interrupting elements affecting "Search Widgets" SearchField
+    t =    18.30s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    18.31s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    18.31s     Synthesize event
+    t =    19.69s     Wait for com.apple.springboard to idle
+    t =    19.85s Type 'Cuckoo Cue' into "Search Widgets" SearchField
+    t =    19.85s     Wait for com.apple.springboard to idle
+    t =    20.08s     Find the "Search Widgets" SearchField
+    t =    20.25s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    20.26s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    20.26s     Check for interrupting elements affecting "Search Widgets" SearchField
+    t =    20.38s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    20.40s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    20.41s     Synthesize event
+    t =    20.94s     Wait for com.apple.springboard to idle
+    t =    20.94s Waiting 8.0s for "Cuckoo Cue" StaticText to exist
+    t =    21.95s     Checking `Expect predicate `existsNoRetry == 1` for object "Cuckoo Cue" StaticText`
+    t =    21.95s         Checking existence of `"Cuckoo Cue" StaticText`
+    t =    22.22s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    22.22s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    22.22s Tap "Cuckoo Cue" StaticText
+    t =    22.22s     Wait for com.apple.springboard to idle
+    t =    22.22s     Find the "Cuckoo Cue" StaticText
+    t =    22.43s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    22.43s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    22.44s     Check for interrupting elements affecting "Cuckoo Cue" StaticText
+    t =    22.49s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    22.49s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    22.50s     Synthesize event
+    t =    22.53s         Scroll element to visible
+    t =    22.53s                 Retrying failed scroll-to-visible with containing cell Cell
+    t =    22.53s         Find the "Cuckoo Cue" StaticText
+    t =    22.76s             Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    22.76s             Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    22.79s         Computed hit point {-1, -1} after scrolling to visible
+    t =    22.81s         Working around rdar://59288308 by using the center point
+    t =    23.43s     Wait for com.apple.springboard to idle
+    t =    23.83s Waiting 8.0s for ScrollView (First Match) to exist
+    t =    24.89s     Checking `Expect predicate `existsNoRetry == 1` for object ScrollView (First Match)`
+    t =    24.89s         Checking existence of `ScrollView (First Match)`
+    t =    24.97s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    24.97s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    24.97s Swipe left ScrollView (First Match)
+    t =    24.97s     Wait for com.apple.springboard to idle
+    t =    24.98s     Find the ScrollView (First Match)
+    t =    25.04s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    25.04s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    25.05s     Check for interrupting elements affecting ScrollView
+    t =    25.12s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    25.12s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    25.13s     Synthesize event
+    t =    25.56s     Wait for com.apple.springboard to idle
+    t =    26.08s Waiting 8.0s for "Add Widget" Button to exist
+    t =    27.09s     Checking `Expect predicate `existsNoRetry == 1` for object "Add Widget" Button`
+    t =    27.09s         Checking existence of `"Add Widget" Button`
+    t =    27.17s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    27.17s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    27.17s         Capturing element debug description
+    t =    28.13s     Checking `Expect predicate `existsNoRetry == 1` for object "Add Widget" Button`
+    t =    28.13s         Checking existence of `"Add Widget" Button`
+    t =    28.22s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    28.22s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    28.22s         Capturing element debug description
+    t =    29.17s     Checking `Expect predicate `existsNoRetry == 1` for object "Add Widget" Button`
+    t =    29.17s         Checking existence of `"Add Widget" Button`
+    t =    29.23s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    29.23s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    29.24s         Capturing element debug description
+    t =    30.09s     Checking `Expect predicate `existsNoRetry == 1` for object "Add Widget" Button`
+    t =    30.09s         Checking existence of `"Add Widget" Button`
+    t =    30.21s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    30.21s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    30.21s         Capturing element debug description
+    t =    31.15s     Checking `Expect predicate `existsNoRetry == 1` for object "Add Widget" Button`
+    t =    31.15s         Checking existence of `"Add Widget" Button`
+    t =    31.22s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    31.22s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    31.22s         Capturing element debug description
+    t =    32.17s     Checking `Expect predicate `existsNoRetry == 1` for object "Add Widget" Button`
+    t =    32.17s         Checking existence of `"Add Widget" Button`
+    t =    32.26s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    32.26s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    32.26s         Capturing element debug description
+    t =    33.12s     Checking `Expect predicate `existsNoRetry == 1` for object "Add Widget" Button`
+    t =    33.13s         Checking existence of `"Add Widget" Button`
+    t =    33.21s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    33.21s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    33.21s         Capturing element debug description
+    t =    34.08s     Checking `Expect predicate `existsNoRetry == 1` for object "Add Widget" Button`
+    t =    34.08s         Checking existence of `"Add Widget" Button`
+    t =    34.15s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    34.15s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    34.15s         Capturing element debug description
+    t =    34.15s     Checking existence of `"Add Widget" Button`
+    t =    34.21s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    34.22s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    34.22s Collecting debug information to assist test failure triage
+    t =    34.22s     Requesting snapshot of accessibility hierarchy for app with pid 5969
+/Users/runner/work/cuckoocue/cuckoocue/ios/CuckooCueHomeScreenUITests/CuckooCueHomeScreenTests.swift:41: error: -[CuckooCueHomeScreenUITests.CuckooCueHomeScreenTests testAddMediumWidgetToHomeScreen] : XCTAssertTrue failed
+    t =    34.79s Tap "Add Widget" Button
+    t =    34.79s     Wait for com.apple.springboard to idle
+    t =    34.80s     Find the "Add Widget" Button
+    t =    34.87s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    34.87s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    35.88s         Find the "Add Widget" Button (retry 1)
+    t =    35.94s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    35.94s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    36.95s         Find the "Add Widget" Button (retry 2)
+    t =    37.02s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    37.02s Ignoring failure to get hierarchy for remote element in process 20076 (Error getting main window kAXErrorServerNotFound)
+    t =    37.02s Requesting snapshot of accessibility hierarchy for app with pid 5969
+/Users/runner/work/cuckoocue/cuckoocue/ios/CuckooCueHomeScreenUITests/CuckooCueHomeScreenTests.swift:42: error: -[CuckooCueHomeScreenUITests.CuckooCueHomeScreenTests testAddMediumWidgetToHomeScreen] : Failed to tap "Add Widget" Button: No matches found for Descendants matching type Button from input {(
+    Application, pid: 5969, label: ' '
+)}
+    t =    37.14s Tear Down
+Test Case '-[CuckooCueHomeScreenUITests.CuckooCueHomeScreenTests testAddMediumWidgetToHomeScreen]' failed (37.401 seconds).
+Test Suite 'CuckooCueHomeScreenTests' failed at 2026-09-05 02:46:21.780.
+	 Executed 1 test, with 2 failures (0 unexpected) in 37.401 (37.401) seconds
+Test Suite 'CuckooCueHomeScreenUITests.xctest' failed at 2026-09-05 02:46:21.781.
+	 Executed 1 test, with 2 failures (0 unexpected) in 37.401 (37.402) seconds
+Test Suite 'All tests' failed at 2026-09-05 02:46:21.781.
+	 Executed 1 test, with 2 failures (0 unexpected) in 37.401 (37.403) seconds
 
 Test session results, code coverage, and logs:
 	/Users/runner/work/cuckoocue/cuckoocue/build/CuckooCueHomeScreenTests.xcresult
