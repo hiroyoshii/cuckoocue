@@ -91,4 +91,14 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.cuckoocue.ios.uitests
+  CuckooCueHomeScreenUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [CuckooCueHomeScreenUITests]
+    dependencies:
+      - target: CuckooCue
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.cuckoocue.ios.homescreen-uitests
+    scheme: {}
 

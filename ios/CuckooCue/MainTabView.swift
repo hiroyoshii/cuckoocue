@@ -48,7 +48,7 @@ private struct RunListView: View {
     }
 }
 
-private struct NewRunSheet: View {
+struct NewRunSheet: View {
     @EnvironmentObject private var store: CueStore
     @Environment(\.dismiss) private var dismiss
     @State private var title = ""
@@ -68,7 +68,7 @@ private struct NewRunSheet: View {
     }
 }
 
-private struct RunDetailView: View {
+struct RunDetailView: View {
     @EnvironmentObject private var store: CueStore
     let runID: String
     @State private var presentingTask = false
@@ -104,7 +104,7 @@ private struct RunDetailView: View {
     }
 }
 
-private struct NewTaskSheet: View {
+struct NewTaskSheet: View {
     @EnvironmentObject private var store: CueStore
     @Environment(\.dismiss) private var dismiss
     let runID: String
@@ -139,7 +139,7 @@ private struct NewTaskSheet: View {
     }
 }
 
-private struct WidgetSettingsView: View {
+struct WidgetSettingsView: View {
     @EnvironmentObject private var store: CueStore
 
     var body: some View {
@@ -176,4 +176,3 @@ extension Color {
     static let cueTeal = Color(red: 0.31, green: 0.56, blue: 0.53)
     static let cueGreen = Color(red: 0.44, green: 0.56, blue: 0.36)
 }
-

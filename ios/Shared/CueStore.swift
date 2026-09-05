@@ -6,8 +6,9 @@ final class CueStore: ObservableObject {
     @Published private(set) var snapshot: CueSnapshot
 
     init() {
-        if ProcessInfo.processInfo.arguments.contains("--ui-testing") {
-            CueStorage.resetForUITesting()
+        let arguments = ProcessInfo.processInfo.arguments
+        if arguments.contains("--ui-testing") {
+            CueStorage.resetForUITesting(CueSnapshot.screenshotState(arguments: arguments))
         }
         snapshot = CueStorage.load()
     }
@@ -73,7 +74,38 @@ final class CueStore: ObservableObject {
     }
 }
 
+private extension CueSnapshot {
+    static func screenshotState(arguments: [String]) -> CueSnapshot {
+        var state = CueSnapshot.demo
+        if arguments.contains("state-empty") {
+            state.runs = []
+        }
+        if arguments.contains("state-dark") {
+            state.widgetTheme = .dark
+        }
+        if arguments.contains("state-large-text") {
+            state.widgetTextScale = .large
+        }
+        if arguments.contains("state-undo") {
+            for runIndex in state.runs.indices {
+                guard let taskIndex = state.runs[runIndex].tasks.firstIndex(where: { $0.id == "demo-1" }) else {
+                    continue
+                }
+                state.runs[runIndex].tasks[taskIndex].completedAt = .now
+                state.undoTaskID = "demo-1"
+                state.undoTitle = state.runs[runIndex].tasks[taskIndex].title
+            }
+        }
+        if arguments.contains("state-filtered") {
+            state.selectedFilterTaskID = "demo-2"
+        }
+        if arguments.contains("state-paged") {
+            state.footerOffset = 3
+        }
+        return state
+    }
+}
+
 enum CueWidgetConstants {
     static let kind = "CuckooCueWidget"
 }
-
