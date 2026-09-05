@@ -8,10 +8,15 @@ const browser = await chromium.launch();
 try {
   const searchContext = await browser.newContext({
     viewport: { width: 1440, height: 1050 },
+    locale: "ja-JP",
     reducedMotion: "reduce",
   });
   const searchPage = await searchContext.newPage();
   await searchPage.goto(baseUrl);
+  await searchPage.screenshot({ path: output("01-empty-desktop.png"), fullPage: true });
+  await searchPage.setViewportSize({ width: 390, height: 844 });
+  await searchPage.screenshot({ path: output("08-empty-mobile.png"), fullPage: true });
+  await searchPage.setViewportSize({ width: 1440, height: 1050 });
   await searchPage.getByLabel("Search query").fill("東京から名古屋へ引っ越す。役所、ライフライン、郵便転送、住所変更を整理したい。");
   await searchPage.locator("#target-anchor-day").fill("2026-10-01");
   await searchPage.locator("form").getByRole("button", { name: "探す", exact: true }).click();
@@ -29,6 +34,7 @@ try {
 
   const saveContext = await browser.newContext({
     viewport: { width: 1440, height: 1050 },
+    locale: "ja-JP",
     reducedMotion: "reduce",
   });
   const savePage = await saveContext.newPage();

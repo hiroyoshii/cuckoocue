@@ -46,6 +46,8 @@ test.beforeEach(async ({ page }) => {
 
 test("search is scannable, accessible, and restored after reload", async ({ page }) => {
   await page.goto("/");
+  await expect(page.locator('img[alt="Cuckoo Cue"]:visible')).toBeVisible();
+  await expect(page.locator(".brand-empty .brand-mark")).toBeVisible();
   await page.getByLabel("Search query").fill("東京から名古屋へ引っ越す。役所とライフラインを整理したい");
   await page.locator("#target-anchor-day").fill("2026-10-01");
   const searchButton = page.locator("form").getByRole("button", { name: "探す", exact: true });
@@ -91,6 +93,7 @@ test("completed-list review uses dates and named task groups", async ({ page }) 
 
   await page.goto("/?run_id=completed-run");
   await expect(page.getByRole("heading", { name: "完了した内容を残す" })).toBeVisible();
+  await expect(page.locator(".save-form .brand-mark")).toHaveCount(0);
   await expect(page.getByText("2026/10/01")).toBeVisible();
   await expect(page.getByLabel("Start date 1")).toHaveValue("2026-08-27");
   await expect(page.getByLabel("End date 1")).toHaveValue("2026-09-03");
