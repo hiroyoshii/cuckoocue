@@ -88,7 +88,6 @@ export function CuckooCueWebApp() {
   const [searchRetry, setSearchRetry] = useState<"search" | "more" | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
   const [savedTitle, setSavedTitle] = useState<string | null>(null);
-  const [showAppLinks, setShowAppLinks] = useState(false);
   const [busyAction, setBusyAction] = useState<
     "search" | "more" | "enrich" | "save" | "import" | null
   >(null);
@@ -439,9 +438,6 @@ export function CuckooCueWebApp() {
           <button className={view === "save" ? "active" : ""} onClick={() => changeView("save")}>
             <ListChecks size={18} aria-hidden="true" />公開
           </button>
-          <button onClick={() => setShowAppLinks(true)} aria-haspopup="dialog">
-            <Smartphone size={18} aria-hidden="true" />タスクを管理
-          </button>
         </nav>
         <details className="connection-panel">
           <summary><User size={17} aria-hidden="true" />{user?.isAnonymous ? "ゲスト利用中" : user?.displayName ?? "接続"}</summary>
@@ -456,7 +452,7 @@ export function CuckooCueWebApp() {
       </aside>
 
       <section className="product-main" id="top">
-        <MobileHeader view={view} onChange={changeView} onManage={() => setShowAppLinks(true)} />
+        <MobileHeader view={view} onChange={changeView} />
         {errorMessage ? (
           <div className="error-banner" role="alert">
             <AlertCircle size={18} aria-hidden="true" />
@@ -495,7 +491,6 @@ export function CuckooCueWebApp() {
           />
         )}
       </section>
-      {showAppLinks ? <AppLinksDialog onClose={() => setShowAppLinks(false)} /> : null}
     </main>
   );
 }
@@ -538,42 +533,16 @@ function SignInRequired({ onBack, onSignIn }: { onBack: () => void; onSignIn: ()
   );
 }
 
-function MobileHeader({ view, onChange, onManage }: { view: "search" | "save"; onChange: (view: "search" | "save") => void; onManage: () => void }) {
+function MobileHeader({ view, onChange }: { view: "search" | "save"; onChange: (view: "search" | "save") => void }) {
   return (
     <header className="mobile-header">
       <a className="brand-lockup" href="#top" aria-label="Cuckoo Cue"><BrandLockup priority /></a>
       <nav aria-label="主な操作">
         <button className={view === "search" ? "active" : ""} onClick={() => onChange("search")} aria-label="検索"><Search size={18} /></button>
         <button className={view === "save" ? "active" : ""} onClick={() => onChange("save")} aria-label="公開"><ListChecks size={18} /></button>
-        <button onClick={onManage} aria-label="タスクを管理" aria-haspopup="dialog"><Smartphone size={18} /></button>
       </nav>
     </header>
   );
-}
-
-function AppLinksDialog({ onClose }: { onClose: () => void }) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
-
-  useEffect(() => {
-    dialogRef.current?.showModal();
-  }, []);
-
-  return (
-    <dialog className="app-links-dialog" ref={dialogRef} onClose={onClose} aria-labelledby="app-links-title">
-      <header>
-        <h2 id="app-links-title">タスクを管理</h2>
-        <button type="button" className="icon-button" onClick={onClose} aria-label="閉じる"><X size={18} /></button>
-      </header>
-      <div className="app-link-list">
-        <AppLink platform="iPhone / iPad" />
-        <AppLink platform="Android" />
-      </div>
-    </dialog>
-  );
-}
-
-function AppLink({ platform }: { platform: string }) {
-  return <div aria-disabled="true"><span><strong>{platform}</strong><small>公開準備中</small></span></div>;
 }
 
 type SearchWorkspaceProps = {
