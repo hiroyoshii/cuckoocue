@@ -1,0 +1,50 @@
+import XCTest
+
+final class CuckooCueHomeScreenTests: XCTestCase {
+    func testAddMediumWidgetToHomeScreen() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing"]
+        app.launch()
+        XCTAssertTrue(app.navigationBars["Cuckoo Cue"].waitForExistence(timeout: 8))
+
+        XCUIDevice.shared.press(.home)
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let icon = springboard.icons["Cuckoo Cue"]
+        XCTAssertTrue(icon.waitForExistence(timeout: 8))
+        icon.press(forDuration: 1.5)
+
+        let editButton = springboard.buttons["Edit Home Screen"]
+        XCTAssertTrue(editButton.waitForExistence(timeout: 5))
+        editButton.tap()
+
+        let addButton = springboard.buttons.matching(
+            NSPredicate(format: "label == 'Add' OR label == 'Add Widget'")
+        ).firstMatch
+        XCTAssertTrue(addButton.waitForExistence(timeout: 5))
+        addButton.tap()
+
+        let searchField = springboard.searchFields.firstMatch
+        XCTAssertTrue(searchField.waitForExistence(timeout: 8))
+        searchField.tap()
+        searchField.typeText("Cuckoo Cue")
+
+        let widgetResult = springboard.staticTexts["Cuckoo Cue"].firstMatch
+        XCTAssertTrue(widgetResult.waitForExistence(timeout: 8))
+        widgetResult.tap()
+
+        let widgetGallery = springboard.scrollViews.firstMatch
+        XCTAssertTrue(widgetGallery.waitForExistence(timeout: 8))
+        widgetGallery.swipeLeft()
+        let addWidgetButton = springboard.buttons["Add Widget"]
+        XCTAssertTrue(addWidgetButton.waitForExistence(timeout: 8))
+        addWidgetButton.tap()
+
+        let doneButton = springboard.buttons["Done"]
+        if doneButton.waitForExistence(timeout: 4) { doneButton.tap() }
+
+        let screenshot = XCTAttachment(screenshot: springboard.screenshot())
+        screenshot.name = "CuckooCue-Widget-Actual-Home-Screen"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+    }
+}

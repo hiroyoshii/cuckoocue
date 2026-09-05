@@ -26,8 +26,8 @@ enum CueStorage {
         coordinatedWrite(data)
     }
 
-    static func resetForUITesting() {
-        save(.demo)
+    static func resetForUITesting(_ snapshot: CueSnapshot = .demo) {
+        save(snapshot)
     }
 
     private static var storageURL: URL {
@@ -80,4 +80,3 @@ enum CueStorage {
         return value
     }()
 }
-

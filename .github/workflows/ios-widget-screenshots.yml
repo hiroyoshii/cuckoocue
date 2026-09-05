@@ -60,22 +60,58 @@ jobs:
           set -euo pipefail
           simulator_id='${{ steps.simulator.outputs.id }}'
           app_path="build/ios-derived-data/Build/Products/Debug-iphonesimulator/CuckooCue.app"
-          mkdir -p build/ios-widget-screenshots
+          mkdir -p build/ios-widget-screenshots/widget-states build/ios-widget-screenshots/app
           xcrun simctl install "$simulator_id" "$app_path"
-          for family in small medium large; do
+
+          capture() {
+            local output="$1"
+            shift
             xcrun simctl terminate "$simulator_id" app.cuckoocue.ios 2>/dev/null || true
-            xcrun simctl launch "$simulator_id" app.cuckoocue.ios --ui-testing --screenshot-gallery "$family"
+            xcrun simctl launch "$simulator_id" app.cuckoocue.ios --ui-testing "$@"
             sleep 2
-            xcrun simctl io "$simulator_id" screenshot "build/ios-widget-screenshots/widget-$family.png"
-          done
+            xcrun simctl io "$simulator_id" screenshot "build/ios-widget-screenshots/$output.png"
+          }
+
+          capture widget-small --screenshot-gallery small
+          capture widget-medium --screenshot-gallery medium
+          capture widget-large --screenshot-gallery large
+          capture widget-states/widget-dark-medium --screenshot-gallery medium state-dark
+          capture widget-states/widget-large-text-medium --screenshot-gallery medium state-large-text
+          capture widget-states/widget-empty-medium --screenshot-gallery medium state-empty
+          capture widget-states/widget-undo-medium --screenshot-gallery medium state-undo
+          capture widget-states/widget-filtered-medium --screenshot-gallery medium state-filtered
+          capture widget-states/widget-paged-medium --screenshot-gallery medium state-paged
+          capture app/app-list
+          capture app/app-detail --screenshot-detail
+          capture app/app-widget-settings --screenshot-settings
+          capture app/app-new-run --screenshot-new-run
+          capture app/app-new-task --screenshot-new-task
+
+      - name: Capture actual Home Screen widget
+        shell: bash
+        run: |
+          set -o pipefail
+          simulator_id='${{ steps.simulator.outputs.id }}'
+          xcodebuild test \
+            -project ios/CuckooCue.xcodeproj \
+            -scheme CuckooCueHomeScreenUITests \
+            -destination "platform=iOS Simulator,id=$simulator_id" \
+            -derivedDataPath build/ios-home-derived-data \
+            -resultBundlePath build/CuckooCueHomeScreenTests.xcresult \
+            CODE_SIGNING_ALLOWED=NO
+          sleep 2
+          xcrun simctl io "$simulator_id" screenshot \
+            build/ios-widget-screenshots/widget-states/widget-actual-home-screen.png
 
       - name: Persist screenshots on branch
         if: github.event_name == 'push'
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p docs/review-screenshots/ios
+          mkdir -p docs/review-screenshots/ios/widget-states docs/review-screenshots/ios/app
           cp build/ios-widget-screenshots/*.png docs/review-screenshots/ios/
+          cp build/ios-widget-screenshots/widget-states/*.png docs/review-screenshots/ios/widget-states/
+          cp build/ios-widget-screenshots/app/*.png docs/review-screenshots/ios/app/
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add docs/review-screenshots/ios
@@ -90,7 +126,9 @@ jobs:
         with:
           name: cuckoo-cue-ios-widget-screenshots
           path: |
+            build/ios-widget-screenshots/**/*.png
             build/ios-widget-screenshots/*.png
             build/CuckooCueTests.xcresult
+            build/CuckooCueHomeScreenTests.xcresult
           if-no-files-found: warn
           retention-days: 14
