@@ -7,6 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint src scripts",
+    "pretest:e2e": "next build",
+    "test:e2e": "playwright test",
+    "capture:quality": "node scripts/capture-web-quality.mjs",
     "bq:init": "node scripts/create-bq-table.mjs",
     "bq:reset": "node scripts/reset-bq-table.mjs",
     "memory-bank:create": "python3 scripts/create-memory-bank.py",
@@ -25,6 +28,8 @@
     "zod": "^4.5.2"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@playwright/test": "^1.63.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
