@@ -10,7 +10,7 @@ an iPhone 16 Pro simulator:
 - `widget-states/widget-undo-medium.png`: completion with the temporary undo control.
 - `widget-states/widget-filtered-medium.png`: a selected footer filter.
 - `widget-states/widget-paged-medium.png`: content after advancing the cue page.
-- `widget-states/widget-actual-home-screen.png`: WidgetKit extension installed on SpringBoard.
+- `widget-states/widget-actual-home-screen.png`: the Small WidgetKit extension installed on SpringBoard.
 - `app/*.png`: list, detail, widget settings, new-list, and new-task screens.
 
 Preview images and the real widget use the same production `CueWidgetCard`. The
