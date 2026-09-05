@@ -9,7 +9,7 @@ final class CuckooCueScreenshotTests: XCTestCase {
         let preview = app.otherElements["widget-preview"]
         XCTAssertTrue(preview.waitForExistence(timeout: 5))
 
-        for label in ["Small", "Medium", "Large"] {
+        for label in ["Small", "Medium", "Large", "Lock"] {
             app.buttons[label].tap()
             let attachment = XCTAttachment(screenshot: app.screenshot())
             attachment.name = "CuckooCue-Widget-\(label)"
@@ -18,4 +18,3 @@ final class CuckooCueScreenshotTests: XCTestCase {
         }
     }
 }
-

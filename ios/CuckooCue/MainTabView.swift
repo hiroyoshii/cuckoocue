@@ -15,9 +15,10 @@ struct MainTabView: View {
 private struct RunListView: View {
     @EnvironmentObject private var store: CueStore
     @State private var presentingNewRun = false
+    @State private var path: [String] = []
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             Group {
                 if store.snapshot.runs.isEmpty {
                     ContentUnavailableView(
@@ -44,6 +45,16 @@ private struct RunListView: View {
                 Button("リストを追加", systemImage: "plus") { presentingNewRun = true }
             }
             .sheet(isPresented: $presentingNewRun) { NewRunSheet() }
+            .onOpenURL { url in
+                guard url.scheme == "cuckoocue", url.host == "queue" else { return }
+                let runID = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+                    .queryItems?
+                    .first(where: { $0.name == "run" })?
+                    .value
+                if let runID, store.snapshot.runs.contains(where: { $0.id == runID && $0.archivedAt == nil }) {
+                    path = [runID]
+                }
+            }
         }
     }
 }
