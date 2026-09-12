@@ -39,7 +39,7 @@ jobs:
             OUT_DIR="$GITHUB_WORKSPACE/build/android-widget-screenshots" \
             RUN_LAUNCHER_RESIZE=0 \
             RUN_INSTRUMENTATION=1 \
-            android/scripts/verify-widget-phase0.sh
+            ./android/scripts/verify-widget-phase0.sh
 
       - name: Upload widget screenshots
         if: always()

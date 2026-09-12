@@ -123,9 +123,17 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p docs/review-screenshots/ios/widget-states docs/review-screenshots/ios/app
+          if [ ! -d build/ios-widget-screenshots ]; then
+            echo "No iOS screenshots were produced; skipping persistence."
+            exit 0
+          fi
           cp build/ios-widget-screenshots/*.png docs/review-screenshots/ios/
-          cp build/ios-widget-screenshots/widget-states/*.png docs/review-screenshots/ios/widget-states/
-          cp build/ios-widget-screenshots/app/*.png docs/review-screenshots/ios/app/
+          if compgen -G "build/ios-widget-screenshots/widget-states/*.png" >/dev/null; then
+            cp build/ios-widget-screenshots/widget-states/*.png docs/review-screenshots/ios/widget-states/
+          fi
+          if compgen -G "build/ios-widget-screenshots/app/*.png" >/dev/null; then
+            cp build/ios-widget-screenshots/app/*.png docs/review-screenshots/ios/app/
+          fi
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add docs/review-screenshots/ios

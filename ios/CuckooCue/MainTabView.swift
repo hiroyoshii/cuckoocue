@@ -32,7 +32,7 @@ private struct RunListView: View {
                             WidgetCuePreview(
                                 cues: Array(store.snapshot.widgetCues.prefix(3)),
                                 totalCount: store.snapshot.widgetCues.count,
-                                runTitle: { Optional(store.snapshot.runTitle(for: $0)) },
+                                runTitle: { cue in store.snapshot.runTitle(for: cue) },
                                 emptyMessage: "強・中のCueが、Runをまたいでここからホーム画面へ戻ります。"
                             )
                         }
@@ -199,17 +199,23 @@ private struct WidgetCuePreview: View {
 
     private func priorityColor(_ priority: CuePriority) -> Color {
         switch priority {
-        case .strong: .cueTeal.opacity(0.62)
-        case .medium: .cueGreen.opacity(0.52)
-        case .quiet: .secondary.opacity(0.45)
+        case .strong:
+            return .cueTeal.opacity(0.62)
+        case .medium:
+            return .cueGreen.opacity(0.52)
+        case .quiet:
+            return .secondary.opacity(0.45)
         }
     }
 
     private func dotSize(_ priority: CuePriority) -> CGFloat {
         switch priority {
-        case .strong: 12
-        case .medium: 9
-        case .quiet: 6
+        case .strong:
+            return 12
+        case .medium:
+            return 9
+        case .quiet:
+            return 6
         }
     }
 
