@@ -12,6 +12,10 @@ on:
       - "android/**"
       - ".github/workflows/android-widget-screenshots.yml"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-test-screenshot:
     runs-on: ubuntu-latest
