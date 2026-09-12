@@ -63,21 +63,17 @@ jobs:
           status=${PIPESTATUS[0]}
           if [ "$status" -ne 0 ]; then
             echo "xcodebuild failed with status $status"
-            python3 - <<'PY'
-from pathlib import Path
-
-log = Path("build/CuckooCueBuild.log")
-text = log.read_text(errors="replace") if log.exists() else ""
-interesting = [
-    line for line in text.splitlines()
-    if any(token in line for token in (" error: ", ": error:", "BUILD FAILED", "CompileSwift", "Ld "))
-]
-if not interesting:
-    interesting = text.splitlines()[-80:]
-message = "\n".join(interesting[-30:]) or "No xcodebuild output was captured."
-message = message.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
-print(f"::error title=Xcode build failed::{message}")
-PY
+            message="$(grep -E ' error: |: error:|BUILD FAILED|CompileSwift|Ld ' build/CuckooCueBuild.log | tail -30 || true)"
+            if [ -z "$message" ]; then
+              message="$(tail -80 build/CuckooCueBuild.log || true)"
+            fi
+            if [ -z "$message" ]; then
+              message="No xcodebuild output was captured."
+            fi
+            message="${message//'%'/'%25'}"
+            message="${message//$'\r'/'%0D'}"
+            message="${message//$'\n'/'%0A'}"
+            echo "::error title=Xcode build failed::$message"
             exit "$status"
           fi
 

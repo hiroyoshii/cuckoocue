@@ -50,15 +50,14 @@ jobs:
               2>&1 | tee "$GITHUB_WORKSPACE/build/android-widget-screenshots/verification.log"
             status=${PIPESTATUS[0]}
             if [ "$status" -ne 0 ]; then
-              python3 - <<'PY'
-from pathlib import Path
-
-log = Path("build/android-widget-screenshots/verification.log")
-lines = log.read_text(errors="replace").splitlines() if log.exists() else []
-message = "\n".join(lines[-80:]) or "No Android widget verification output was captured."
-message = message.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
-print(f"::error title=Android widget verification failed::{message}")
-PY
+              message="$(tail -80 "$GITHUB_WORKSPACE/build/android-widget-screenshots/verification.log" || true)"
+              if [ -z "$message" ]; then
+                message="No Android widget verification output was captured."
+              fi
+              message="${message//'%'/'%25'}"
+              message="${message//$'\r'/'%0D'}"
+              message="${message//$'\n'/'%0A'}"
+              echo "::error title=Android widget verification failed::$message"
               exit "$status"
             fi
 
