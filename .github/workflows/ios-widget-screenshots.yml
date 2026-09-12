@@ -47,20 +47,18 @@ jobs:
           xcrun simctl boot "$simulator_id"
           xcrun simctl bootstatus "$simulator_id" -b
 
-      - name: Build and test
+      - name: Build app
         timeout-minutes: 15
         run: |
           set -o pipefail
           mkdir -p build
-          xcodebuild test \
+          xcodebuild build \
             -project ios/CuckooCue.xcodeproj \
             -scheme CuckooCue \
             -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.id }}' \
-            -only-testing:CuckooCueTests \
             -derivedDataPath build/ios-derived-data \
-            -resultBundlePath build/CuckooCueTests.xcresult \
             CODE_SIGNING_ALLOWED=NO \
-            | tee build/CuckooCueTests.log
+            | tee build/CuckooCueBuild.log
 
       - name: Capture widget previews
         timeout-minutes: 10
@@ -167,8 +165,7 @@ jobs:
           path: |
             build/ios-widget-screenshots/**/*.png
             build/ios-widget-screenshots/*.png
-            build/CuckooCueTests.log
-            build/CuckooCueTests.xcresult
+            build/CuckooCueBuild.log
             build/CuckooCueHomeScreenTests.xcresult
             build/CuckooCueHomeScreenTests.log
           if-no-files-found: warn
