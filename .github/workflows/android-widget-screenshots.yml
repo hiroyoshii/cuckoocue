@@ -40,26 +40,7 @@ jobs:
           arch: x86_64
           profile: pixel_6
           script: |
-            mkdir -p "$GITHUB_WORKSPACE/build/android-widget-screenshots"
-            set +e
-            ADB="$ANDROID_HOME/platform-tools/adb" \
-            OUT_DIR="$GITHUB_WORKSPACE/build/android-widget-screenshots" \
-            RUN_LAUNCHER_RESIZE=0 \
-            RUN_INSTRUMENTATION=0 \
-            ./android/scripts/verify-widget-phase0.sh \
-              2>&1 | tee "$GITHUB_WORKSPACE/build/android-widget-screenshots/verification.log"
-            status=${PIPESTATUS[0]}
-            if [ "$status" -ne 0 ]; then
-              message="$(tail -80 "$GITHUB_WORKSPACE/build/android-widget-screenshots/verification.log" || true)"
-              if [ -z "$message" ]; then
-                message="No Android widget verification output was captured."
-              fi
-              message="${message//'%'/'%25'}"
-              message="${message//$'\r'/'%0D'}"
-              message="${message//$'\n'/'%0A'}"
-              echo "::error title=Android widget verification failed::$message"
-              exit "$status"
-            fi
+            bash ./android/scripts/ci-widget-screenshots.sh
 
       - name: Upload widget screenshots
         if: always()
