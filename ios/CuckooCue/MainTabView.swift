@@ -33,6 +33,7 @@ private struct RunListView: View {
                                 cues: Array(store.snapshot.widgetCues.prefix(3)),
                                 totalCount: store.snapshot.widgetCues.count,
                                 runTitle: { cue in store.snapshot.runTitle(for: cue) },
+                                showsRunTitle: true,
                                 emptyMessage: "強・中のCueが、Runをまたいでここからホーム画面へ戻ります。"
                             )
                         }
@@ -106,7 +107,8 @@ struct RunDetailView: View {
                     WidgetCuePreview(
                         cues: Array(store.snapshot.widgetCues(runID: run.id, includeQuiet: false).prefix(3)),
                         totalCount: store.snapshot.widgetCues(runID: run.id, includeQuiet: false).count,
-                        runTitle: nil,
+                        runTitle: { _ in "" },
+                        showsRunTitle: false,
                         emptyMessage: "このRunからWidgetに出るCueはありません。強・中にするとホーム画面へ戻ります。"
                     )
                 }
@@ -142,7 +144,8 @@ struct RunDetailView: View {
 private struct WidgetCuePreview: View {
     let cues: [CueTask]
     let totalCount: Int
-    let runTitle: ((CueTask) -> String)?
+    let runTitle: (CueTask) -> String
+    let showsRunTitle: Bool
     let emptyMessage: String
 
     var body: some View {
@@ -167,8 +170,8 @@ private struct WidgetCuePreview: View {
                         .fill(priorityColor(cue.effectivePriority()))
                         .frame(width: dotSize(cue.effectivePriority()), height: dotSize(cue.effectivePriority()))
                         .frame(width: 14, height: 14)
-                    if let title = runTitle?(cue) {
-                        Text(title)
+                    if showsRunTitle {
+                        Text(runTitle(cue))
                             .font(.caption2.weight(.semibold))
                             .foregroundStyle(.cueTeal)
                             .lineLimit(1)
