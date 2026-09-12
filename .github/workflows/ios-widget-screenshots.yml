@@ -44,17 +44,21 @@ jobs:
           xcrun simctl bootstatus "$simulator_id" -b
 
       - name: Build and test
+        timeout-minutes: 15
         run: |
           set -o pipefail
+          mkdir -p build
           xcodebuild test \
             -project ios/CuckooCue.xcodeproj \
             -scheme CuckooCue \
             -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.id }}' \
             -derivedDataPath build/ios-derived-data \
             -resultBundlePath build/CuckooCueTests.xcresult \
-            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGNING_ALLOWED=NO \
+            | tee build/CuckooCueTests.log
 
       - name: Capture widget previews
+        timeout-minutes: 10
         shell: bash
         run: |
           set -euo pipefail
@@ -98,6 +102,7 @@ jobs:
       - name: Capture actual Home Screen widget
         id: home-screen
         continue-on-error: true
+        timeout-minutes: 10
         shell: bash
         run: |
           set -o pipefail
@@ -127,7 +132,9 @@ jobs:
             echo "No iOS screenshots were produced; skipping persistence."
             exit 0
           fi
-          cp build/ios-widget-screenshots/*.png docs/review-screenshots/ios/
+          if compgen -G "build/ios-widget-screenshots/*.png" >/dev/null; then
+            cp build/ios-widget-screenshots/*.png docs/review-screenshots/ios/
+          fi
           if compgen -G "build/ios-widget-screenshots/widget-states/*.png" >/dev/null; then
             cp build/ios-widget-screenshots/widget-states/*.png docs/review-screenshots/ios/widget-states/
           fi
@@ -155,6 +162,7 @@ jobs:
           path: |
             build/ios-widget-screenshots/**/*.png
             build/ios-widget-screenshots/*.png
+            build/CuckooCueTests.log
             build/CuckooCueTests.xcresult
             build/CuckooCueHomeScreenTests.xcresult
             build/CuckooCueHomeScreenTests.log
