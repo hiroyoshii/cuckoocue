@@ -106,7 +106,7 @@ struct RunDetailView: View {
                     WidgetCuePreview(
                         cues: Array(store.snapshot.widgetCues(runID: run.id, includeQuiet: false).prefix(3)),
                         totalCount: store.snapshot.widgetCues(runID: run.id, includeQuiet: false).count,
-                        runTitle: { _ in nil },
+                        runTitle: nil,
                         emptyMessage: "このRunからWidgetに出るCueはありません。強・中にするとホーム画面へ戻ります。"
                     )
                 }
@@ -142,7 +142,7 @@ struct RunDetailView: View {
 private struct WidgetCuePreview: View {
     let cues: [CueTask]
     let totalCount: Int
-    let runTitle: (CueTask) -> String?
+    let runTitle: ((CueTask) -> String)?
     let emptyMessage: String
 
     var body: some View {
@@ -167,7 +167,7 @@ private struct WidgetCuePreview: View {
                         .fill(priorityColor(cue.effectivePriority()))
                         .frame(width: dotSize(cue.effectivePriority()), height: dotSize(cue.effectivePriority()))
                         .frame(width: 14, height: 14)
-                    if let title = runTitle(cue) {
+                    if let title = runTitle?(cue) {
                         Text(title)
                             .font(.caption2.weight(.semibold))
                             .foregroundStyle(.cueTeal)
