@@ -56,6 +56,7 @@ jobs:
             -project ios/CuckooCue.xcodeproj \
             -scheme CuckooCue \
             -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.id }}' \
+            -only-testing:CuckooCueTests \
             -derivedDataPath build/ios-derived-data \
             -resultBundlePath build/CuckooCueTests.xcresult \
             CODE_SIGNING_ALLOWED=NO \
