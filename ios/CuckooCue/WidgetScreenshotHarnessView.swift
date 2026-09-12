@@ -2,7 +2,7 @@ import SwiftUI
 import WidgetKit
 
 /// Internal screenshot surface used by CI and UI tests.
-/// The product UI exposes "Widgetに出るCue" instead of a standalone widget preview.
+/// The product UI explains home-screen exposure inside Cue settings instead of a standalone widget preview.
 struct WidgetScreenshotHarnessView: View {
     @EnvironmentObject private var store: CueStore
     @State private var family: WidgetFamily

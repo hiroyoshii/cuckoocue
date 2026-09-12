@@ -530,11 +530,13 @@ echo "== Multi-run footer context check =="
 debug_broadcast "$RESET_MANY_RUNS_ACTION"
 sleep 2
 restart_app_fresh 4
-wait_for_text "Widgetに出るCue" 20 1 || true
-screenshot "app-widget-cue-preview-many-runs"
+wait_for_text "朝の支度" 20 1 || true
+screenshot "app-list-many-runs"
 tap_text "朝の支度" 2 || true
-wait_for_text "このRun" 10 1 || true
-screenshot "app-widget-cue-preview-run-detail"
+wait_for_text "このリスト" 10 1 || true
+tap_text "⋯" 2 || true
+wait_for_text "ホーム画面" 10 1 || true
+screenshot "app-run-detail-cue-settings"
 home
 show_widget_page || true
 wait_for_text "水筒に水を入れる" 20 1 || true

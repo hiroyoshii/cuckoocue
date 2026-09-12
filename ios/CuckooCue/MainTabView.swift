@@ -28,20 +28,7 @@ private struct RunListView: View {
                     )
                 } else {
                     List {
-                        Section {
-                            WidgetCuePreview(
-                                rows: widgetPreviewRows(
-                                    cues: Array(store.snapshot.widgetCues.prefix(3)),
-                                    snapshot: store.snapshot,
-                                    showsRunTitle: true
-                                ),
-                                totalCount: store.snapshot.widgetCues.count,
-                                showsRunTitle: true,
-                                emptyMessage: "強・中のCueが、Runをまたいでここからホーム画面へ戻ります。"
-                            )
-                        }
-
-                        Section("やる") {
+                        Section("実行中") {
                             ForEach(store.snapshot.runs.filter { $0.archivedAt == nil }) { run in
                                 NavigationLink(value: run.id) {
                                     VStack(alignment: .leading, spacing: 5) {
@@ -76,25 +63,6 @@ private struct RunListView: View {
     }
 }
 
-private func widgetPreviewRows(cues: [CueTask], snapshot: CueSnapshot, showsRunTitle: Bool) -> [WidgetCuePreviewRowData] {
-    cues.map { cue in
-        WidgetCuePreviewRowData(
-            id: cue.id,
-            title: cue.title,
-            runTitle: showsRunTitle ? snapshot.runTitle(for: cue) : "",
-            dueLabel: widgetPreviewDueLabel(cue.dueAt),
-            priority: cue.effectivePriority()
-        )
-    }
-}
-
-private func widgetPreviewDueLabel(_ date: Date?) -> String? {
-    guard let date else { return nil }
-    let components = Calendar(identifier: .gregorian).dateComponents([.month, .day], from: date)
-    guard let month = components.month, let day = components.day else { return nil }
-    return "\(month)/\(day)"
-}
-
 struct NewRunSheet: View {
     @EnvironmentObject private var store: CueStore
     @Environment(\.dismiss) private var dismiss
@@ -125,20 +93,7 @@ struct RunDetailView: View {
     var body: some View {
         List {
             if let run {
-                Section {
-                    WidgetCuePreview(
-                        rows: widgetPreviewRows(
-                            cues: Array(store.snapshot.widgetCues(runID: run.id, includeQuiet: false).prefix(3)),
-                            snapshot: store.snapshot,
-                            showsRunTitle: false
-                        ),
-                        totalCount: store.snapshot.widgetCues(runID: run.id, includeQuiet: false).count,
-                        showsRunTitle: false,
-                        emptyMessage: "このRunからWidgetに出るCueはありません。強・中にするとホーム画面へ戻ります。"
-                    )
-                }
-
-                Section("このRun") {
+                Section("このリスト") {
                     ForEach(run.tasks) { task in
                         Button { store.complete(taskID: task.id) } label: {
                             HStack(spacing: 12) {
@@ -166,95 +121,6 @@ struct RunDetailView: View {
     }
 }
 
-private struct WidgetCuePreviewRowData: Identifiable {
-    let id: String
-    let title: String
-    let runTitle: String
-    let dueLabel: String?
-    let priority: CuePriority
-}
-
-private struct WidgetCuePreview: View {
-    let rows: [WidgetCuePreviewRowData]
-    let totalCount: Int
-    let showsRunTitle: Bool
-    let emptyMessage: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("Widgetに出るCue")
-                        .font(.subheadline.weight(.semibold))
-                    Text(rows.isEmpty ? emptyMessage : "ホーム画面ではこの順に表示されます")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-                Text("\(totalCount)件")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(Color.cueTeal)
-            }
-
-            ForEach(rows) { row in
-                HStack(spacing: 9) {
-                    Circle()
-                        .fill(priorityColor(row.priority))
-                        .frame(width: dotSize(row.priority), height: dotSize(row.priority))
-                        .frame(width: 14, height: 14)
-                    if showsRunTitle {
-                        Text(row.runTitle)
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(Color.cueTeal)
-                            .lineLimit(1)
-                            .frame(width: 64, alignment: .leading)
-                    }
-                    Text(row.title)
-                        .font(.caption)
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
-                    Spacer(minLength: 0)
-                    if let dueLabel = row.dueLabel {
-                        Text(dueLabel)
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
-
-            if totalCount > rows.count {
-                Text("ほか\(totalCount - rows.count)件")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .padding(.vertical, 4)
-        .accessibilityElement(children: .combine)
-    }
-
-    private func priorityColor(_ priority: CuePriority) -> Color {
-        switch priority {
-        case .strong:
-            return Color.cueTeal.opacity(0.62)
-        case .medium:
-            return Color.cueGreen.opacity(0.52)
-        case .quiet:
-            return Color.secondary.opacity(0.45)
-        }
-    }
-
-    private func dotSize(_ priority: CuePriority) -> CGFloat {
-        switch priority {
-        case .strong:
-            return 12
-        case .medium:
-            return 9
-        case .quiet:
-            return 6
-        }
-    }
-}
-
 struct NewTaskSheet: View {
     @EnvironmentObject private var store: CueStore
     @Environment(\.dismiss) private var dismiss
@@ -263,6 +129,21 @@ struct NewTaskSheet: View {
     @State private var priority: CuePriority? = .medium
     @State private var hasDueDate = false
     @State private var dueAt = Date()
+
+    private var effectivePriority: CuePriority {
+        if let priority { return priority }
+        return CueTask(runID: runID, title: title, dueAt: hasDueDate ? dueAt : nil, sortOrder: 0)
+            .effectivePriority()
+    }
+
+    private var widgetHint: String {
+        switch effectivePriority {
+        case .strong, .medium:
+            return "このCueはホーム画面に出ます。"
+        case .quiet:
+            return "今はホーム画面に出ません。強・中にするか、近い期限を設定すると表示されます。"
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -274,6 +155,10 @@ struct NewTaskSheet: View {
                 }
                 Toggle("期限を設定", isOn: $hasDueDate)
                 if hasDueDate { DatePicker("期限", selection: $dueAt, displayedComponents: .date) }
+                Section("ホーム画面") {
+                    Text(widgetHint)
+                        .foregroundStyle(effectivePriority == .quiet ? Color.secondary : Color.cueTeal)
+                }
             }
             .navigationTitle("新しい項目")
             .toolbar {

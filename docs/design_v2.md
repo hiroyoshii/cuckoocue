@@ -106,7 +106,7 @@ fork後はcontext、Revision構成、順序を変更でき、元Shelfは変わ�
 - Runの変更をCuebookへ自動反映しない
 - 既存App / WidgetでRunを実行、完了、Undoする
 - WidgetはRun横断の実行キューであり、footerと文脈色はCueタイトルではなくRun文脈を表す
-- AppはRun一覧でWidgetに出るCueを集約表示し、Run詳細ではそのRunからWidgetに出るCueだけを表示する。表示候補はWidgetと同じprojection/orderingを使い、別の推薦ロジックを持たない
+- AppはRun一覧を実行中リストの管理に集中させる。Widgetに出るかどうかは、Cueの優先度・日付を設定する場所で即時に示す。トップ画面にWidgetの再現カードや独立したプレビュー画面を置かない
 - Cuebookから不変なCuebookRevisionを作る
 - RevisionとShelfItemをBigQueryに整合した公開結果として確定する
 - Public Shelfを認証なしで取得できる

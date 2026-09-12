@@ -95,7 +95,6 @@ import app.cuckoocue.data.CuckooRepository
 import app.cuckoocue.data.PriorityExposure
 import app.cuckoocue.data.RunEntity
 import app.cuckoocue.data.RunTaskEntity
-import app.cuckoocue.data.WidgetCue
 import app.cuckoocue.transfer.ImportedRunPayload
 import app.cuckoocue.transfer.CorpusImportClient
 import app.cuckoocue.transfer.EditableShelfSummary
@@ -419,7 +418,6 @@ private fun CuckooCueScreen(
     val memoryEventClient = remember { MemoryEventClient() }
     val runs by repository.runs.collectAsStateWithLifecycle(initialValue = emptyList())
     val cuebooks by repository.cuebooks.collectAsStateWithLifecycle(initialValue = emptyList())
-    val widgetCues by repository.widgetCues.collectAsStateWithLifecycle(initialValue = emptyList())
     var selectedRunId by remember { mutableStateOf<String?>(null) }
     var selectedCuebookId by remember { mutableStateOf<String?>(null) }
     var importedRunId by remember { mutableStateOf<String?>(null) }
@@ -695,7 +693,6 @@ private fun CuckooCueScreen(
             repository = repository,
             runs = runs,
             cuebooks = cuebooks,
-            widgetCues = widgetCues,
             appearanceSettings = appearanceSettings,
             signedInUser = signedInUser,
             signInError = signInError,
@@ -747,7 +744,6 @@ private fun RunListScreen(
     repository: CuckooRepository,
     runs: List<RunEntity>,
     cuebooks: List<CuebookEntity>,
-    widgetCues: List<WidgetCue>,
     appearanceSettings: AppearanceSettings,
     signedInUser: FirebaseUser?,
     signInError: String?,
@@ -823,14 +819,6 @@ private fun RunListScreen(
             }
             if (mode == "runs") {
                 item {
-                    WidgetCuePreviewCard(
-                        widgetCues = widgetCues,
-                        showRunTitle = true,
-                        emptyBody = "強・中のCueが、Runをまたいでここからホーム画面へ戻ります。",
-                        modifier = Modifier.padding(top = 2.dp),
-                    )
-                }
-                item {
                     NewRunComposer(
                         value = runDraft,
                         onValueChange = { runDraft = it },
@@ -841,7 +829,7 @@ private fun RunListScreen(
                     )
                 }
                 if (runs.isEmpty()) {
-                    item { EmptyListCard(title = "実行中のリストはまだありません", body = "一回きりのリストを作るか、段取りから日付付きのリストを作成します。") }
+                    item { EmptyListCard(title = "実行中のリストはまだありません", body = "一回きりのリストを作るか、再利用リストから日付付きのリストを作成します。") }
                 }
                 items(runs, key = { it.id }) { run ->
                     RunCard(repository = repository, run = run, onOpen = { onOpenRun(run) })
@@ -855,12 +843,12 @@ private fun RunListScreen(
                             onCreateCuebook(cuebookDraft)
                             cuebookDraft = ""
                         },
-                        label = "新しい段取り",
+                        label = "新しい再利用リスト",
                         buttonLabel = "作成",
                     )
                 }
                 if (cuebooks.isEmpty()) {
-                    item { EmptyListCard(title = "段取りはまだありません", body = "次回も使うTodoの型を作ると、完了予定日から実行リストを作れます。") }
+                    item { EmptyListCard(title = "再利用リストはまだありません", body = "次回も使う項目セットを作ると、完了予定日から実行リストを作れます。") }
                 }
                 items(cuebooks, key = { it.id }) { cuebook ->
                     CuebookCard(repository = repository, cuebook = cuebook, onOpen = { onOpenCuebook(cuebook) })
@@ -929,13 +917,13 @@ private fun ListModeTabs(
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         ModeTab(
-            label = "やる",
+            label = "実行中",
             selected = mode == "runs",
             onClick = { onModeChange("runs") },
             modifier = Modifier.weight(1f),
         )
         ModeTab(
-            label = "段取り",
+            label = "再利用",
             selected = mode == "cuebooks",
             onClick = { onModeChange("cuebooks") },
             modifier = Modifier.weight(1f),
@@ -1059,7 +1047,7 @@ private fun CuebookCard(
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(
-                        text = cuebook.originRevisionId?.let { "借りた段取り" } ?: "自分の段取り",
+                        text = cuebook.originRevisionId?.let { "借りた再利用リスト" } ?: "自分の再利用リスト",
                         color = colors.teal,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
@@ -1114,106 +1102,6 @@ private fun MiniTaskPreview(task: RunTaskEntity) {
     }
 }
 
-@Composable
-private fun WidgetCuePreviewCard(
-    widgetCues: List<WidgetCue>,
-    showRunTitle: Boolean,
-    emptyBody: String,
-    modifier: Modifier = Modifier,
-) {
-    val colors = LocalCuckooColors.current
-    val previewCues = widgetCues.take(3)
-
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(8.dp),
-        color = colors.highlight,
-        tonalElevation = 0.dp,
-        shadowElevation = 0.dp,
-    ) {
-        Column(
-            modifier = Modifier
-                .border(1.dp, colors.line, RoundedCornerShape(8.dp))
-                .padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Widgetに出るCue",
-                        color = colors.ink,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Text(
-                        text = if (widgetCues.isEmpty()) emptyBody else "ホーム画面ではこの順に表示されます",
-                        color = colors.muted,
-                        fontSize = 11.sp,
-                        lineHeight = 15.sp,
-                    )
-                }
-                Text(
-                    text = "${widgetCues.size}件",
-                    color = colors.teal,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-
-            previewCues.forEach { cue ->
-                WidgetCuePreviewRow(cue = cue, showRunTitle = showRunTitle)
-            }
-            if (widgetCues.size > previewCues.size) {
-                Text(
-                    text = "ほか${widgetCues.size - previewCues.size}件",
-                    color = colors.muted,
-                    fontSize = 11.sp,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun WidgetCuePreviewRow(cue: WidgetCue, showRunTitle: Boolean) {
-    val colors = LocalCuckooColors.current
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        ExposureDot(priority = cue.priority, modifier = Modifier.size(8.dp), compact = true)
-        Spacer(Modifier.width(8.dp))
-        if (showRunTitle) {
-            Text(
-                text = cue.runTitle,
-                color = colors.teal,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.width(68.dp),
-            )
-        }
-        Text(
-            text = cue.title,
-            color = colors.ink,
-            fontSize = 12.sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f),
-        )
-        cue.dueAt.dueLabel()?.let { label ->
-            Spacer(Modifier.width(8.dp))
-            Text(
-                text = label,
-                color = colors.muted,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-            )
-        }
-    }
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun RunDetailScreen(
@@ -1235,7 +1123,6 @@ private fun RunDetailScreen(
 ) {
     val colors = LocalCuckooColors.current
     val tasks by repository.observeTasks(run.id).collectAsStateWithLifecycle(initialValue = emptyList())
-    val runWidgetCues by repository.observeWidgetCues(run.id).collectAsStateWithLifecycle(initialValue = emptyList())
     val pending = remember(tasks) { tasks.filter { it.completedAt == null } }
     val completed = remember(tasks) { tasks.filter { it.completedAt != null } }
     var titleDraft by remember(run.id, run.updatedAt) { mutableStateOf(run.title) }
@@ -1347,14 +1234,6 @@ private fun RunDetailScreen(
                 item {
                     ImportedNotice(modifier = Modifier.padding(bottom = 8.dp))
                 }
-            }
-            item {
-                WidgetCuePreviewCard(
-                    widgetCues = runWidgetCues,
-                    showRunTitle = false,
-                    emptyBody = "このRunからWidgetに出るCueはありません。強・中にするとホーム画面へ戻ります。",
-                    modifier = Modifier.padding(bottom = 8.dp),
-                )
             }
             item {
                 AddTaskComposer(
@@ -1610,7 +1489,7 @@ private fun CuebookDetailScreen(
 @Composable
 private fun CuebookOriginLabel(cuebook: CuebookEntity) {
     val colors = LocalCuckooColors.current
-    val label = cuebook.originRevisionId?.let { "探すから借りた段取り" } ?: "自分の段取り"
+    val label = cuebook.originRevisionId?.let { "探すから借りた再利用リスト" } ?: "自分の再利用リスト"
     Text(
         text = label,
         color = colors.teal,
@@ -1751,8 +1630,22 @@ private fun CuebookTaskRow(
                 },
             )
         }
+        Text(
+            text = reusableCueExposureHint(priorityDraft),
+            color = if (priorityDraft == PriorityExposure.Quiet) colors.muted else colors.teal,
+            fontSize = 11.sp,
+            lineHeight = 15.sp,
+            modifier = Modifier.padding(start = 54.dp),
+        )
     }
 }
+
+private fun reusableCueExposureHint(priority: Int?): String =
+    if (PriorityExposure.normalize(priority ?: PriorityExposure.Quiet) == PriorityExposure.Quiet) {
+        "日付付きリストにしたとき、通常はホーム画面に出ません。中・強にすると表示されます。"
+    } else {
+        "日付付きリストにしたとき、このCueはホーム画面に出ます。"
+    }
 
 @Composable
 private fun ImportedNotice(modifier: Modifier = Modifier) {
@@ -2462,8 +2355,22 @@ private fun TaskMetaControls(
                 onPriorityChange(PriorityExposure.Strong)
             }
         }
+        Text(
+            text = widgetExposureHint(priority),
+            color = if (priority == PriorityExposure.Quiet) colors.muted else colors.teal,
+            fontSize = 11.sp,
+            lineHeight = 15.sp,
+            modifier = Modifier.padding(start = 48.dp),
+        )
     }
 }
+
+private fun widgetExposureHint(priority: Int): String =
+    if (PriorityExposure.normalize(priority) == PriorityExposure.Quiet) {
+        "今はホーム画面に出ません。中・強にすると表示されます。"
+    } else {
+        "このCueはホーム画面に出ます。"
+    }
 
 @Composable
 private fun UnderlineChoice(
