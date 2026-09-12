@@ -12,6 +12,9 @@ on:
       - "android/**"
       - ".github/workflows/android-widget-screenshots.yml"
 
+permissions:
+  contents: write
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -47,6 +50,31 @@ jobs:
           profile: pixel_6
           script: |
             bash ./android/scripts/ci-widget-screenshots.sh
+
+      - name: Persist screenshots on branch
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p docs/review-screenshots/android
+          if [ ! -d build/android-widget-screenshots ]; then
+            echo "No Android screenshots were produced; skipping persistence."
+            exit 0
+          fi
+          find build/android-widget-screenshots -type f -name '*.png' -print0 |
+            while IFS= read -r -d '' screenshot; do
+              relative="${screenshot#build/android-widget-screenshots/}"
+              mkdir -p "docs/review-screenshots/android/$(dirname "$relative")"
+              cp "$screenshot" "docs/review-screenshots/android/$relative"
+            done
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add docs/review-screenshots/android
+          if ! git diff --cached --quiet; then
+            git commit -m "Update Android widget screenshots"
+            git pull --rebase origin "$GITHUB_REF_NAME"
+            git push
+          fi
 
       - name: Upload widget screenshots
         if: always()
