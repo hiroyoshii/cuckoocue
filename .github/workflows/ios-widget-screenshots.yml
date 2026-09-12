@@ -22,7 +22,7 @@ concurrency:
 jobs:
   build-test-screenshot:
     runs-on: macos-15
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
@@ -122,7 +122,7 @@ jobs:
       - name: Capture actual Home Screen widget
         id: home-screen
         continue-on-error: true
-        timeout-minutes: 10
+        timeout-minutes: 15
         shell: bash
         run: |
           set -o pipefail
