@@ -5,7 +5,11 @@ import android.database.sqlite.SQLiteFullException
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import app.cuckoocue.transfer.ImportedRunPayload
+import app.cuckoocue.transfer.ImportedRunTask
 import java.lang.reflect.Proxy
+import java.time.LocalDate
+import java.time.ZoneOffset
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -18,6 +22,18 @@ import org.junit.runner.RunWith
 class CuckooDaoInstrumentedTest {
     private lateinit var database: CuckooDatabase
     private lateinit var dao: CuckooDao
+
+    @Test
+    fun receivingSameRunPreservesIdsDatesAndExistingLocalEdits() = runTest {
+        val run = RunEntity(id = "shared-run", title = "Webのリスト", sourceCuebookId = "source-cuebook", targetAnchorDay = 5000L, createdAt = 1L, updatedAt = 2L)
+        val task = RunTaskEntity(id = "shared-task", runId = run.id, sourceTaskId = "source-task", title = "予約する", userPriority = null, availableFromAt = 3000L, dueAt = null, sortOrder = 0, createdAt = 1L, updatedAt = 2L)
+        assertEquals(true, dao.receiveNewRun(run, listOf(task), 3L))
+        assertEquals(run, dao.runById(run.id))
+        assertEquals(listOf(task), dao.tasksForRun(run.id))
+        assertEquals(false, dao.receiveNewRun(run.copy(title = "古い別の内容"), emptyList(), 4L))
+        assertEquals(run, dao.runById(run.id))
+        assertEquals(listOf(task), dao.tasksForRun(run.id))
+    }
 
     @Before
     fun setUp() {
@@ -126,6 +142,7 @@ class CuckooDaoInstrumentedTest {
         assertEquals(listOf("task-a"), runA.map { it.taskId })
         assertEquals(listOf("task-b"), runB.map { it.taskId })
         assertEquals(listOf("task-a", "task-b"), all.map { it.taskId })
+        assertEquals(listOf("朝", "夜"), all.map { it.runTitle })
     }
 
     @Test
@@ -245,6 +262,200 @@ class CuckooDaoInstrumentedTest {
     }
 
     @Test
+    fun completedRunCanBeReusedWithDatesShiftedToNewAnchor() = runTest {
+        val sourceAnchorDay = LocalDate.of(2026, 10, 1)
+        val targetAnchorDay = LocalDate.of(2027, 4, 15)
+        seedRun(
+            id = "source-run",
+            title = "引っ越し準備",
+            now = 10,
+            completedAnchorAt = sourceAnchorDay.epochMillis(),
+        )
+        dao.insertTask(
+            RunTaskEntity(
+                id = "source-task-a",
+                runId = "source-run",
+                title = "業者を決める",
+                userPriority = PriorityExposure.Strong,
+                availableFromAt = LocalDate.of(2026, 8, 20).epochMillis(),
+                dueAt = LocalDate.of(2026, 8, 25).epochMillis(),
+                sortOrder = 0,
+                completedAt = LocalDate.of(2026, 8, 24).epochMillis(),
+                createdAt = 20,
+                updatedAt = 30,
+            ),
+        )
+        dao.insertTask(
+            RunTaskEntity(
+                id = "source-task-b",
+                runId = "source-run",
+                title = "郵便転送を申し込む",
+                userPriority = PriorityExposure.Medium,
+                dueAt = LocalDate.of(2026, 9, 17).epochMillis(),
+                sortOrder = 1,
+                completedAt = LocalDate.of(2026, 9, 17).epochMillis(),
+                createdAt = 21,
+                updatedAt = 31,
+            ),
+        )
+        val repository = repository()
+
+        val reusedRunId = requireNotNull(
+            repository.reuseCompletedRun(
+                sourceRunId = "source-run",
+                targetAnchorDay = targetAnchorDay,
+                clock = { 1_000 },
+                zoneId = ZoneOffset.UTC,
+            ),
+        )
+
+        val reusedRun = requireNotNull(dao.runById(reusedRunId))
+        val reusedTasks = dao.tasksForRun(reusedRunId)
+        assertEquals("引っ越し準備", reusedRun.title)
+        assertEquals(null, reusedRun.completedAnchorAt)
+        assertEquals(listOf("業者を決める", "郵便転送を申し込む"), reusedTasks.map { it.title })
+        assertEquals(LocalDate.of(2027, 3, 4).epochMillis(), reusedTasks[0].availableFromAt)
+        assertEquals(LocalDate.of(2027, 3, 9).epochMillis(), reusedTasks[0].dueAt)
+        assertEquals(LocalDate.of(2027, 4, 1).epochMillis(), reusedTasks[1].dueAt)
+        assertEquals(listOf(null, null), reusedTasks.map { it.completedAt })
+        assertEquals(
+            listOf(PriorityExposure.Strong, PriorityExposure.Medium),
+            reusedTasks.map { it.userPriority },
+        )
+        assertEquals(2, dao.getWidgetCues().count { it.runId == reusedRunId })
+        assertEquals(sourceAnchorDay.epochMillis(), dao.runById("source-run")?.completedAnchorAt)
+        assertEquals(listOf(true, true), dao.tasksForRun("source-run").map { it.completedAt != null })
+    }
+
+    @Test
+    fun importedRevisionCreatesPrivateCuebookAndRun() = runTest {
+        val repository = repository()
+
+        val runId = requireNotNull(
+            repository.importRun(
+                payload = ImportedRunPayload(
+                    title = "猫と引っ越す42日",
+                    targetAnchorDay = LocalDate.of(2026, 10, 1),
+                    originRevisionId = "revision-1",
+                    tasks = listOf(
+                        ImportedRunTask(
+                            title = "動物病院で診療記録を受け取る",
+                            defaultPriority = PriorityExposure.Strong,
+                            relativeStartDay = -30,
+                            relativeEndDay = -21,
+                        ),
+                    ),
+                ),
+                clock = { 500 },
+                zoneId = ZoneOffset.UTC,
+            ),
+        )
+
+        val run = requireNotNull(dao.runById(runId))
+        val cuebook = dao.observeCuebooks().first().single()
+        val cuebookTask = dao.tasksForCuebook(cuebook.id).single()
+        val runTask = dao.tasksForRun(runId).single()
+
+        assertEquals(1, dao.cuebookCount())
+        assertEquals("revision-1", cuebook.originRevisionId)
+        assertEquals(cuebook.id, run.sourceCuebookId)
+        assertEquals(LocalDate.of(2026, 10, 1).epochMillis(), run.targetAnchorDay)
+        assertEquals(cuebookTask.id, runTask.sourceTaskId)
+        assertEquals(LocalDate.of(2026, 9, 1).epochMillis(), runTask.availableFromAt)
+        assertEquals(LocalDate.of(2026, 9, 10).epochMillis(), runTask.dueAt)
+    }
+
+    @Test
+    fun incompleteRunCannotBeReused() = runTest {
+        seedRun()
+        seedTask("run-1", "task-1", "未完了", PriorityExposure.Strong, sortOrder = 0)
+
+        val reusedRunId = repository().reuseCompletedRun(
+            sourceRunId = "run-1",
+            targetAnchorDay = LocalDate.of(2027, 4, 15),
+            zoneId = ZoneOffset.UTC,
+        )
+
+        assertEquals(null, reusedRunId)
+        assertEquals(1, dao.runCount())
+    }
+
+    @Test
+    fun cuebookCreatesIndependentRunsWithSourceBindings() = runTest {
+        val repository = repository()
+        val cuebookId = requireNotNull(
+            repository.createCuebook(
+                title = "海外出張準備",
+                tasks = listOf(
+                    CuebookTaskDraft(
+                        title = "ホテル予約を確認する",
+                        defaultPriority = PriorityExposure.Strong,
+                        relativeStartDay = -10,
+                        relativeEndDay = -7,
+                    ),
+                    CuebookTaskDraft(
+                        title = "パスポートをかばんに入れる",
+                        defaultPriority = PriorityExposure.Medium,
+                        relativeEndDay = -1,
+                    ),
+                ),
+                clock = { 100 },
+            ),
+        )
+
+        val runA = requireNotNull(
+            repository.createRunFromCuebook(
+                cuebookId = cuebookId,
+                targetAnchorDay = LocalDate.of(2026, 11, 20),
+                clock = { 200 },
+                zoneId = ZoneOffset.UTC,
+            ),
+        )
+        val runB = requireNotNull(
+            repository.createRunFromCuebook(
+                cuebookId = cuebookId,
+                targetAnchorDay = LocalDate.of(2027, 1, 15),
+                clock = { 300 },
+                zoneId = ZoneOffset.UTC,
+            ),
+        )
+        val sourceTasks = dao.tasksForCuebook(cuebookId)
+
+        repository.updateTask(
+            taskId = dao.tasksForRun(runA).first().id,
+            title = "今回だけホテル予約を2日前に確認する",
+            availableFromAt = LocalDate.of(2026, 11, 18).epochMillis(),
+            dueAt = LocalDate.of(2026, 11, 18).epochMillis(),
+            priority = PriorityExposure.Strong,
+            clock = { 400 },
+        )
+        repository.completeTask(dao.tasksForRun(runA).last().id)
+
+        val runAEntity = requireNotNull(dao.runById(runA))
+        val runBEntity = requireNotNull(dao.runById(runB))
+        val runATasks = dao.tasksForRun(runA)
+        val runBTasks = dao.tasksForRun(runB)
+
+        assertEquals(cuebookId, runAEntity.sourceCuebookId)
+        assertEquals(cuebookId, runBEntity.sourceCuebookId)
+        assertEquals(LocalDate.of(2026, 11, 20).epochMillis(), runAEntity.targetAnchorDay)
+        assertEquals(LocalDate.of(2027, 1, 15).epochMillis(), runBEntity.targetAnchorDay)
+        assertEquals(sourceTasks.map { it.id }, runATasks.map { it.sourceTaskId })
+        assertEquals(sourceTasks.map { it.id }, runBTasks.map { it.sourceTaskId })
+        assertEquals(LocalDate.of(2026, 11, 18).epochMillis(), runATasks[0].availableFromAt)
+        assertEquals(LocalDate.of(2026, 11, 18).epochMillis(), runATasks[0].dueAt)
+        assertEquals(LocalDate.of(2027, 1, 5).epochMillis(), runBTasks[0].availableFromAt)
+        assertEquals(LocalDate.of(2027, 1, 8).epochMillis(), runBTasks[0].dueAt)
+        assertEquals(
+            listOf("ホテル予約を確認する", "パスポートをかばんに入れる"),
+            sourceTasks.map { it.title },
+        )
+        assertEquals("今回だけホテル予約を2日前に確認する", runATasks[0].title)
+        assertEquals("ホテル予約を確認する", runBTasks[0].title)
+        assertEquals(null, runBTasks[1].completedAt)
+    }
+
+    @Test
     fun repositoryPersistsValidDateRangeAndRejectsInvertedRange() = runTest {
         seedRun()
         seedTask("run-1", "task-1", "期間付き", PriorityExposure.Strong, sortOrder = 0)
@@ -301,11 +512,13 @@ class CuckooDaoInstrumentedTest {
         id: String = "run-1",
         title: String = "Run",
         now: Long = 10,
+        completedAnchorAt: Long? = null,
     ) {
         dao.insertRun(
             RunEntity(
                 id = id,
                 title = title,
+                completedAnchorAt = completedAnchorAt,
                 createdAt = now,
                 updatedAt = now,
             ),
@@ -351,3 +564,6 @@ class CuckooDaoInstrumentedTest {
         )
     }
 }
+
+private fun LocalDate.epochMillis(): Long =
+    atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()

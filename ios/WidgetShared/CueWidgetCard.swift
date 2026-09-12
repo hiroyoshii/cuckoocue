@@ -413,9 +413,9 @@ private struct CuePalette {
 
     func priority(_ priority: CuePriority) -> Color {
         switch priority {
-        case .strong: teal
-        case .medium: green.opacity(0.82)
-        case .quiet: muted.opacity(0.5)
+        case .strong: muted.opacity(isDark ? 0.68 : 0.58)
+        case .medium: muted.opacity(isDark ? 0.46 : 0.38)
+        case .quiet: muted.opacity(isDark ? 0.28 : 0.22)
         }
     }
 

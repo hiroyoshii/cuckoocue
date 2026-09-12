@@ -54,10 +54,11 @@ import app.cuckoocue.appearance.WidgetTextScale
 import app.cuckoocue.appearance.WidgetThemeMode
 
 private val FooterTipGap = 6.dp
-private const val FooterTipMinWidthDp = 44
-private const val FooterTipMaxWidthDp = 100
-private const val EstimatedFooterTipGlyphWidthDp = 11
-private const val MaxFooterTipLabelChars = 10
+private const val FooterVisibleTipCount = 3
+private const val FooterTipMinWidthDp = 58
+private const val FooterTipMaxWidthDp = 116
+private const val EstimatedFooterTipGlyphWidthDp = 10
+private const val MaxFooterTipLabelChars = 8
 private const val MaxUndoTitleChars = 12
 
 private val TaskIdKey = ActionParameters.Key<String>("task_id")
@@ -130,6 +131,8 @@ class CuckooCueWidget : GlanceAppWidget() {
             val cues by repository.widgetCues.collectAsState(initial = emptyList())
             val footerTipStripOffset = currentState(FooterTipStripOffsetPreferenceKey) ?: 0
             val selectedFooterTipKey = currentState(SelectedFooterTipKeyPreferenceKey)
+            val activeFooterTipKey = selectedFooterTipKey
+                ?.takeIf { selectedRunId -> cues.any { it.runId == selectedRunId } }
             val lastUndoTaskId = currentState(LastUndoTaskIdPreferenceKey)
             val lastUndoTitle = currentState(LastUndoTitlePreferenceKey)
             val lastUndoCue = if (
@@ -145,14 +148,14 @@ class CuckooCueWidget : GlanceAppWidget() {
             }
             val pendingCues = cues
                 .filter {
-                    selectedFooterTipKey == null ||
-                        it.taskId == selectedFooterTipKey
+                    activeFooterTipKey == null ||
+                        it.runId == activeFooterTipKey
                 }
             CuckooCueWidgetContent(
                 cues = pendingCues,
                 allCues = cues,
                 footerTipStripOffset = footerTipStripOffset,
-                selectedFooterTipKey = selectedFooterTipKey,
+                selectedFooterTipKey = activeFooterTipKey,
                 lastUndoCue = lastUndoCue,
                 colors = colors,
                 metrics = metrics,
@@ -338,57 +341,61 @@ private fun Footer(
     modifier: GlanceModifier = GlanceModifier,
 ) {
     val rotatedFooterTips = footerTips.rotateBy(footerTipStripOffset)
+    val visibleFooterTips = rotatedFooterTips.take(FooterVisibleTipCount)
+    val showAdvance = footerTips.size > visibleFooterTips.size
 
     Box(
         modifier = modifier
-            .padding(top = 4.dp),
+            .padding(top = 3.dp),
         contentAlignment = Alignment.CenterStart,
     ) {
         Row(
             modifier = GlanceModifier
                 .fillMaxWidth()
-                .padding(end = 34.dp),
+                .padding(end = if (showAdvance) 34.dp else 0.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (lastUndoCue != null) {
                 UndoChip(cue = lastUndoCue, colors = colors)
                 Spacer(GlanceModifier.width(14.dp))
             }
-            rotatedFooterTips.forEach { footerTip ->
+            visibleFooterTips.forEach { footerTip ->
                 FooterTip(
                     footerTip = footerTip.tip,
                     selected = selectedFooterTipKey == footerTip.tip.key,
                     colors = colors,
                     metrics = metrics,
                 )
-                if (footerTip.index != rotatedFooterTips.last().index) {
+                if (footerTip.index != visibleFooterTips.last().index) {
                     Spacer(GlanceModifier.width(FooterTipGap))
                 }
             }
         }
 
-        Box(
-            modifier = GlanceModifier
-                .fillMaxWidth()
-                .height(30.dp),
-            contentAlignment = Alignment.CenterEnd,
-        ) {
+        if (showAdvance) {
             Box(
                 modifier = GlanceModifier
-                    .width(32.dp)
-                    .height(30.dp)
-                    .background(colors.surfaceBase)
-                    .clickable(actionRunCallback<AdvanceFooterTipStripAction>()),
+                    .fillMaxWidth()
+                    .height(30.dp),
                 contentAlignment = Alignment.CenterEnd,
             ) {
-                Text(
-                    text = "›",
-                    style = TextStyle(
-                        color = colors.ink,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                    ),
-                )
+                Box(
+                    modifier = GlanceModifier
+                        .width(32.dp)
+                        .height(30.dp)
+                        .background(colors.surfaceBase)
+                        .clickable(actionRunCallback<AdvanceFooterTipStripAction>()),
+                    contentAlignment = Alignment.CenterEnd,
+                ) {
+                    Text(
+                        text = "›",
+                        style = TextStyle(
+                            color = colors.ink,
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.Bold,
+                        ),
+                    )
+                }
             }
         }
     }
@@ -485,18 +492,18 @@ private fun FooterTip(
     Box(
         modifier = modifier
             .width(tipWidth)
-            .height(15.dp)
+            .height(20.dp)
             .clickable(
                 actionRunCallback<ToggleFooterTipFilterAction>(
                     actionParametersOf(FooterTipKey to footerTip.key),
                 ),
             ),
-        contentAlignment = Alignment.BottomStart,
+        contentAlignment = Alignment.CenterStart,
     ) {
         Box(
             modifier = GlanceModifier
                 .width(metrics.footerMarkWidth)
-                .height(if (selected) 6.dp else 5.dp)
+                .height(if (selected) 7.dp else 5.dp)
                 .background(footerTip.colorKey.cueGroupMarkColor()),
         ) {}
         Text(
@@ -605,16 +612,17 @@ private fun MutablePreferences.clearTransientUndo() {
 }
 
 private fun List<WidgetCue>.footerTips(): List<WidgetFooterTip> =
-    map { cue ->
+    distinctBy { cue -> cue.runId }
+        .map { cue ->
             WidgetFooterTip(
-                key = cue.taskId,
-                label = cue.title,
+                key = cue.runId,
+                label = cue.runTitle,
                 colorKey = cue.groupColorKey(),
             )
         }
 
 private fun WidgetCue.groupColorKey(): String =
-    when (taskId.fold(0) { acc, char -> acc + char.code }.floorMod(3)) {
+    when (runId.fold(0) { acc, char -> acc + char.code }.floorMod(3)) {
         1 -> "green"
         2 -> "gold"
         else -> "teal"
@@ -645,9 +653,9 @@ private fun widgetColors(dark: Boolean): WidgetColors =
             teal = Teal,
             green = Green,
             gold = Gold,
-            priorityHigh = ColorProvider(Color(0xFF5DB1A8)),
-            priorityMedium = ColorProvider(Color(0xCC7FA36B)),
-            priorityLow = ColorProvider(Color(0x669DAAA6)),
+            priorityHigh = ColorProvider(Color(0x99A3B5B0)),
+            priorityMedium = ColorProvider(Color(0x66A3B5B0)),
+            priorityLow = ColorProvider(Color(0x40A3B5B0)),
         )
     } else {
         WidgetColors(
@@ -659,9 +667,9 @@ private fun widgetColors(dark: Boolean): WidgetColors =
             teal = Teal,
             green = Green,
             gold = Gold,
-            priorityHigh = ColorProvider(Color(0xFF4F8E87)),
-            priorityMedium = ColorProvider(Color(0xCC6F8F5B)),
-            priorityLow = ColorProvider(Color(0x80647174)),
+            priorityHigh = ColorProvider(Color(0x99566D69)),
+            priorityMedium = ColorProvider(Color(0x66566D69)),
+            priorityLow = ColorProvider(Color(0x33566D69)),
         )
     }
 

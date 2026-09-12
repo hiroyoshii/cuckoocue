@@ -1,5 +1,6 @@
 import { BigQuery } from "@google-cloud/bigquery";
 import { cueEnv } from "./env";
+import { bqTable, digest } from "./bq-store";
 import {
   buildSearchContextEmbeddingText,
   buildTaskListContextEmbeddingText,
@@ -129,6 +130,7 @@ export async function searchTaskListEntries(
   userProfileAttributes: string[],
   searchDomain: string | null,
   pageSize: number,
+  owner = "",
 ): Promise<SearchPage> {
   const explicitTokens = tokenize(message);
   const hasExplicitTokens = explicitTokens.length > 0;
@@ -165,7 +167,7 @@ export async function searchTaskListEntries(
             ORDER BY task_position
           ) AS task_texts
         )))) AS content_key
-      FROM \`${cueEnv.projectId()}.${cueEnv.dataset()}.${cueEnv.table()}\`
+      FROM ${bqTable("cuebook_revisions")}
       WHERE ARRAY_LENGTH(context_embedding) = ARRAY_LENGTH(@contextEmbedding)
     ),
     scored AS (
@@ -183,25 +185,27 @@ export async function searchTaskListEntries(
         ) AS context_score
       FROM prepared
     )
-    SELECT * EXCEPT(
+    , related AS (
+      SELECT item.revision_id, ARRAY_AGG(STRUCT(s.id, s.title) ORDER BY s.title, s.id) AS shelves
+      FROM ${bqTable("shelves")} s CROSS JOIN UNNEST(s.items) item GROUP BY item.revision_id
+    )
+    SELECT scored.* EXCEPT(
       content_key, domain_matched, explicit_hit_count, search_text,
       context_embedding, owner_user_id, context_score
     ),
       explicit_hit_count > 0 AS text_matched,
-      IFNULL(context_score, 0) AS context_score
-    FROM scored
+      IFNULL(context_score, 0) AS context_score,
+      IFNULL(related.shelves, []) AS shelves
+    FROM scored LEFT JOIN related ON related.revision_id = scored.id
     WHERE explicit_hit_count > 0 OR domain_matched OR @hasExplicitTokens = FALSE
-    QUALIFY ROW_NUMBER() OVER (
-      PARTITION BY content_key
-      ORDER BY context_score DESC, created_at DESC
-    ) = 1
-    ORDER BY context_score DESC, created_at DESC
+    ORDER BY context_score DESC, created_at DESC, scored.id
   `;
 
   const [job] = await withRetry(
     () =>
       bigQuery().createQueryJob({
         query,
+        labels: { cue_kind: "public_search", cue_owner: digest(owner).slice(0, 63) },
         jobTimeoutMs: BigQueryJobTimeoutMs,
         location: cueEnv.googleCloudLocation(),
         params: {
@@ -236,11 +240,16 @@ export async function searchTaskListEntries(
 export async function getSearchTaskListEntriesPage(
   cursor: string,
   pageSize: number,
+  owner = "",
 ): Promise<SearchPage> {
   const decoded = decodeSearchCursor(cursor);
   const job = bigQuery().job(decoded.jobId, {
     location: cueEnv.googleCloudLocation(),
   });
+  const [metadata] = await job.getMetadata();
+  if (metadata.configuration?.labels?.cue_kind !== "public_search" || metadata.configuration?.labels?.cue_owner !== digest(owner).slice(0, 63)) {
+    throw Response.json({ error: "検索結果の有効期限が切れました。再検索してください。" }, { status: 400 });
+  }
   const [rows, nextQuery] = await withRetry(
     () =>
       job.getQueryResults({
@@ -275,7 +284,7 @@ export async function getTaskListEntry(
       search_text,
       context_embedding,
       FORMAT_TIMESTAMP('%Y-%m-%dT%H:%M:%E*S%Ez', created_at) AS created_at
-    FROM \`${cueEnv.projectId()}.${cueEnv.dataset()}.${cueEnv.table()}\`
+    FROM ${bqTable("cuebook_revisions")}
     WHERE id = @id
     LIMIT 1
   `;
@@ -300,7 +309,7 @@ export async function listTaskListDomains(): Promise<string[]> {
 
   const query = `
     SELECT DISTINCT domain
-    FROM \`${cueEnv.projectId()}.${cueEnv.dataset()}.${cueEnv.table()}\`
+    FROM ${bqTable("cuebook_revisions")}
     WHERE domain IS NOT NULL
       AND TRIM(domain) != ''
     ORDER BY domain

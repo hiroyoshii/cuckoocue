@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     const pageSize = input.page_size ?? 20;
 
     if (input.cursor) {
-      const page = await getSearchTaskListEntriesPage(input.cursor, pageSize);
+      const page = await getSearchTaskListEntriesPage(input.cursor, pageSize, user.id);
       return NextResponse.json({
         memoryFacts: [],
         userProfileAttributes: [],
@@ -46,6 +46,7 @@ export async function POST(request: NextRequest) {
       userProfileAttributes,
       searchDomain,
       pageSize,
+      user.id,
     );
 
     return NextResponse.json({

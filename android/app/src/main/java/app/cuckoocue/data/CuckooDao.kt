@@ -12,6 +12,9 @@ interface CuckooDao {
     @Query("select count(*) from runs")
     suspend fun runCount(): Int
 
+    @Query("select count(*) from cuebooks")
+    suspend fun cuebookCount(): Int
+
     @Query("select count(*) from runs where archived_at is null")
     suspend fun activeRunCount(): Int
 
@@ -36,6 +39,18 @@ interface CuckooDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertTask(task: RunTaskEntity)
 
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertCuebook(cuebook: CuebookEntity)
+
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertCuebookTask(task: CuebookTaskEntity)
+
+    @Transaction
+    suspend fun insertCuebookAndTasks(cuebook: CuebookEntity, tasks: List<CuebookTaskEntity>) {
+        insertCuebook(cuebook)
+        tasks.forEach { insertCuebookTask(it) }
+    }
+
     @Transaction
     suspend fun insertRunAndTasks(run: RunEntity, tasks: List<RunTaskEntity>, now: Long) {
         insertRun(run)
@@ -43,6 +58,20 @@ interface CuckooDao {
             insertTask(task)
             refreshWidgetCueForTask(task.id, now)
         }
+    }
+
+    @Transaction
+    suspend fun receiveNewRun(run: RunEntity, tasks: List<RunTaskEntity>, now: Long): Boolean {
+        // Reopening a link must never replace local execution or unsynced edits.
+        if (runById(run.id) != null) return false
+        insertRunAndTasks(run, tasks, now)
+        return true
+    }
+
+    @Transaction
+    suspend fun runSyncSnapshot(runId: String): Pair<RunEntity, List<RunTaskEntity>>? {
+        val run = runById(runId) ?: return null
+        return run to tasksForRun(runId)
     }
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -54,8 +83,14 @@ interface CuckooDao {
     @Query("select * from runs where archived_at is null order by sort_order, created_at")
     fun observeRuns(): Flow<List<RunEntity>>
 
+    @Query("select * from cuebooks order by updated_at desc, created_at desc")
+    fun observeCuebooks(): Flow<List<CuebookEntity>>
+
     @Query("select * from runs where id = :runId")
     suspend fun runById(runId: String): RunEntity?
+
+    @Query("select * from cuebooks where id = :cuebookId")
+    suspend fun cuebookById(cuebookId: String): CuebookEntity?
 
     @Query("select id from runs")
     suspend fun allRunIds(): List<String>
@@ -65,6 +100,12 @@ interface CuckooDao {
 
     @Query("select * from run_tasks where run_id = :runId order by sort_order, created_at")
     suspend fun tasksForRun(runId: String): List<RunTaskEntity>
+
+    @Query("select * from cuebook_tasks where cuebook_id = :cuebookId order by sort_order, created_at")
+    fun observeCuebookTasks(cuebookId: String): Flow<List<CuebookTaskEntity>>
+
+    @Query("select * from cuebook_tasks where cuebook_id = :cuebookId order by sort_order, created_at")
+    suspend fun tasksForCuebook(cuebookId: String): List<CuebookTaskEntity>
 
     @Query(
         """
@@ -87,6 +128,51 @@ interface CuckooDao {
     @Query("select max(sort_order) from run_tasks where run_id = :runId")
     suspend fun maxSortOrder(runId: String): Int?
 
+    @Query("select max(sort_order) from cuebook_tasks where cuebook_id = :cuebookId")
+    suspend fun maxCuebookTaskSortOrder(cuebookId: String): Int?
+
+    @Query(
+        """
+        update cuebooks
+        set title = :title,
+            updated_at = :now
+        where id = :cuebookId
+        """,
+    )
+    suspend fun updateCuebookTitle(cuebookId: String, title: String, now: Long): Int
+
+    @Query(
+        """
+        update cuebook_tasks
+        set title = :title,
+            default_priority = :defaultPriority,
+            relative_start_day = :relativeStartDay,
+            relative_end_day = :relativeEndDay,
+            updated_at = :now
+        where id = :taskId
+        """,
+    )
+    suspend fun updateCuebookTaskDetails(
+        taskId: String,
+        title: String,
+        defaultPriority: Int?,
+        relativeStartDay: Int?,
+        relativeEndDay: Int?,
+        now: Long,
+    ): Int
+
+    @Query(
+        """
+        update cuebooks
+        set updated_at = :now
+        where id = :cuebookId
+        """,
+    )
+    suspend fun touchCuebook(cuebookId: String, now: Long): Int
+
+    @Query("delete from cuebook_tasks where id = :taskId")
+    suspend fun deleteCuebookTask(taskId: String): Int
+
     @Query(
         """
         update run_tasks
@@ -102,6 +188,7 @@ interface CuckooDao {
         """
         select
             widget_cues.run_id as runId,
+            runs.title as runTitle,
             widget_cues.task_id as taskId,
             run_tasks.title as title,
             widget_cues.priority as priority,
@@ -128,6 +215,7 @@ interface CuckooDao {
         """
         select
             widget_cues.run_id as runId,
+            runs.title as runTitle,
             widget_cues.task_id as taskId,
             run_tasks.title as title,
             widget_cues.priority as priority,
@@ -154,6 +242,7 @@ interface CuckooDao {
         """
         select
             widget_cues.run_id as runId,
+            runs.title as runTitle,
             widget_cues.task_id as taskId,
             run_tasks.title as title,
             widget_cues.priority as priority,
@@ -411,6 +500,34 @@ interface CuckooDao {
         insertTask(task)
         refreshRunCompletionAnchor(task.runId, now)
         refreshWidgetCueForTask(task.id, now)
+    }
+
+    @Transaction
+    suspend fun insertCuebookTaskAndTouchCuebook(task: CuebookTaskEntity, now: Long) {
+        insertCuebookTask(task)
+        touchCuebook(task.cuebookId, now)
+    }
+
+    @Transaction
+    suspend fun updateCuebookTaskAndTouchCuebook(
+        cuebookId: String,
+        taskId: String,
+        title: String,
+        defaultPriority: Int?,
+        relativeStartDay: Int?,
+        relativeEndDay: Int?,
+        now: Long,
+    ): Int {
+        val changed = updateCuebookTaskDetails(taskId, title, defaultPriority, relativeStartDay, relativeEndDay, now)
+        if (changed == 1) touchCuebook(cuebookId, now)
+        return changed
+    }
+
+    @Transaction
+    suspend fun deleteCuebookTaskAndTouchCuebook(cuebookId: String, taskId: String, now: Long): Int {
+        val changed = deleteCuebookTask(taskId)
+        if (changed == 1) touchCuebook(cuebookId, now)
+        return changed
     }
 
     @Transaction

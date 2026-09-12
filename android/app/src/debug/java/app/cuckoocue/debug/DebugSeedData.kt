@@ -10,6 +10,12 @@ private data class DebugSeedTask(
     val priority: Int?,
 )
 
+private data class DebugSeedRun(
+    val title: String,
+    val dueTodayTask: String,
+    val upcomingTask: String,
+)
+
 private object DebugSeedData {
     const val RunTitle = "手元に置くこと"
 
@@ -34,25 +40,47 @@ private object DebugSeedData {
         DebugSeedTask("短", PriorityExposure.Quiet),
     )
 
-    val manyRunTitles = listOf(
-        "朝の支度",
-        "出発前",
-        "役所まわり",
-        "病院の準備",
-        "家のメンテ",
-        "バックアップ",
-        "買い物",
-        "旅行前",
-        "月末処理",
-        "連絡すること",
-        "読んでおくこと",
-        "あとで確認",
-        "長い名前のリストでもカード幅の中で自然に省略されることを見る",
-        "短",
-        "手続き",
-        "荷造り",
-        "支払い",
-        "メモ整理",
+    val manyRuns = listOf(
+        DebugSeedRun(
+            title = "朝の支度",
+            dueTodayTask = "水筒に水を入れる",
+            upcomingTask = "明日の服を玄関近くに置く",
+        ),
+        DebugSeedRun(
+            title = "出発前",
+            dueTodayTask = "戸締まりと火元を確認する",
+            upcomingTask = "移動中に読む案内を保存する",
+        ),
+        DebugSeedRun(
+            title = "役所まわり",
+            dueTodayTask = "本人確認書類をかばんに入れる",
+            upcomingTask = "転出届の受付時間を確認する",
+        ),
+        DebugSeedRun(
+            title = "病院の準備",
+            dueTodayTask = "診察券と紹介状をまとめる",
+            upcomingTask = "薬の残数をメモする",
+        ),
+        DebugSeedRun(
+            title = "家のメンテ",
+            dueTodayTask = "換気フィルターの型番を確認する",
+            upcomingTask = "粗大ごみの回収日を控える",
+        ),
+        DebugSeedRun(
+            title = "バックアップ",
+            dueTodayTask = "復旧コードの保管場所を確認する",
+            upcomingTask = "外付けドライブにログインする",
+        ),
+        DebugSeedRun(
+            title = "旅行前",
+            dueTodayTask = "パスポートの期限を確認する",
+            upcomingTask = "空港までの移動時間を調べる",
+        ),
+        DebugSeedRun(
+            title = "月末処理",
+            dueTodayTask = "請求書の未処理分を確認する",
+            upcomingTask = "来月の支払い予定を見直す",
+        ),
     )
 
     val archivedRunTitles = listOf(
@@ -81,21 +109,21 @@ suspend fun resetToManyRunsDebugSeedData(context: Context) {
     val dao = CuckooDatabase.getInstance(context).dao()
     val repository = CuckooRepository.getInstance(context)
     dao.resetSeedData()
-    DebugSeedData.manyRunTitles.forEachIndexed { index, title ->
-        val runId = repository.createRun(title) ?: return@forEachIndexed
+    DebugSeedData.manyRuns.forEachIndexed { index, run ->
+        val runId = repository.createRun(run.title) ?: return@forEachIndexed
         repository.addTask(
             runId = runId,
-            title = "今すぐ触る ${index + 1}",
+            title = run.dueTodayTask,
             dueAt = PriorityExposure.startOfDayOffset(0),
         )
         repository.addTask(
             runId = runId,
-            title = "少し長い項目名でも一覧カードのプレビューが自然に切れるか確認する ${index + 1}",
+            title = run.upcomingTask,
             dueAt = PriorityExposure.startOfDayOffset((index % 5 + 1).toLong()),
         )
         repository.addTask(
             runId = runId,
-            title = "静かな控え ${index + 1}",
+            title = "あとで必要なら見直す控え ${index + 1}",
             priority = PriorityExposure.Quiet,
         )
     }

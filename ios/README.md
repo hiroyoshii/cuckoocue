@@ -4,6 +4,13 @@ The iOS 17+ app and WidgetKit extension mirror Android's cue candidates and orde
 while adapting the viewport to Apple's fixed widget families. App and extension
 share a JSON snapshot through the `group.app.cuckoocue.shared` App Group.
 
+The widget footer is run context, not a task-title filter. Unscoped widgets show
+the all-runs context (`すべて`), scoped widgets show the configured run title, and
+the row rail color is derived from the task's run ID.
+
+The app also previews the same widget cue queue: the run list shows the cross-run
+queue, while a run detail screen shows only the cues from that run.
+
 Home Screen widgets support Small, Medium, and Large layouts; the Lock Screen uses
 the accessory rectangular family. Each instance can select a run and optionally
 include quiet-priority items. Completion uses an interactive toggle, Small keeps an
@@ -20,5 +27,6 @@ Center and Action Button control that opens the queue.
 5. Register `group.app.cuckoocue.shared` for both bundle identifiers.
 
 The GitHub Actions workflow builds without signing, runs unit/UI tests, captures
-Small, Medium, and Large previews from the iOS Simulator, and uploads the PNGs as
-the `cuckoo-cue-ios-widget-screenshots` artifact.
+Small, Medium, Large, scoped-run, paged, and multi-run previews from the iOS
+Simulator, and uploads the PNGs as the `cuckoo-cue-ios-widget-screenshots`
+artifact.

@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireRegisteredUserId } from "@/lib/auth";
 import { adminFirestore } from "@/lib/firebase-admin";
 import { completedRunToSaveDraft, syncedRunSnapshotSchema } from "@/lib/synced-run";
+import { runEtag } from "@/lib/run-etag";
+import { dataApiError } from "@/lib/bq-store";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -15,11 +17,20 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Run id does not match the path" }, { status: 400 });
     }
 
-    await runDocument(userId, id).set({
-      ...run,
-      synced_at: FieldValue.serverTimestamp(),
+    const etag = runEtag(run);
+    const ref = runDocument(userId, id);
+    await adminFirestore().runTransaction(async (transaction) => {
+      const current = await transaction.get(ref);
+      if (current.exists) {
+        const currentTag = runEtag(syncedRunSnapshotSchema.parse(current.data()));
+        if (currentTag === etag) return;
+        if (request.headers.get("if-match") !== currentTag) throw Response.json({ error: "別の変更が保存されています。同期前の版を確認してください。" }, { status: 409 });
+      } else if (request.headers.has("if-match")) {
+        throw Response.json({ error: "同期先のリストが見つかりません。" }, { status: 409 });
+      }
+      transaction.set(ref, { ...run, synced_at: FieldValue.serverTimestamp() }, { merge: true });
     });
-    return NextResponse.json({ runId: id });
+    return NextResponse.json({ runId: id }, { headers: { ETag: etag } });
   } catch (error) {
     return errorResponse(error);
   }
@@ -45,8 +56,6 @@ function runDocument(userId: string, runId: string) {
 }
 
 function errorResponse(error: unknown) {
-  if (error instanceof Response) return error;
-  const message = error instanceof Error ? error.message : "Unknown error";
-  const status = message === "完了したリストだけを残せます。" ? 409 : 400;
-  return NextResponse.json({ error: message }, { status });
+  if (error instanceof Error && error.message === "完了したリストだけを残せます。") return NextResponse.json({ error: error.message }, { status: 409 });
+  return dataApiError(error);
 }

@@ -2,6 +2,11 @@
 
 Last updated: 2026-09-04
 
+> This document records the current Web search/save implementation. The planned
+> Cuebook, source-binding, revision, Shelf, and Outcome contract is defined in
+> [Design v2](design_v2.md); it supersedes the relevant MVP decisions here only
+> after that design is implemented.
+
 ## Product Boundary
 
 Web is the shared reusable-corpus surface.

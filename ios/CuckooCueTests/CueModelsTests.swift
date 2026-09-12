@@ -54,6 +54,23 @@ final class CueModelsTests: XCTestCase {
         )
     }
 
+    func testWidgetFooterContextUsesConfiguredRunTitle() {
+        let run = CueRun(id: "release", title: "リリース準備", sortOrder: 0, tasks: [])
+        let snapshot = CueSnapshot(runs: [run])
+
+        XCTAssertEqual(snapshot.configuredRunTitle(runID: nil), "すべて")
+        XCTAssertEqual(snapshot.configuredRunTitle(runID: "release"), "リリース準備")
+    }
+
+    func testMultiRunScreenshotStateKeepsRunContextAvailable() {
+        let snapshot = CueSnapshot.multiRunDemo
+
+        XCTAssertGreaterThanOrEqual(snapshot.runs.count, 4)
+        XCTAssertEqual(snapshot.configuredRunTitle(runID: nil), "すべて")
+        XCTAssertEqual(snapshot.runTitle(for: snapshot.widgetCues[0]), "朝の支度")
+        XCTAssertEqual(snapshot.runTitle(for: snapshot.widgetCues[1]), "出発前")
+    }
+
     func testQuietTasksCanBeIncludedByWidgetConfiguration() {
         let run = CueRun(id: "run", title: "List", sortOrder: 0, tasks: [
             CueTask(runID: "run", title: "Quiet", userPriority: .quiet, sortOrder: 0),

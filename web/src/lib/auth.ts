@@ -19,7 +19,13 @@ export async function requireRequestUser(request: NextRequest): Promise<RequestU
     throw authError("認証情報がありません。", 401);
   }
 
-  const token = await adminAuth().verifyIdToken(match[1]);
+  const token = await adminAuth().verifyIdToken(match[1]).catch((error: unknown) => {
+    const code = error && typeof error === "object" && "code" in error ? String(error.code) : "";
+    if (["auth/id-token-expired", "auth/id-token-revoked", "auth/argument-error", "auth/invalid-id-token", "auth/user-disabled"].includes(code)) {
+      throw authError("認証の有効期限が切れました。ログインし直してください。", 401);
+    }
+    throw error;
+  });
   return {
     id: token.uid,
     isAnonymous: token.firebase?.sign_in_provider === "anonymous",

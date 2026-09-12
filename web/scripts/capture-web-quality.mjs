@@ -40,7 +40,7 @@ try {
   });
   const savePage = await saveContext.newPage();
   await savePage.goto(baseUrl);
-  await savePage.locator(".product-rail").getByRole("button", { name: "公開" }).click();
+  await savePage.locator(".product-rail").getByRole("button", { name: "作る" }).click();
   await savePage.locator("#save-title").fill("東京から名古屋への引っ越し手続き");
   const taskTitles = [
     "退去日と入居日を確定する",
@@ -56,7 +56,7 @@ try {
   await savePage.getByLabel("End date 2").fill("2026-08-22");
   await savePage.getByLabel("Start date 3").fill("2026-08-22");
   await savePage.getByLabel("End date 3").fill("2026-09-01");
-  await savePage.getByRole("button", { name: "検索情報を準備" }).click();
+  await savePage.getByRole("button", { name: "再利用情報を準備" }).click();
   await savePage.getByLabel("Group label 1").waitFor({ timeout: 30_000 });
   await savePage.screenshot({ path: output("04-save-review-desktop.png"), fullPage: true });
   await savePage.setViewportSize({ width: 390, height: 844 });

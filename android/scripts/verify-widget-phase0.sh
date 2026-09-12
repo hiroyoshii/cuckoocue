@@ -8,9 +8,11 @@ PACKAGE="app.cuckoocue"
 MAIN_ACTIVITY="$PACKAGE/.MainActivity"
 PIN_ACTIVITY="$PACKAGE/.debug.PinWidgetActivity"
 RESET_SEED_ACTION="$PACKAGE.debug.RESET_SEED"
+RESET_MANY_RUNS_ACTION="$PACKAGE.debug.RESET_MANY_RUNS"
 COMPLETE_FIRST_PENDING_ACTION="$PACKAGE.debug.COMPLETE_FIRST_PENDING"
 UNDO_FIRST_COMPLETED_ACTION="$PACKAGE.debug.UNDO_FIRST_COMPLETED"
 SET_APPEARANCE_ACTION="$PACKAGE.debug.SET_APPEARANCE"
+VERIFICATION_RECEIVER="$PACKAGE/.debug.VerificationReceiver"
 
 ROW_TAP_X="${ROW_TAP_X:-260}"
 ROW_TAP_Y="${ROW_TAP_Y:-220}"
@@ -31,9 +33,26 @@ adb_shell() {
   "$ADB" shell "$@"
 }
 
+debug_broadcast() {
+  local action="$1"
+  shift
+  adb_shell am broadcast -n "$VERIFICATION_RECEIVER" -a "$action" "$@" >/dev/null
+}
+
 screenshot() {
   local name="$1"
-  "$ADB" exec-out screencap -p > "$OUT_DIR/$name.png"
+  local target="$OUT_DIR/$name.png"
+  local tmp="$OUT_DIR/$name.tmp.png"
+  local device_target="/sdcard/cuckoo-cue-$name.png"
+  rm -f "$tmp"
+  if timeout 20s "$ADB" exec-out screencap -p > "$tmp" && [ -s "$tmp" ]; then
+    mv "$tmp" "$target"
+  else
+    rm -f "$tmp"
+    timeout 20s "$ADB" shell screencap -p "$device_target"
+    timeout 20s "$ADB" pull "$device_target" "$target" >/dev/null
+    timeout 10s "$ADB" shell rm "$device_target" >/dev/null 2>&1 || true
+  fi
   echo "screenshot: $OUT_DIR/$name.png"
 }
 
@@ -43,6 +62,13 @@ wait_home() {
 
 start_app() {
   adb_shell am start -n "$MAIN_ACTIVITY" >/dev/null
+}
+
+restart_app_fresh() {
+  adb_shell am force-stop "$PACKAGE" >/dev/null 2>&1 || true
+  sleep 1
+  start_app
+  wait_home "${1:-4}"
 }
 
 home() {
@@ -119,6 +145,21 @@ wait_tap_text() {
 
   for _ in $(seq 1 "$attempts"); do
     if tap_text "$text" 2; then
+      return 0
+    fi
+    sleep "$pause"
+  done
+
+  return 1
+}
+
+wait_for_text() {
+  local text="$1"
+  local attempts="${2:-15}"
+  local pause="${3:-1}"
+
+  for _ in $(seq 1 "$attempts"); do
+    if ui_text_bounds "$text" >/dev/null; then
       return 0
     fi
     sleep "$pause"
@@ -433,7 +474,12 @@ echo "== Build, install, and run instrumentation checks =="
   cd "$ROOT_DIR"
   if [ "${RUN_INSTRUMENTATION:-1}" = "1" ]; then
     ./gradlew installDebug installDebugAndroidTest
-    "$ADB" shell am instrument -w "$PACKAGE.test/androidx.test.runner.AndroidJUnitRunner"
+    instrumentation_output="$OUT_DIR/instrumentation.txt"
+    "$ADB" shell am instrument -w "$PACKAGE.test/androidx.test.runner.AndroidJUnitRunner" | tee "$instrumentation_output"
+    if grep -E "Process crashed|FAILURES!!!|INSTRUMENTATION_RESULT: shortMsg=Process crashed" "$instrumentation_output" >/dev/null; then
+      echo "Android instrumentation failed; see $instrumentation_output" >&2
+      exit 1
+    fi
   fi
   ./gradlew installDebug
 )
@@ -443,10 +489,11 @@ ensure_widget_placed
 screenshot "after-pin-request"
 
 echo "== Fresh seed data without removing launcher widget placement =="
-adb_shell am broadcast -a "$RESET_SEED_ACTION" -p "$PACKAGE" >/dev/null
+debug_broadcast "$RESET_SEED_ACTION"
 start_app
 wait_home 6
 home
+wait_for_text "水" 20 1 || true
 screenshot "fresh-home"
 
 echo "== Widget row tap completes and shows transient undo =="
@@ -470,14 +517,30 @@ home
 screenshot "after-app-launch-clears-undo"
 
 echo "== App-side mutation redraws the widget =="
-adb_shell am broadcast -a "$RESET_SEED_ACTION" -p "$PACKAGE" >/dev/null
+debug_broadcast "$RESET_SEED_ACTION"
 sleep 2
-adb_shell am broadcast -a "$COMPLETE_FIRST_PENDING_ACTION" -p "$PACKAGE" >/dev/null
+debug_broadcast "$COMPLETE_FIRST_PENDING_ACTION"
 sleep 2
 screenshot "after-app-side-complete"
-adb_shell am broadcast -a "$UNDO_FIRST_COMPLETED_ACTION" -p "$PACKAGE" >/dev/null
+debug_broadcast "$UNDO_FIRST_COMPLETED_ACTION"
 sleep 2
 screenshot "after-app-side-undo"
+
+echo "== Multi-run footer context check =="
+debug_broadcast "$RESET_MANY_RUNS_ACTION"
+sleep 2
+restart_app_fresh 4
+wait_for_text "Widgetに出るCue" 20 1 || true
+screenshot "app-widget-cue-preview-many-runs"
+tap_text "朝の支度" 2 || true
+wait_for_text "このRun" 10 1 || true
+screenshot "app-widget-cue-preview-run-detail"
+home
+show_widget_page || true
+wait_for_text "水筒に水を入れる" 20 1 || true
+screenshot "multi-run-footer-context"
+tap "$FOOTER_NEXT_X" "$FOOTER_NEXT_Y" 2
+screenshot "multi-run-footer-context-after-next"
 
 echo "== Vertical scroll smoke check =="
 swipe_widget
@@ -485,18 +548,18 @@ screenshot "after-vertical-scroll"
 
 echo "== Widget theme and text scale smoke checks =="
 for theme in Light Dark FollowApp; do
-  adb_shell am broadcast -a "$SET_APPEARANCE_ACTION" -p "$PACKAGE" --es widget_theme "$theme" >/dev/null
+  debug_broadcast "$SET_APPEARANCE_ACTION" --es widget_theme "$theme"
   sleep 2
   screenshot "appearance-widget-theme-$theme"
 done
 
 for scale in Compact Standard Large; do
-  adb_shell am broadcast -a "$SET_APPEARANCE_ACTION" -p "$PACKAGE" --es widget_text_scale "$scale" >/dev/null
+  debug_broadcast "$SET_APPEARANCE_ACTION" --es widget_text_scale "$scale"
   sleep 2
   screenshot "appearance-widget-text-$scale"
 done
 
-adb_shell am broadcast -a "$SET_APPEARANCE_ACTION" -p "$PACKAGE" --es app_theme System --es widget_theme FollowApp --es widget_text_scale Standard >/dev/null
+debug_broadcast "$SET_APPEARANCE_ACTION" --es app_theme System --es widget_theme FollowApp --es widget_text_scale Standard
 sleep 2
 
 echo "== Screen profile smoke checks =="
@@ -516,7 +579,7 @@ screenshot "final-reset-profile"
 
 if [ "${RUN_REBOOT:-0}" = "1" ]; then
   echo "== Optional reboot recovery check =="
-  adb_shell am broadcast -a "$RESET_SEED_ACTION" -p "$PACKAGE" >/dev/null
+  debug_broadcast "$RESET_SEED_ACTION"
   sleep 2
   "$ADB" reboot
   "$ADB" wait-for-device

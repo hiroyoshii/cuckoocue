@@ -1,0 +1,29 @@
+* { box-sizing: border-box; letter-spacing: 0; }
+body { margin: 0; color: #172126; background: #f7f8f4; font: 15px/1.7 "Zen Kaku Gothic New", sans-serif; }
+header, main, footer, .concepts { max-width: 1600px; margin: auto; padding: 32px; }
+header img { width: 180px; height: 50px; object-fit: contain; }
+h1 { font-size: 28px; margin: 20px 0 8px; }
+h2 { font-size: 20px; margin: 0 0 12px; }
+h3 { font-size: 16px; margin: 0 0 12px; }
+p { margin: 8px 0; }
+a { color: #326c65; }
+select { font: inherit; background: white; border: 1px solid #cdd7d1; border-radius: 4px; padding: 8px; max-width: 100%; }
+.concepts { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 28px; padding-top: 0; }
+.concepts article { border-top: 3px solid #6e9487; padding-top: 20px; }
+.concepts article:nth-child(2) { border-color: #b18978; }
+.concepts article:nth-child(3) { border-color: #7c929c; }
+.concepts p { font-size: 14px; }
+.tradeoff { color: #576669; font-size: 13px!important; }
+.open { display: inline-block; padding: 10px 16px; background: white; border: 1px solid #cdd7d1; border-radius: 6px; margin-top: 14px; text-decoration: none; }
+.gallery-controls { position: sticky; top: 0; z-index: 3; display: flex; gap: 24px; align-items: center; padding: 16px 32px; background: #f7f8f4; border-block: 1px solid #cdd7d1; }
+.gallery-controls span { font-size: 12px; color: #576669; margin-left: auto; }
+.gallery-controls label { display: flex; gap: 12px; align-items: center; font-size: 13px; }
+.screen-row { scroll-margin-top: 100px; margin-bottom: 56px; }
+.screen-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+figure { margin: 0; min-width: 0; }
+figure img { width: 100%; aspect-ratio: 1440 / 1060; object-fit: cover; object-position: top; border: 1px solid #d8dfdc; background: white; border-radius: 4px; display: block; }
+body[data-viewport=mobile] figure img { aspect-ratio: 390 / 740; }
+figcaption { margin-top: 10px; display: flex; justify-content: space-between; font-size: 13px; gap: 10px; }
+footer { font-size: 13px; color: #576669; border-top: 1px solid #cdd7d1; }
+:is(a,select):focus-visible { outline: 3px solid #ac7a35; outline-offset: 3px; }
+@media(max-width: 800px) { header,main,footer,.concepts { padding: 20px; } .concepts { grid-template-columns: 1fr; gap: 24px; } .gallery-controls { padding: 12px 20px; gap: 12px; flex-wrap: wrap; } .gallery-controls span { display:none; } .screen-grid { grid-template-columns: 1fr; gap: 28px; } h1 { font-size: 24px; } }

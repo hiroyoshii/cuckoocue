@@ -27,14 +27,27 @@ private struct RunListView: View {
                         description: Text("小さなリストを作ると、優先度の高い項目がウィジェットに現れます。")
                     )
                 } else {
-                    List(store.snapshot.runs.filter { $0.archivedAt == nil }) { run in
-                        NavigationLink(value: run.id) {
-                            VStack(alignment: .leading, spacing: 5) {
-                                Text(run.title).font(.headline)
-                                Text("未完了 \(run.tasks.filter { $0.completedAt == nil }.count)件")
-                                    .font(.caption).foregroundStyle(.secondary)
+                    List {
+                        Section {
+                            WidgetCuePreview(
+                                cues: Array(store.snapshot.widgetCues.prefix(3)),
+                                totalCount: store.snapshot.widgetCues.count,
+                                runTitle: { Optional(store.snapshot.runTitle(for: $0)) },
+                                emptyMessage: "強・中のCueが、Runをまたいでここからホーム画面へ戻ります。"
+                            )
+                        }
+
+                        Section("やる") {
+                            ForEach(store.snapshot.runs.filter { $0.archivedAt == nil }) { run in
+                                NavigationLink(value: run.id) {
+                                    VStack(alignment: .leading, spacing: 5) {
+                                        Text(run.title).font(.headline)
+                                        Text("未完了 \(run.tasks.filter { $0.completedAt == nil }.count)件")
+                                            .font(.caption).foregroundStyle(.secondary)
+                                    }
+                                    .padding(.vertical, 4)
+                                }
                             }
-                            .padding(.vertical, 4)
                         }
                     }
                 }
@@ -89,19 +102,30 @@ struct RunDetailView: View {
     var body: some View {
         List {
             if let run {
-                ForEach(run.tasks) { task in
-                    Button { store.complete(taskID: task.id) } label: {
-                        HStack(spacing: 12) {
-                            Image(systemName: task.completedAt == nil ? "square" : "checkmark.square.fill")
-                                .foregroundStyle(task.completedAt == nil ? Color.secondary : .cueTeal)
-                            Circle().fill(priorityColor(task.effectivePriority())).frame(width: 10, height: 10)
-                            Text(task.title)
-                                .foregroundStyle(task.completedAt == nil ? Color.primary : .secondary)
-                                .strikethrough(task.completedAt != nil)
+                Section {
+                    WidgetCuePreview(
+                        cues: Array(store.snapshot.widgetCues(runID: run.id, includeQuiet: false).prefix(3)),
+                        totalCount: store.snapshot.widgetCues(runID: run.id, includeQuiet: false).count,
+                        runTitle: { _ in nil },
+                        emptyMessage: "このRunからWidgetに出るCueはありません。強・中にするとホーム画面へ戻ります。"
+                    )
+                }
+
+                Section("このRun") {
+                    ForEach(run.tasks) { task in
+                        Button { store.complete(taskID: task.id) } label: {
+                            HStack(spacing: 12) {
+                                Image(systemName: task.completedAt == nil ? "square" : "checkmark.square.fill")
+                                    .foregroundStyle(task.completedAt == nil ? Color.secondary : .cueTeal)
+                                Circle().fill(priorityColor(task.effectivePriority())).frame(width: 10, height: 10)
+                                Text(task.title)
+                                    .foregroundStyle(task.completedAt == nil ? Color.primary : .secondary)
+                                    .strikethrough(task.completedAt != nil)
+                            }
                         }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("\(task.title)、\(task.completedAt == nil ? "未完了" : "完了済み")")
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("\(task.title)、\(task.completedAt == nil ? "未完了" : "完了済み")")
                 }
             }
         }
@@ -113,6 +137,88 @@ struct RunDetailView: View {
     private func priorityColor(_ priority: CuePriority) -> Color {
         priority == .strong ? .cueTeal : priority == .medium ? .cueGreen : .secondary
     }
+}
+
+private struct WidgetCuePreview: View {
+    let cues: [CueTask]
+    let totalCount: Int
+    let runTitle: (CueTask) -> String?
+    let emptyMessage: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Widgetに出るCue")
+                        .font(.subheadline.weight(.semibold))
+                    Text(cues.isEmpty ? emptyMessage : "ホーム画面ではこの順に表示されます")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Text("\(totalCount)件")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.cueTeal)
+            }
+
+            ForEach(cues) { cue in
+                HStack(spacing: 9) {
+                    Circle()
+                        .fill(priorityColor(cue.effectivePriority()))
+                        .frame(width: dotSize(cue.effectivePriority()), height: dotSize(cue.effectivePriority()))
+                        .frame(width: 14, height: 14)
+                    if let title = runTitle(cue) {
+                        Text(title)
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.cueTeal)
+                            .lineLimit(1)
+                            .frame(width: 64, alignment: .leading)
+                    }
+                    Text(cue.title)
+                        .font(.caption)
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                    Spacer(minLength: 0)
+                    if let dueAt = cue.dueAt {
+                        Text(Self.dateFormatter.string(from: dueAt))
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+
+            if totalCount > cues.count {
+                Text("ほか\(totalCount - cues.count)件")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
+    }
+
+    private func priorityColor(_ priority: CuePriority) -> Color {
+        switch priority {
+        case .strong: .cueTeal.opacity(0.62)
+        case .medium: .cueGreen.opacity(0.52)
+        case .quiet: .secondary.opacity(0.45)
+        }
+    }
+
+    private func dotSize(_ priority: CuePriority) -> CGFloat {
+        switch priority {
+        case .strong: 12
+        case .medium: 9
+        case .quiet: 6
+        }
+    }
+
+    private static let dateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "ja_JP")
+        formatter.setLocalizedDateFormatFromTemplate("M/d")
+        return formatter
+    }()
 }
 
 struct NewTaskSheet: View {

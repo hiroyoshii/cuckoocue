@@ -76,7 +76,7 @@ final class CueStore: ObservableObject {
 
 private extension CueSnapshot {
     static func screenshotState(arguments: [String]) -> CueSnapshot {
-        var state = CueSnapshot.demo
+        var state = arguments.contains("state-many-runs") ? CueSnapshot.multiRunDemo : CueSnapshot.demo
         if arguments.contains("state-empty") {
             state.runs = []
         }

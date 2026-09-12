@@ -1,0 +1,54 @@
+name: Android widget screenshots
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, "codex/**"]
+    paths:
+      - "android/**"
+      - ".github/workflows/android-widget-screenshots.yml"
+  pull_request:
+    paths:
+      - "android/**"
+      - ".github/workflows/android-widget-screenshots.yml"
+
+jobs:
+  build-test-screenshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Gradle cache
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Run widget verification and capture screenshots
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          script: |
+            ADB="$ANDROID_HOME/platform-tools/adb" \
+            OUT_DIR="$GITHUB_WORKSPACE/build/android-widget-screenshots" \
+            RUN_LAUNCHER_RESIZE=0 \
+            RUN_INSTRUMENTATION=1 \
+            android/scripts/verify-widget-phase0.sh
+
+      - name: Upload widget screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cuckoo-cue-android-widget-screenshots
+          path: |
+            build/android-widget-screenshots/**/*.png
+            build/android-widget-screenshots/*.png
+            android/app/build/reports/androidTests/**
+          if-no-files-found: warn
+          retention-days: 14

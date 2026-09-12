@@ -85,8 +85,12 @@ jobs:
           capture widget-states/widget-undo-medium --screenshot-gallery medium state-undo
           capture widget-states/widget-scoped-run-medium --screenshot-gallery medium state-scoped-run
           capture widget-states/widget-paged-medium --screenshot-gallery medium state-paged
+          capture widget-states/widget-many-runs-medium --screenshot-gallery medium state-many-runs
+          capture widget-states/widget-many-runs-large --screenshot-gallery large state-many-runs
           capture app/app-list
           capture app/app-detail --screenshot-detail
+          capture app/app-many-runs-list state-many-runs
+          capture app/app-many-runs-detail --screenshot-detail state-many-runs
           capture app/app-widget-settings --screenshot-settings
           capture app/app-new-run --screenshot-new-run
           capture app/app-new-task --screenshot-new-task

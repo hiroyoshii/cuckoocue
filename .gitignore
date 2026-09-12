@@ -1,0 +1,5 @@
+build/
+android/.kotlin/
+web/firebase-debug.log
+*.log
+*.zip

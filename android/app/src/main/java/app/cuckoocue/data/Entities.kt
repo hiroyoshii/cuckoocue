@@ -10,11 +10,14 @@ import androidx.room.PrimaryKey
     tableName = "runs",
     indices = [
         Index("archived_at", "sort_order", "created_at"),
+        Index("source_cuebook_id"),
     ],
 )
 data class RunEntity(
     @PrimaryKey val id: String,
     val title: String,
+    @ColumnInfo(name = "source_cuebook_id") val sourceCuebookId: String? = null,
+    @ColumnInfo(name = "target_anchor_day") val targetAnchorDay: Long? = null,
     @ColumnInfo(name = "sort_order") val sortOrder: Int = 0,
     @ColumnInfo(name = "archived_at") val archivedAt: Long? = null,
     @ColumnInfo(name = "completed_anchor_at") val completedAnchorAt: Long? = null,
@@ -40,12 +43,54 @@ data class RunEntity(
 data class RunTaskEntity(
     @PrimaryKey val id: String,
     @ColumnInfo(name = "run_id") val runId: String,
+    @ColumnInfo(name = "source_task_id") val sourceTaskId: String? = null,
     val title: String,
     @ColumnInfo(name = "user_priority") val userPriority: Int? = null,
     @ColumnInfo(name = "available_from_at") val availableFromAt: Long? = null,
     @ColumnInfo(name = "due_at") val dueAt: Long? = null,
     @ColumnInfo(name = "sort_order") val sortOrder: Int,
     @ColumnInfo(name = "completed_at") val completedAt: Long? = null,
+    @ColumnInfo(name = "created_at") val createdAt: Long,
+    @ColumnInfo(name = "updated_at") val updatedAt: Long,
+)
+
+@Entity(
+    tableName = "cuebooks",
+    indices = [
+        Index("updated_at"),
+        Index("origin_revision_id"),
+    ],
+)
+data class CuebookEntity(
+    @PrimaryKey val id: String,
+    val title: String,
+    @ColumnInfo(name = "origin_revision_id") val originRevisionId: String? = null,
+    @ColumnInfo(name = "created_at") val createdAt: Long,
+    @ColumnInfo(name = "updated_at") val updatedAt: Long,
+)
+
+@Entity(
+    tableName = "cuebook_tasks",
+    foreignKeys = [
+        ForeignKey(
+            entity = CuebookEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["cuebook_id"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+    indices = [
+        Index("cuebook_id", "sort_order", "created_at"),
+    ],
+)
+data class CuebookTaskEntity(
+    @PrimaryKey val id: String,
+    @ColumnInfo(name = "cuebook_id") val cuebookId: String,
+    val title: String,
+    @ColumnInfo(name = "default_priority") val defaultPriority: Int? = null,
+    @ColumnInfo(name = "relative_start_day") val relativeStartDay: Int? = null,
+    @ColumnInfo(name = "relative_end_day") val relativeEndDay: Int? = null,
+    @ColumnInfo(name = "sort_order") val sortOrder: Int,
     @ColumnInfo(name = "created_at") val createdAt: Long,
     @ColumnInfo(name = "updated_at") val updatedAt: Long,
 )
@@ -76,6 +121,7 @@ data class WidgetCueEntity(
 
 data class WidgetCue(
     val runId: String,
+    val runTitle: String,
     val taskId: String,
     val title: String,
     val priority: Int,

@@ -1,0 +1,7 @@
+#gallery { max-width: 1504px; }
+#gallery figure img { aspect-ratio: auto; object-fit: contain; }
+.screen-row { border-top: 1px solid #d8dfdc; padding-top: 24px; }
+.screen-row h2 { display: flex; justify-content: space-between; align-items: baseline; gap: 20px; }
+.screen-row h2 a { font-size: 13px; font-weight: 400; }
+.screen-row .extra-state { margin-top: 24px; }
+@media(max-width:800px) { .screen-row { scroll-margin-top: 110px; } }

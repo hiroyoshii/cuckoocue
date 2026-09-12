@@ -172,4 +172,39 @@ struct CueSnapshot: Codable, Equatable {
             ]),
         ])
     }()
+
+    static let multiRunDemo: CueSnapshot = {
+        let morningID = "demo-morning"
+        let departureID = "demo-departure"
+        let cityOfficeID = "demo-city-office"
+        let clinicID = "demo-clinic"
+        let homeCareID = "demo-home-care"
+        let backupID = "demo-backup"
+        return CueSnapshot(runs: [
+            CueRun(id: morningID, title: "朝の支度", sortOrder: 0, tasks: [
+                CueTask(id: "multi-1", runID: morningID, title: "水筒に水を入れる", userPriority: .strong, sortOrder: 0),
+                CueTask(id: "multi-2", runID: morningID, title: "明日の服を玄関近くに置く", userPriority: .medium, sortOrder: 1),
+            ]),
+            CueRun(id: departureID, title: "出発前", sortOrder: 1, tasks: [
+                CueTask(id: "multi-3", runID: departureID, title: "戸締まりと火元を確認する", userPriority: .strong, sortOrder: 0),
+                CueTask(id: "multi-4", runID: departureID, title: "移動中に読む案内を保存する", userPriority: .medium, sortOrder: 1),
+            ]),
+            CueRun(id: cityOfficeID, title: "役所まわり", sortOrder: 2, tasks: [
+                CueTask(id: "multi-5", runID: cityOfficeID, title: "本人確認書類をかばんに入れる", userPriority: .strong, sortOrder: 0),
+                CueTask(id: "multi-6", runID: cityOfficeID, title: "転出届の受付時間を確認する", userPriority: .medium, sortOrder: 1),
+            ]),
+            CueRun(id: clinicID, title: "病院の準備", sortOrder: 3, tasks: [
+                CueTask(id: "multi-7", runID: clinicID, title: "診察券と紹介状をまとめる", userPriority: .strong, sortOrder: 0),
+                CueTask(id: "multi-8", runID: clinicID, title: "薬の残数をメモする", userPriority: .medium, sortOrder: 1),
+            ]),
+            CueRun(id: homeCareID, title: "家のメンテ", sortOrder: 4, tasks: [
+                CueTask(id: "multi-9", runID: homeCareID, title: "換気フィルターの型番を確認する", userPriority: .strong, sortOrder: 0),
+                CueTask(id: "multi-10", runID: homeCareID, title: "粗大ごみの回収日を控える", userPriority: .medium, sortOrder: 1),
+            ]),
+            CueRun(id: backupID, title: "バックアップ", sortOrder: 5, tasks: [
+                CueTask(id: "multi-11", runID: backupID, title: "復旧コードの保管場所を確認する", userPriority: .strong, sortOrder: 0),
+                CueTask(id: "multi-12", runID: backupID, title: "外付けドライブにログインする", userPriority: .medium, sortOrder: 1),
+            ]),
+        ])
+    }()
 }

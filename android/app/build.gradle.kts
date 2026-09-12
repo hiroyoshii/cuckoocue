@@ -21,6 +21,12 @@ android {
     }
 
     buildTypes {
+        debug {
+            providers.gradleProperty("journeyApiBaseUrl").orNull?.let {
+                require(it.startsWith("http://127.0.0.1:"))
+                resValue("string", "cuckoo_cue_web_url", it)
+            }
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(
@@ -57,6 +63,7 @@ ksp {
 
 dependencies {
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.work.runtime)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)
@@ -86,6 +93,7 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.test.core)
+    androidTestImplementation(libs.androidx.uiautomator)
     androidTestImplementation(libs.androidx.room.ktx)
     androidTestImplementation(libs.kotlinx.coroutines.test)
 }

@@ -119,8 +119,71 @@ export const memoryEventInputSchema = z.object({
   occurred_at: z.string().trim().min(1),
 });
 
+export const cuebookRevisionTaskSchema = z.object({
+  title: z.string().trim().min(1).max(240),
+  default_priority: z.number().int().min(0).max(2).nullable().optional(),
+  relative_start_day: z.number().int().min(-3650).max(3650).nullable().optional(),
+  relative_end_day: z.number().int().min(-3650).max(3650).nullable().optional(),
+});
+
+const cuebookRevisionTaskListSchema = z
+  .object({
+    tasks: z.array(cuebookRevisionTaskSchema).min(1).max(200),
+  })
+  .superRefine((value, context) => {
+    value.tasks.forEach((task, index) => {
+      if (
+        task.relative_start_day != null &&
+        task.relative_end_day != null &&
+        task.relative_start_day > task.relative_end_day
+      ) {
+        context.addIssue({
+          code: "custom",
+          path: ["tasks", index, "relative_start_day"],
+          message: "relative_start_day must not be after relative_end_day",
+        });
+      }
+    });
+  });
+
+export const createShelfSchema = z.object({
+  operation_id: z.string().uuid(),
+  title: z.string().trim().min(1).max(120),
+  context: z.string().trim().min(1).max(1200),
+});
+
+export const updateShelfSchema = createShelfSchema.omit({ operation_id: true }).partial().extend({
+  operation_id: z.string().uuid(),
+  expected_updated_at: z.string().datetime({ offset: true }),
+  items: z
+    .array(
+      z.object({
+        revision_id: z.string().trim().min(1).max(160),
+        position: z.number().int().min(0).max(1000),
+      }),
+    )
+    .max(80)
+    .optional(),
+});
+
+export const publishCuebookRevisionSchema = cuebookRevisionTaskListSchema.extend({
+  expected_source_updated_at: z.string().datetime({ offset: true }),
+  revision_id: z.string().trim().min(1).max(160),
+  source_cuebook_id: z.string().trim().min(1).max(160),
+  shelf_id: z.string().trim().min(1).max(160),
+  title: z.string().trim().min(1).max(240),
+});
+
+export const placeShelfItemSchema = z.object({
+  revision_id: z.string().trim().min(1).max(160),
+  position: z.number().int().min(0).max(1000).optional(),
+});
+
 export type TaskEntryTask = z.infer<typeof taskEntryTaskSchema>;
 export type TaskGrouping = z.infer<typeof taskGroupingSchema>;
 export type TaskListEnrichment = z.infer<typeof taskListEnrichmentSchema>;
 export type TaskListEntry = z.infer<typeof taskListEntrySchema>;
 export type SaveTaskListInput = z.infer<typeof saveTaskListSchema>;
+export type CreateShelfInput = z.infer<typeof createShelfSchema>;
+export type UpdateShelfInput = z.infer<typeof updateShelfSchema>;
+export type PublishCuebookRevisionInput = z.infer<typeof publishCuebookRevisionSchema>;

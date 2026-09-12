@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Zen_Kaku_Gothic_New } from "next/font/google";
 import "./globals.css";
+import "../components/reuse-ui.css";
 
 const zenKakuGothicNew = Zen_Kaku_Gothic_New({
   variable: "--font-zen-kaku-gothic-new",

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CuckooCue | 3案比較モック</title>
+  <link rel="stylesheet" href="../experience/assets/fonts.css">
+  <link rel="stylesheet" href="concepts.css">
+  <link rel="stylesheet" href="reuse-flow.css">
+</head>
+<body>
+  <a class="skip" href="#main">本文へ</a>
+  <header class="review" aria-label="モックの確認操作">
+    <a href="index.html">3案を比較</a>
+    <label>案 <select id="concept-select"></select></label>
+    <label>画面 <select id="screen-select"></select></label>
+    <span>モック / 実データ保存・同期なし</span>
+    <label><input type="checkbox" id="fail-next">次の操作を失敗</label>
+  </header>
+  <section class="flow-review" aria-label="Android連携のモック操作">
+    <span>検証操作 / Android実機には接続しません</span>
+    <button type="button" data-flow="receive">Android受信を再現</button>
+    <button type="button" data-flow="complete">Androidで全件完了を再現</button>
+    <output id="flow-review-status" aria-live="polite">保存したリストが対象です</output>
+  </section>
+  <div id="app"></div>
+  <dialog id="confirm" aria-labelledby="confirm-title"></dialog>
+  <div class="toast" id="toast" role="status"></div>
+  <script src="../experience/assets/icons.js"></script>
+  <script src="../experience/fixtures.js"></script>
+  <script src="catalog.js"></script>
+  <script src="core.js"></script>
+  <script src="editors.js"></script>
+  <script src="screens.js"></script>
+  <script src="actions.js"></script>
+  <script src="reuse-flow.js"></script>
+</body>
+</html>

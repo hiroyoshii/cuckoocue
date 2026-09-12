@@ -9,11 +9,13 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [
+        CuebookEntity::class,
+        CuebookTaskEntity::class,
         RunEntity::class,
         RunTaskEntity::class,
         WidgetCueEntity::class,
     ],
-    version = 10,
+    version = 11,
     exportSchema = true,
 )
 abstract class CuckooDatabase : RoomDatabase() {
@@ -28,7 +30,7 @@ abstract class CuckooDatabase : RoomDatabase() {
                     context.applicationContext,
                     CuckooDatabase::class.java,
                     "cuckoo.sqlite",
-                ).addMigrations(Migration8To9, Migration9To10)
+                ).addMigrations(Migration8To9, Migration9To10, Migration10To11)
                     .fallbackToDestructiveMigration(true)
                     .build()
                     .also { instance = it }
@@ -62,6 +64,52 @@ abstract class CuckooDatabase : RoomDatabase() {
                     )
                     """.trimIndent(),
                 )
+            }
+        }
+
+        private val Migration10To11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS cuebooks (
+                        id TEXT NOT NULL,
+                        title TEXT NOT NULL,
+                        origin_revision_id TEXT,
+                        created_at INTEGER NOT NULL,
+                        updated_at INTEGER NOT NULL,
+                        PRIMARY KEY(id)
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_cuebooks_updated_at ON cuebooks(updated_at)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_cuebooks_origin_revision_id ON cuebooks(origin_revision_id)")
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS cuebook_tasks (
+                        id TEXT NOT NULL,
+                        cuebook_id TEXT NOT NULL,
+                        title TEXT NOT NULL,
+                        default_priority INTEGER,
+                        relative_start_day INTEGER,
+                        relative_end_day INTEGER,
+                        sort_order INTEGER NOT NULL,
+                        created_at INTEGER NOT NULL,
+                        updated_at INTEGER NOT NULL,
+                        PRIMARY KEY(id),
+                        FOREIGN KEY(cuebook_id) REFERENCES cuebooks(id) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    """
+                    CREATE INDEX IF NOT EXISTS index_cuebook_tasks_cuebook_id_sort_order_created_at
+                    ON cuebook_tasks(cuebook_id, sort_order, created_at)
+                    """.trimIndent(),
+                )
+                db.execSQL("ALTER TABLE runs ADD COLUMN source_cuebook_id TEXT")
+                db.execSQL("ALTER TABLE runs ADD COLUMN target_anchor_day INTEGER")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_runs_source_cuebook_id ON runs(source_cuebook_id)")
+                db.execSQL("ALTER TABLE run_tasks ADD COLUMN source_task_id TEXT")
             }
         }
     }

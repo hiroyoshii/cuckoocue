@@ -26,3 +26,17 @@ export function BrandLockup({ priority = false }: { priority?: boolean }) {
     />
   );
 }
+
+export function BrandHero({ priority = false }: { priority?: boolean }) {
+  return (
+    <Image
+      alt=""
+      aria-hidden="true"
+      className="brand-hero"
+      height={941}
+      priority={priority}
+      src="/brand/hero.png"
+      width={1672}
+    />
+  );
+}

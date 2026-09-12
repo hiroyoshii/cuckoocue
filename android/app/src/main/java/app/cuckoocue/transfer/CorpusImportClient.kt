@@ -16,19 +16,29 @@ class CorpusImportClient(
     private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
 ) {
     suspend fun fetch(reference: ImportReference): ImportedRunPayload {
-        val user = auth.currentUser ?: error("Googleアカウントでログインしてください")
-        val token = user.getIdToken(false).await().token ?: error("ログイン情報を取得できませんでした")
-        val entryId = URLEncoder.encode(reference.entryId, StandardCharsets.UTF_8.name())
+        val token = if (reference.entryId != null) {
+            val user = auth.currentUser ?: error("Googleアカウントでログインしてください")
+            user.getIdToken(false).await().token ?: error("ログイン情報を取得できませんでした")
+        } else {
+            null
+        }
         val anchorDay = URLEncoder.encode(reference.targetAnchorDay.toString(), StandardCharsets.UTF_8.name())
+        val path = reference.entryId?.let { entryId ->
+            "/api/import-payload/${URLEncoder.encode(entryId, StandardCharsets.UTF_8.name())}"
+        } ?: reference.revisionId?.let { revisionId ->
+            "/api/shelf-revisions/${URLEncoder.encode(revisionId, StandardCharsets.UTF_8.name())}/import-payload"
+        } ?: error("取り込み参照が不正です")
         val body = withContext(Dispatchers.IO) {
             val connection = URL(
-                "${apiBaseUrl.trimEnd('/')}/api/import-payload/$entryId?target_anchor_day=$anchorDay",
+                "${apiBaseUrl.trimEnd('/')}$path?target_anchor_day=$anchorDay",
             ).openConnection() as HttpURLConnection
             try {
                 connection.requestMethod = "GET"
                 connection.connectTimeout = 8_000
                 connection.readTimeout = 12_000
-                connection.setRequestProperty("Authorization", "Bearer $token")
+                if (token != null) {
+                    connection.setRequestProperty("Authorization", "Bearer $token")
+                }
                 val responseCode = connection.responseCode
                 val stream = if (responseCode in 200..299) connection.inputStream else connection.errorStream
                 val text = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
@@ -64,7 +74,8 @@ private fun parsePayload(root: JSONObject): ImportedRunPayload {
         }
     }
     if (title.isEmpty() || tasks.isEmpty()) error("取り込み内容が空です")
-    return ImportedRunPayload(title, anchor, tasks)
+    val originRevisionId = root.optString("origin_revision_id").trim().ifEmpty { null }
+    return ImportedRunPayload(title, anchor, tasks, originRevisionId)
 }
 
 private fun JSONObject.nullableInt(key: String): Int? =

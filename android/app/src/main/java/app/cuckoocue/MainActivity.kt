@@ -1,5 +1,6 @@
 package app.cuckoocue
 
+import android.app.DatePickerDialog
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -72,6 +73,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
@@ -86,13 +88,19 @@ import app.cuckoocue.appearance.AppThemeMode
 import app.cuckoocue.appearance.WidgetTextScale
 import app.cuckoocue.appearance.WidgetThemeMode
 import app.cuckoocue.auth.CuckooAuth
+import app.cuckoocue.data.CuebookEntity
+import app.cuckoocue.data.CuebookTaskDraft
+import app.cuckoocue.data.CuebookTaskEntity
 import app.cuckoocue.data.CuckooRepository
 import app.cuckoocue.data.PriorityExposure
 import app.cuckoocue.data.RunEntity
 import app.cuckoocue.data.RunTaskEntity
+import app.cuckoocue.data.WidgetCue
 import app.cuckoocue.transfer.ImportedRunPayload
 import app.cuckoocue.transfer.CorpusImportClient
+import app.cuckoocue.transfer.EditableShelfSummary
 import app.cuckoocue.transfer.ImportReference
+import app.cuckoocue.transfer.PublicShelfClient
 import app.cuckoocue.transfer.RunTransferContract
 import app.cuckoocue.memory.MemoryEventClient
 import app.cuckoocue.widget.CuckooCueWidgetUpdater
@@ -135,17 +143,23 @@ private val LocalCuckooColors = staticCompositionLocalOf { cuckooColors(dark = f
 
 class MainActivity : ComponentActivity() {
     private val incomingImport = MutableStateFlow<ImportedRunPayload?>(null)
+    private val receivedRunId = MutableStateFlow<String?>(null)
+    private var pendingRunId: String? = null
     private var pendingImportReference: ImportReference? = null
     private var importJob: Job? = null
+    private var receiveJob: Job? = null
     private val authUser = MutableStateFlow<FirebaseUser?>(null)
     private val authError = MutableStateFlow<String?>(null)
+    private val transferError = MutableStateFlow<String?>(null)
+    private val receiving = MutableStateFlow(false)
     private val cuckooAuth = CuckooAuth()
     private lateinit var repository: CuckooRepository
     private lateinit var importClient: CorpusImportClient
+    private lateinit var shelfClient: PublicShelfClient
     private val authListener = FirebaseAuth.AuthStateListener { auth ->
         authUser.value = auth.currentUser
         if (auth.currentUser != null && ::repository.isInitialized) {
-            repository.syncAllRuns()
+            refreshSharedRuns()
             loadPendingImport()
         }
     }
@@ -155,10 +169,12 @@ class MainActivity : ComponentActivity() {
         val app = application as CuckooCueApp
         repository = app.repository
         importClient = CorpusImportClient(getString(R.string.cuckoo_cue_web_url))
+        shelfClient = PublicShelfClient(getString(R.string.cuckoo_cue_web_url))
         pendingImportReference = RunTransferContract.parseImportUri(intent?.data)
+        pendingRunId = RunTransferContract.parseRunId(intent?.data)
         cuckooAuth.addListener(authListener)
         authUser.value = cuckooAuth.currentUser
-        if (cuckooAuth.currentUser != null) loadPendingImport()
+        if (pendingImportReference?.revisionId != null || cuckooAuth.currentUser != null) loadPendingImport()
         val appearanceRepository = app.appearanceRepository
 
         setContent {
@@ -166,20 +182,38 @@ class MainActivity : ComponentActivity() {
                 initialValue = AppearanceSettings(),
             )
             val importPayload by incomingImport.collectAsStateWithLifecycle()
+            val syncedRunId by receivedRunId.collectAsStateWithLifecycle()
             val signedInUser by authUser.collectAsStateWithLifecycle()
             val signInError by authError.collectAsStateWithLifecycle()
+            val receiveError by transferError.collectAsStateWithLifecycle()
+            val isReceiving by receiving.collectAsStateWithLifecycle()
             val systemDark = isSystemInDarkTheme()
             val dark = settings.appTheme.resolve(systemDark)
             val colors = cuckooColors(dark)
 
             CompositionLocalProvider(LocalCuckooColors provides colors) {
                 MaterialTheme(colorScheme = cuckooColorScheme(colors, dark)) {
+                    if (receiveError != null) {
+                        AlertDialog(
+                            onDismissRequest = { transferError.value = null },
+                            title = { Text("リストを受信できませんでした") },
+                            text = { Text(receiveError!!) },
+                            confirmButton = { TextButton(enabled = !isReceiving, onClick = { loadPendingImport() }) { Text("再試行") } },
+                            dismissButton = { TextButton(onClick = {
+                                transferError.value = null
+                                lifecycleScope.launch { runCatching { cuckooAuth.signIn(this@MainActivity) }.onFailure { authError.value = it.localizedMessage } }
+                            }) { Text("アカウントを選ぶ") } },
+                        )
+                    }
                     CuckooCueScreen(
                         repository = repository,
+                        shelfClient = shelfClient,
                         appearanceRepository = appearanceRepository,
                         appearanceSettings = settings,
                         incomingImport = importPayload,
                         onImportConsumed = { incomingImport.value = null },
+                        receivedRunId = syncedRunId,
+                        onReceivedRunConsumed = { receivedRunId.value = null },
                         signedInUser = signedInUser,
                         signInError = signInError,
                         onSignIn = {
@@ -202,7 +236,25 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         pendingImportReference = RunTransferContract.parseImportUri(intent.data)
+        pendingRunId = RunTransferContract.parseRunId(intent.data)
         loadPendingImport()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        refreshSharedRuns()
+        if (pendingRunId != null && importJob?.isActive != true) loadPendingImport()
+    }
+
+    private fun refreshSharedRuns() {
+        if (!::repository.isInitialized || cuckooAuth.currentUser == null || receiveJob?.isActive == true) return
+        receiveJob = lifecycleScope.launch {
+            runCatching {
+                repository.syncAllRuns()
+                repository.receiveRuns()
+                CuckooCueWidgetUpdater.updateAll(applicationContext)
+            }.onFailure { authError.value = it.localizedMessage ?: "保存したリストを受信できませんでした" }
+        }
     }
 
     override fun onDestroy() {
@@ -211,8 +263,28 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun loadPendingImport() {
+        pendingRunId?.let { runId ->
+            if (cuckooAuth.currentUser == null) {
+                transferError.value = "Webと同じアカウントでログインしてください"
+                return
+            }
+            importJob?.cancel()
+            importJob = lifecycleScope.launch {
+                receiving.value = true
+                transferError.value = null
+                runCatching { repository.receiveRun(runId) }
+                    .onSuccess {
+                        pendingRunId = null; receivedRunId.value = runId; authError.value = null
+                        CuckooCueWidgetUpdater.updateAll(applicationContext)
+                    }
+                    .onFailure { if (it !is kotlinx.coroutines.CancellationException) transferError.value = it.localizedMessage ?: "リストを取得できませんでした" }
+                receiving.value = false
+            }
+            return
+        }
         val reference = pendingImportReference ?: return
-        if (cuckooAuth.currentUser == null || !::importClient.isInitialized) return
+        if (reference.entryId != null && cuckooAuth.currentUser == null) return
+        if (!::importClient.isInitialized) return
         importJob?.cancel()
         importJob = lifecycleScope.launch {
             runCatching { importClient.fetch(reference) }
@@ -328,26 +400,46 @@ private class WidgetRedrawScheduler(
 @Composable
 private fun CuckooCueScreen(
     repository: CuckooRepository,
+    shelfClient: PublicShelfClient,
     appearanceRepository: AppearanceRepository,
     appearanceSettings: AppearanceSettings,
     incomingImport: ImportedRunPayload?,
     onImportConsumed: () -> Unit,
+    receivedRunId: String?,
+    onReceivedRunConsumed: () -> Unit,
     signedInUser: FirebaseUser?,
     signInError: String?,
     onSignIn: () -> Unit,
     onSignOut: () -> Unit,
 ) {
     val context = LocalContext.current
+    val webAppUrl = stringResource(R.string.cuckoo_cue_web_url)
     val scope = rememberCoroutineScope()
     val widgetRedrawScheduler = remember(scope, context) { WidgetRedrawScheduler(scope, context) }
     val memoryEventClient = remember { MemoryEventClient() }
     val runs by repository.runs.collectAsStateWithLifecycle(initialValue = emptyList())
+    val cuebooks by repository.cuebooks.collectAsStateWithLifecycle(initialValue = emptyList())
+    val widgetCues by repository.widgetCues.collectAsStateWithLifecycle(initialValue = emptyList())
     var selectedRunId by remember { mutableStateOf<String?>(null) }
+    var selectedCuebookId by remember { mutableStateOf<String?>(null) }
     var importedRunId by remember { mutableStateOf<String?>(null) }
+    var pendingOpenRunId by remember { mutableStateOf<String?>(null) }
     var showAppearance by remember { mutableStateOf(false) }
+    var publishingCuebook by remember { mutableStateOf<CuebookEntity?>(null) }
+    var publishShelves by remember { mutableStateOf<List<EditableShelfSummary>>(emptyList()) }
+    var isLoadingPublishShelves by remember { mutableStateOf(false) }
+    var isPublishingCuebook by remember { mutableStateOf(false) }
 
     LaunchedEffect(repository) {
         widgetRedrawScheduler.request()
+    }
+
+    LaunchedEffect(receivedRunId) {
+        if (receivedRunId != null) {
+            pendingOpenRunId = receivedRunId
+            onReceivedRunConsumed()
+            widgetRedrawScheduler.request()
+        }
     }
 
     if (incomingImport != null) {
@@ -362,6 +454,7 @@ private fun CuckooCueScreen(
                     scope.launch {
                         repository.importRun(payload)?.let { runId ->
                             importedRunId = runId
+                            pendingOpenRunId = runId
                             widgetRedrawScheduler.request()
                         }
                     }
@@ -371,16 +464,54 @@ private fun CuckooCueScreen(
         )
     }
 
-    LaunchedEffect(importedRunId, runs) {
-        val pendingRunId = importedRunId ?: return@LaunchedEffect
+    publishingCuebook?.let { cuebook ->
+        PublishCuebookDialog(
+            cuebook = cuebook,
+            shelves = publishShelves,
+            isLoading = isLoadingPublishShelves,
+            isPublishing = isPublishingCuebook,
+            onDismiss = {
+                publishingCuebook = null
+                publishShelves = emptyList()
+            },
+            onPublish = { shelf ->
+                scope.launch {
+                    val snapshot = repository.cuebookSnapshot(cuebook.id)
+                    if (snapshot == null) {
+                        Toast.makeText(context, "公開できるCueがありません", Toast.LENGTH_LONG).show()
+                        return@launch
+                    }
+                    isPublishingCuebook = true
+                    runCatching { shelfClient.publishCuebook(shelf.id, snapshot) }
+                        .onSuccess {
+                            Toast.makeText(context, "まとまりへ置きました", Toast.LENGTH_SHORT).show()
+                            publishingCuebook = null
+                            publishShelves = emptyList()
+                        }
+                        .onFailure {
+                            Toast.makeText(context, it.localizedMessage ?: "まとまりへ置けませんでした", Toast.LENGTH_LONG).show()
+                        }
+                    isPublishingCuebook = false
+                }
+            },
+        )
+    }
+
+    LaunchedEffect(pendingOpenRunId, runs) {
+        val pendingRunId = pendingOpenRunId ?: return@LaunchedEffect
         if (runs.any { it.id == pendingRunId }) {
             selectedRunId = pendingRunId
+            pendingOpenRunId = null
         }
     }
 
     val selectedRun = runs.firstOrNull { it.id == selectedRunId }
     if (selectedRunId != null && selectedRun == null) {
         selectedRunId = null
+    }
+    val selectedCuebook = cuebooks.firstOrNull { it.id == selectedCuebookId }
+    if (selectedCuebookId != null && selectedCuebook == null) {
+        selectedCuebookId = null
     }
 
     if (selectedRun != null) {
@@ -403,7 +534,22 @@ private fun CuckooCueScreen(
                     widgetRedrawScheduler.request()
                 }
             },
-            onReuseRun = {
+            onReuseRun = { targetAnchorDay ->
+                scope.launch {
+                    val reusedRunId = repository.reuseCompletedRun(
+                        sourceRunId = selectedRun.id,
+                        targetAnchorDay = targetAnchorDay,
+                    )
+                    if (reusedRunId == null) {
+                        Toast.makeText(context, "このリストを再利用できませんでした", Toast.LENGTH_LONG).show()
+                        return@launch
+                    }
+                    pendingOpenRunId = reusedRunId
+                    widgetRedrawScheduler.request()
+                    Toast.makeText(context, "新しい日程で作成しました", Toast.LENGTH_SHORT).show()
+                }
+            },
+            onShareRun = {
                 scope.launch {
                     if (signedInUser == null) {
                         Toast.makeText(context, "先にGoogleアカウントでログインしてください", Toast.LENGTH_SHORT).show()
@@ -415,7 +561,7 @@ private fun CuckooCueScreen(
                         return@launch
                     }
                     val uri = RunTransferContract.buildSaveReviewUri(
-                        webAppUrl = context.getString(R.string.cuckoo_cue_web_url),
+                        webAppUrl = webAppUrl,
                         runId = selectedRun.id,
                     )
                     context.startActivity(Intent(Intent.ACTION_VIEW, uri))
@@ -475,10 +621,81 @@ private fun CuckooCueScreen(
                 }
             },
         )
+    } else if (selectedCuebook != null) {
+        BackHandler { selectedCuebookId = null }
+        CuebookDetailScreen(
+            repository = repository,
+            cuebook = selectedCuebook,
+            onBack = { selectedCuebookId = null },
+            onRenameCuebook = { title ->
+                scope.launch { repository.renameCuebook(selectedCuebook.id, title) }
+            },
+            onCreateRun = { targetAnchorDay ->
+                scope.launch {
+                    val runId = repository.createRunFromCuebook(
+                        cuebookId = selectedCuebook.id,
+                        targetAnchorDay = targetAnchorDay,
+                    )
+                    if (runId == null) {
+                        Toast.makeText(context, "実行リストを作成できませんでした", Toast.LENGTH_LONG).show()
+                        return@launch
+                    }
+                    selectedCuebookId = null
+                    pendingOpenRunId = runId
+                    widgetRedrawScheduler.request()
+                }
+            },
+            onAddTask = { title, priority, relativeStartDay, relativeEndDay ->
+                scope.launch {
+                    repository.addCuebookTask(
+                        cuebookId = selectedCuebook.id,
+                        title = title,
+                        defaultPriority = priority,
+                        relativeStartDay = relativeStartDay,
+                        relativeEndDay = relativeEndDay,
+                    )
+                }
+            },
+            onUpdateTask = { taskId, title, priority, relativeStartDay, relativeEndDay ->
+                scope.launch {
+                    repository.updateCuebookTask(
+                        cuebookId = selectedCuebook.id,
+                        taskId = taskId,
+                        title = title,
+                        defaultPriority = priority,
+                        relativeStartDay = relativeStartDay,
+                        relativeEndDay = relativeEndDay,
+                    )
+                }
+            },
+            onDeleteTask = { taskId ->
+                scope.launch { repository.deleteCuebookTask(selectedCuebook.id, taskId) }
+            },
+            onPublish = {
+                scope.launch {
+                    if (signedInUser == null) {
+                        Toast.makeText(context, "先にGoogleアカウントでログインしてください", Toast.LENGTH_SHORT).show()
+                        onSignIn()
+                        return@launch
+                    }
+                    publishingCuebook = selectedCuebook
+                    publishShelves = emptyList()
+                    isLoadingPublishShelves = true
+                    runCatching { shelfClient.editableShelves() }
+                        .onSuccess { publishShelves = it }
+                        .onFailure {
+                            Toast.makeText(context, it.localizedMessage ?: "まとまりを読み込めませんでした", Toast.LENGTH_LONG).show()
+                        }
+                    isLoadingPublishShelves = false
+                }
+            },
+        )
     } else {
         RunListScreen(
             repository = repository,
             runs = runs,
+            cuebooks = cuebooks,
+            widgetCues = widgetCues,
             appearanceSettings = appearanceSettings,
             signedInUser = signedInUser,
             signInError = signInError,
@@ -487,10 +704,19 @@ private fun CuckooCueScreen(
             onSignIn = onSignIn,
             onSignOut = onSignOut,
             onOpenRun = { selectedRunId = it.id },
+            onOpenCuebook = { selectedCuebookId = it.id },
             onCreateRun = { title ->
                 scope.launch {
                     repository.createRun(title)?.let { selectedRunId = it }
                     widgetRedrawScheduler.request()
+                }
+            },
+            onCreateCuebook = { title ->
+                scope.launch {
+                    repository.createCuebook(
+                        title = title,
+                        tasks = listOf(CuebookTaskDraft(title = "最初のCue")),
+                    )?.let { selectedCuebookId = it }
                 }
             },
             onAppThemeChange = { mode ->
@@ -520,6 +746,8 @@ private fun CuckooCueScreen(
 private fun RunListScreen(
     repository: CuckooRepository,
     runs: List<RunEntity>,
+    cuebooks: List<CuebookEntity>,
+    widgetCues: List<WidgetCue>,
     appearanceSettings: AppearanceSettings,
     signedInUser: FirebaseUser?,
     signInError: String?,
@@ -528,13 +756,17 @@ private fun RunListScreen(
     onSignIn: () -> Unit,
     onSignOut: () -> Unit,
     onOpenRun: (RunEntity) -> Unit,
+    onOpenCuebook: (CuebookEntity) -> Unit,
     onCreateRun: (String) -> Unit,
+    onCreateCuebook: (String) -> Unit,
     onAppThemeChange: (AppThemeMode) -> Unit,
     onWidgetThemeChange: (WidgetThemeMode) -> Unit,
     onWidgetTextScaleChange: (WidgetTextScale) -> Unit,
 ) {
     val colors = LocalCuckooColors.current
     var runDraft by remember { mutableStateOf("") }
+    var cuebookDraft by remember { mutableStateOf("") }
+    var mode by remember { mutableStateOf("runs") }
 
     Scaffold(
         topBar = {
@@ -583,18 +815,56 @@ private fun RunListScreen(
                 }
             }
             item {
-                NewRunComposer(
-                    value = runDraft,
-                    onValueChange = { runDraft = it },
-                    onCreate = {
-                        onCreateRun(runDraft)
-                        runDraft = ""
-                    },
+                ListModeTabs(
+                    mode = mode,
+                    onModeChange = { mode = it },
                     modifier = Modifier.padding(top = 8.dp),
                 )
             }
-            items(runs, key = { it.id }) { run ->
-                RunCard(repository = repository, run = run, onOpen = { onOpenRun(run) })
+            if (mode == "runs") {
+                item {
+                    WidgetCuePreviewCard(
+                        widgetCues = widgetCues,
+                        showRunTitle = true,
+                        emptyBody = "強・中のCueが、Runをまたいでここからホーム画面へ戻ります。",
+                        modifier = Modifier.padding(top = 2.dp),
+                    )
+                }
+                item {
+                    NewRunComposer(
+                        value = runDraft,
+                        onValueChange = { runDraft = it },
+                        onCreate = {
+                            onCreateRun(runDraft)
+                            runDraft = ""
+                        },
+                    )
+                }
+                if (runs.isEmpty()) {
+                    item { EmptyListCard(title = "実行中のリストはまだありません", body = "一回きりのリストを作るか、段取りから日付付きのリストを作成します。") }
+                }
+                items(runs, key = { it.id }) { run ->
+                    RunCard(repository = repository, run = run, onOpen = { onOpenRun(run) })
+                }
+            } else {
+                item {
+                    NewRunComposer(
+                        value = cuebookDraft,
+                        onValueChange = { cuebookDraft = it },
+                        onCreate = {
+                            onCreateCuebook(cuebookDraft)
+                            cuebookDraft = ""
+                        },
+                        label = "新しい段取り",
+                        buttonLabel = "作成",
+                    )
+                }
+                if (cuebooks.isEmpty()) {
+                    item { EmptyListCard(title = "段取りはまだありません", body = "次回も使うTodoの型を作ると、完了予定日から実行リストを作れます。") }
+                }
+                items(cuebooks, key = { it.id }) { cuebook ->
+                    CuebookCard(repository = repository, cuebook = cuebook, onOpen = { onOpenCuebook(cuebook) })
+                }
             }
             if (showAppearance) {
                 item {
@@ -617,6 +887,8 @@ private fun NewRunComposer(
     onValueChange: (String) -> Unit,
     onCreate: () -> Unit,
     modifier: Modifier = Modifier,
+    label: String = "新しいリスト",
+    buttonLabel: String = "作成",
 ) {
     val colors = LocalCuckooColors.current
     Row(
@@ -628,7 +900,7 @@ private fun NewRunComposer(
             value = value,
             onValueChange = onValueChange,
             modifier = Modifier.weight(1f),
-            label = { Text("新しいリスト") },
+            label = { Text(label) },
             singleLine = true,
         )
         Button(
@@ -636,8 +908,78 @@ private fun NewRunComposer(
             enabled = value.isNotBlank(),
             colors = ButtonDefaults.buttonColors(containerColor = colors.teal),
         ) {
-            Text("作成")
+            Text(buttonLabel)
         }
+    }
+}
+
+@Composable
+private fun ListModeTabs(
+    mode: String,
+    onModeChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = LocalCuckooColors.current
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .border(1.dp, colors.line, RoundedCornerShape(8.dp))
+            .padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        ModeTab(
+            label = "やる",
+            selected = mode == "runs",
+            onClick = { onModeChange("runs") },
+            modifier = Modifier.weight(1f),
+        )
+        ModeTab(
+            label = "段取り",
+            selected = mode == "cuebooks",
+            onClick = { onModeChange("cuebooks") },
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+@Composable
+private fun ModeTab(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = LocalCuckooColors.current
+    Box(
+        modifier = modifier
+            .height(38.dp)
+            .clip(RoundedCornerShape(6.dp))
+            .background(if (selected) colors.highlight else Color.Transparent)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = label,
+            color = if (selected) colors.ink else colors.muted,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+        )
+    }
+}
+
+@Composable
+private fun EmptyListCard(title: String, body: String) {
+    val colors = LocalCuckooColors.current
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, colors.line, RoundedCornerShape(8.dp))
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(title, color = colors.ink, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+        Text(body, color = colors.muted, fontSize = 12.sp, lineHeight = 17.sp)
     }
 }
 
@@ -683,6 +1025,79 @@ private fun RunCard(
 }
 
 @Composable
+private fun CuebookCard(
+    repository: CuckooRepository,
+    cuebook: CuebookEntity,
+    onOpen: () -> Unit,
+) {
+    val colors = LocalCuckooColors.current
+    val previewTasks by repository.observeCuebookTasks(cuebook.id).collectAsStateWithLifecycle(initialValue = emptyList())
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onOpen),
+        shape = RoundedCornerShape(8.dp),
+        color = colors.panel,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
+    ) {
+        Column(
+            modifier = Modifier
+                .border(1.dp, colors.line, RoundedCornerShape(8.dp))
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(7.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = cuebook.title,
+                        color = colors.ink,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = cuebook.originRevisionId?.let { "借りた段取り" } ?: "自分の段取り",
+                        color = colors.teal,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+                Text("›", color = colors.muted, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+            }
+            previewTasks.take(3).forEach { task -> MiniCuebookTaskPreview(task = task) }
+        }
+    }
+}
+
+@Composable
+private fun MiniCuebookTaskPreview(task: CuebookTaskEntity) {
+    val colors = LocalCuckooColors.current
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        ExposureDot(priority = task.defaultPriority ?: PriorityExposure.Quiet, modifier = Modifier.size(8.dp))
+        Spacer(Modifier.width(7.dp))
+        Text(
+            text = task.relativeEndDay.relativeDayLabel(),
+            color = colors.teal,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.width(48.dp),
+            maxLines = 1,
+        )
+        Text(
+            text = task.title,
+            modifier = Modifier.weight(1f),
+            color = colors.ink,
+            fontSize = 12.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
 private fun MiniTaskPreview(task: RunTaskEntity) {
     val colors = LocalCuckooColors.current
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -699,6 +1114,106 @@ private fun MiniTaskPreview(task: RunTaskEntity) {
     }
 }
 
+@Composable
+private fun WidgetCuePreviewCard(
+    widgetCues: List<WidgetCue>,
+    showRunTitle: Boolean,
+    emptyBody: String,
+    modifier: Modifier = Modifier,
+) {
+    val colors = LocalCuckooColors.current
+    val previewCues = widgetCues.take(3)
+
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(8.dp),
+        color = colors.highlight,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
+    ) {
+        Column(
+            modifier = Modifier
+                .border(1.dp, colors.line, RoundedCornerShape(8.dp))
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Widgetに出るCue",
+                        color = colors.ink,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(
+                        text = if (widgetCues.isEmpty()) emptyBody else "ホーム画面ではこの順に表示されます",
+                        color = colors.muted,
+                        fontSize = 11.sp,
+                        lineHeight = 15.sp,
+                    )
+                }
+                Text(
+                    text = "${widgetCues.size}件",
+                    color = colors.teal,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+
+            previewCues.forEach { cue ->
+                WidgetCuePreviewRow(cue = cue, showRunTitle = showRunTitle)
+            }
+            if (widgetCues.size > previewCues.size) {
+                Text(
+                    text = "ほか${widgetCues.size - previewCues.size}件",
+                    color = colors.muted,
+                    fontSize = 11.sp,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun WidgetCuePreviewRow(cue: WidgetCue, showRunTitle: Boolean) {
+    val colors = LocalCuckooColors.current
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        ExposureDot(priority = cue.priority, modifier = Modifier.size(8.dp), compact = true)
+        Spacer(Modifier.width(8.dp))
+        if (showRunTitle) {
+            Text(
+                text = cue.runTitle,
+                color = colors.teal,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.width(68.dp),
+            )
+        }
+        Text(
+            text = cue.title,
+            color = colors.ink,
+            fontSize = 12.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        cue.dueAt.dueLabel()?.let { label ->
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = label,
+                color = colors.muted,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun RunDetailScreen(
@@ -708,7 +1223,8 @@ private fun RunDetailScreen(
     onBack: () -> Unit,
     onRenameRun: (String) -> Unit,
     onArchiveRun: () -> Unit,
-    onReuseRun: () -> Unit,
+    onReuseRun: (LocalDate) -> Unit,
+    onShareRun: () -> Unit,
     onAddTask: (String, Long?, Int?) -> Unit,
     onUpdateTaskAndAddBlankAfter: (String, String, Long?, Long?, Int?, (String?) -> Unit) -> Unit,
     onUpdateTask: (String, String, Long?, Long?, Int?) -> Unit,
@@ -719,11 +1235,13 @@ private fun RunDetailScreen(
 ) {
     val colors = LocalCuckooColors.current
     val tasks by repository.observeTasks(run.id).collectAsStateWithLifecycle(initialValue = emptyList())
+    val runWidgetCues by repository.observeWidgetCues(run.id).collectAsStateWithLifecycle(initialValue = emptyList())
     val pending = remember(tasks) { tasks.filter { it.completedAt == null } }
     val completed = remember(tasks) { tasks.filter { it.completedAt != null } }
     var titleDraft by remember(run.id, run.updatedAt) { mutableStateOf(run.title) }
     var isRunTitleEditing by remember(run.id) { mutableStateOf(false) }
     var showCompleted by remember { mutableStateOf(false) }
+    var showReuseDialog by remember(run.id) { mutableStateOf(false) }
     var expandedTaskId by remember(run.id) { mutableStateOf<String?>(null) }
     var pendingDragOrderIds by remember(run.id) { mutableStateOf<List<String>?>(null) }
     val runTitleFocusRequester = remember { FocusRequester() }
@@ -776,6 +1294,16 @@ private fun RunDetailScreen(
         }
     }
 
+    if (showReuseDialog) {
+        ReuseCompletedRunDialog(
+            onDismiss = { showReuseDialog = false },
+            onConfirm = { targetAnchorDay ->
+                showReuseDialog = false
+                onReuseRun(targetAnchorDay)
+            },
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -819,6 +1347,14 @@ private fun RunDetailScreen(
                 item {
                     ImportedNotice(modifier = Modifier.padding(bottom = 8.dp))
                 }
+            }
+            item {
+                WidgetCuePreviewCard(
+                    widgetCues = runWidgetCues,
+                    showRunTitle = false,
+                    emptyBody = "このRunからWidgetに出るCueはありません。強・中にするとホーム画面へ戻ります。",
+                    modifier = Modifier.padding(bottom = 8.dp),
+                )
             }
             item {
                 AddTaskComposer(
@@ -881,10 +1417,339 @@ private fun RunDetailScreen(
             }
             if (pending.isEmpty() && completed.isNotEmpty()) {
                 item {
-                    ReuseCompletedList(onReuse = onReuseRun)
+                    ReuseCompletedList(
+                        onReuse = { showReuseDialog = true },
+                        onShare = onShareRun,
+                    )
                 }
             }
             item { Spacer(Modifier.height(20.dp)) }
+        }
+    }
+}
+
+@Composable
+private fun PublishCuebookDialog(
+    cuebook: CuebookEntity,
+    shelves: List<EditableShelfSummary>,
+    isLoading: Boolean,
+    isPublishing: Boolean,
+    onDismiss: () -> Unit,
+    onPublish: (EditableShelfSummary) -> Unit,
+) {
+    var selectedShelfId by remember(cuebook.id, shelves) { mutableStateOf(shelves.firstOrNull()?.id) }
+    val selectedShelf = shelves.firstOrNull { it.id == selectedShelfId }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("まとまりへ置く") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("「${cuebook.title}」の現在の内容から、公開用の版を作ってまとまりへ置きます。")
+                when {
+                    isLoading -> Text("まとまりを読み込んでいます。")
+                    shelves.isEmpty() -> Text("編集できるまとまりがありません。Webの探す画面から、先にまとまりを作成してください。")
+                    else -> shelves.forEach { shelf ->
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { selectedShelfId = shelf.id },
+                            shape = RoundedCornerShape(8.dp),
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.dp,
+                                if (shelf.id == selectedShelfId) LocalCuckooColors.current.teal else LocalCuckooColors.current.line,
+                            ),
+                            color = if (shelf.id == selectedShelfId) LocalCuckooColors.current.highlight else LocalCuckooColors.current.panel,
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(10.dp),
+                                verticalArrangement = Arrangement.spacedBy(3.dp),
+                            ) {
+                                Text(shelf.title, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                Text(
+                                    shelf.context,
+                                    color = LocalCuckooColors.current.muted,
+                                    fontSize = 12.sp,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { selectedShelf?.let(onPublish) },
+                enabled = selectedShelf != null && !isLoading && !isPublishing,
+            ) {
+                Text(if (isPublishing) "配置中" else "この内容を置く")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !isPublishing) {
+                Text("キャンセル")
+            }
+        },
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CuebookDetailScreen(
+    repository: CuckooRepository,
+    cuebook: CuebookEntity,
+    onBack: () -> Unit,
+    onRenameCuebook: (String) -> Unit,
+    onCreateRun: (LocalDate) -> Unit,
+    onAddTask: (String, Int?, Int?, Int?) -> Unit,
+    onUpdateTask: (String, String, Int?, Int?, Int?) -> Unit,
+    onDeleteTask: (String) -> Unit,
+    onPublish: () -> Unit,
+) {
+    val colors = LocalCuckooColors.current
+    val tasks by repository.observeCuebookTasks(cuebook.id).collectAsStateWithLifecycle(initialValue = emptyList())
+    var titleDraft by remember(cuebook.id, cuebook.updatedAt) { mutableStateOf(cuebook.title) }
+    var isTitleEditing by remember(cuebook.id) { mutableStateOf(false) }
+    var showStartDialog by remember(cuebook.id) { mutableStateOf(false) }
+    val titleFocusRequester = remember { FocusRequester() }
+
+    fun saveTitle() {
+        val cleanTitle = titleDraft.trim()
+        if (cleanTitle.isBlank()) {
+            titleDraft = cuebook.title
+        } else if (cleanTitle != cuebook.title) {
+            titleDraft = cleanTitle
+            onRenameCuebook(cleanTitle)
+        }
+        isTitleEditing = false
+    }
+
+    LaunchedEffect(isTitleEditing) {
+        if (isTitleEditing) titleFocusRequester.requestFocus()
+    }
+
+    if (showStartDialog) {
+        ReuseCompletedRunDialog(
+            onDismiss = { showStartDialog = false },
+            onConfirm = { targetAnchorDay ->
+                showStartDialog = false
+                onCreateRun(targetAnchorDay)
+            },
+        )
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("") },
+                navigationIcon = {
+                    TextButton(onClick = onBack) { Text("‹", color = colors.ink, fontSize = 28.sp) }
+                },
+                actions = {
+                    TextButton(onClick = onPublish) { Text("まとまりへ置く", color = colors.muted) }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = colors.surfaceBase),
+            )
+        },
+        containerColor = colors.surfaceBase,
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(horizontal = 18.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    RunTitleEditor(
+                        title = cuebook.title,
+                        draft = titleDraft,
+                        isEditing = isTitleEditing,
+                        focusRequester = titleFocusRequester,
+                        onDraftChange = { titleDraft = it },
+                        onStartEditing = {
+                            titleDraft = cuebook.title
+                            isTitleEditing = true
+                        },
+                        onSave = ::saveTitle,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                    CuebookOriginLabel(cuebook)
+                    Button(
+                        onClick = { showStartDialog = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = tasks.any { it.title.isNotBlank() },
+                        colors = ButtonDefaults.buttonColors(containerColor = colors.teal),
+                    ) {
+                        Text("日付を決めて始める")
+                    }
+                }
+            }
+            item {
+                NewCuebookTaskComposer(onAdd = onAddTask)
+            }
+            if (tasks.isEmpty()) {
+                item { EmptyListCard(title = "Cueがありません", body = "相対日を持つ項目を追加すると、完了予定日から実行日へ展開できます。") }
+            }
+            items(tasks, key = { it.id }) { task ->
+                CuebookTaskRow(
+                    task = task,
+                    onUpdate = { title, priority, start, end -> onUpdateTask(task.id, title, priority, start, end) },
+                    onDelete = { onDeleteTask(task.id) },
+                )
+            }
+            item { Spacer(Modifier.height(20.dp)) }
+        }
+    }
+}
+
+@Composable
+private fun CuebookOriginLabel(cuebook: CuebookEntity) {
+    val colors = LocalCuckooColors.current
+    val label = cuebook.originRevisionId?.let { "探すから借りた段取り" } ?: "自分の段取り"
+    Text(
+        text = label,
+        color = colors.teal,
+        fontSize = 12.sp,
+        fontWeight = FontWeight.Bold,
+    )
+}
+
+@Composable
+private fun NewCuebookTaskComposer(
+    onAdd: (String, Int?, Int?, Int?) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var title by remember { mutableStateOf("") }
+    val colors = LocalCuckooColors.current
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(46.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(colors.highlight)
+            .padding(horizontal = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        BasicTextField(
+            value = title,
+            onValueChange = { title = it },
+            modifier = Modifier
+                .weight(1f)
+                .onPreviewKeyEvent { event ->
+                    if (event.type == KeyEventType.KeyUp && event.key == Key.Enter) {
+                        if (title.isNotBlank()) {
+                            onAdd(title, PriorityExposure.Quiet, null, null)
+                            title = ""
+                        }
+                        true
+                    } else {
+                        false
+                    }
+                },
+            singleLine = true,
+            textStyle = TextStyle(color = colors.ink, fontSize = 15.sp, fontWeight = FontWeight.Bold),
+            cursorBrush = SolidColor(colors.teal),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = {
+                if (title.isNotBlank()) {
+                    onAdd(title, PriorityExposure.Quiet, null, null)
+                    title = ""
+                }
+            }),
+            decorationBox = { innerTextField ->
+                if (title.isBlank()) {
+                    Text("新しいCue", color = colors.muted, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                }
+                innerTextField()
+            },
+        )
+    }
+}
+
+@Composable
+private fun CuebookTaskRow(
+    task: CuebookTaskEntity,
+    onUpdate: (String, Int?, Int?, Int?) -> Unit,
+    onDelete: () -> Unit,
+) {
+    val colors = LocalCuckooColors.current
+    var titleDraft by remember(task.id, task.updatedAt) { mutableStateOf(task.title) }
+    var startDraft by remember(task.id, task.updatedAt) { mutableStateOf(task.relativeStartDay?.toString().orEmpty()) }
+    var endDraft by remember(task.id, task.updatedAt) { mutableStateOf(task.relativeEndDay?.toString().orEmpty()) }
+    var priorityDraft by remember(task.id, task.updatedAt) { mutableStateOf(task.defaultPriority ?: PriorityExposure.Quiet) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, colors.line, RoundedCornerShape(8.dp))
+            .padding(10.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = task.relativeEndDay.relativeDayLabel(),
+                color = colors.teal,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.width(54.dp),
+            )
+            OutlinedTextField(
+                value = titleDraft,
+                onValueChange = { titleDraft = it },
+                modifier = Modifier.weight(1f),
+                singleLine = true,
+                label = { Text("Cue") },
+            )
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("日程", color = colors.muted, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(54.dp))
+            OutlinedTextField(
+                value = startDraft,
+                onValueChange = { startDraft = it },
+                modifier = Modifier.weight(1f),
+                singleLine = true,
+                label = { Text("開始") },
+            )
+            Spacer(Modifier.width(8.dp))
+            OutlinedTextField(
+                value = endDraft,
+                onValueChange = { endDraft = it },
+                modifier = Modifier.weight(1f),
+                singleLine = true,
+                label = { Text("終了") },
+            )
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("強さ", color = colors.muted, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(54.dp))
+            UnderlineChoice("弱", selected = priorityDraft == PriorityExposure.Quiet, color = colors.muted) {
+                priorityDraft = PriorityExposure.Quiet
+            }
+            UnderlineChoice("中", selected = priorityDraft == PriorityExposure.Medium, color = colors.green) {
+                priorityDraft = PriorityExposure.Medium
+            }
+            UnderlineChoice("強", selected = priorityDraft == PriorityExposure.Strong, color = colors.teal) {
+                priorityDraft = PriorityExposure.Strong
+            }
+            Spacer(Modifier.weight(1f))
+            EditActionButton(label = "削除", filled = false, onClick = onDelete)
+            Spacer(Modifier.width(6.dp))
+            EditActionButton(
+                label = "保存",
+                filled = true,
+                onClick = {
+                    onUpdate(
+                        titleDraft,
+                        priorityDraft,
+                        startDraft.toRelativeDay(),
+                        endDraft.toRelativeDay(),
+                    )
+                },
+            )
         }
     }
 }
@@ -914,7 +1779,10 @@ private fun ImportedNotice(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun ReuseCompletedList(onReuse: () -> Unit) {
+private fun ReuseCompletedList(
+    onReuse: () -> Unit,
+    onShare: () -> Unit,
+) {
     val colors = LocalCuckooColors.current
     Column(
         modifier = Modifier
@@ -932,8 +1800,8 @@ private fun ReuseCompletedList(onReuse: () -> Unit) {
             )
             Spacer(Modifier.width(10.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text("このリストを残す", color = colors.ink, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                Text("確認して、次に同じことをするとき再利用できます", color = colors.muted, fontSize = 12.sp)
+                Text("完了したリスト", color = colors.ink, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text("同じ内容を新しい日程で使えます", color = colors.muted, fontSize = 12.sp)
             }
         }
         Button(
@@ -941,9 +1809,65 @@ private fun ReuseCompletedList(onReuse: () -> Unit) {
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(containerColor = colors.teal),
         ) {
-            Text("Webで確認して残す")
+            Text("もう一度使う")
+        }
+        OutlinedButton(
+            onClick = onShare,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text("完了履歴をWebで見る")
         }
     }
+}
+
+@Composable
+private fun ReuseCompletedRunDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (LocalDate) -> Unit,
+) {
+    val context = LocalContext.current
+    var targetAnchorDay by remember { mutableStateOf<LocalDate?>(null) }
+    val initialDay = targetAnchorDay ?: LocalDate.now(ZoneId.systemDefault())
+    val dateFormatter = remember { DateTimeFormatter.ofPattern("yyyy年M月d日") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("もう一度使う") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("新しい完了予定日を選ぶと、完了日からの間隔を保って各項目の日付を設定します。")
+                OutlinedButton(
+                    onClick = {
+                        DatePickerDialog(
+                            context,
+                            { _, year, month, dayOfMonth ->
+                                targetAnchorDay = LocalDate.of(year, month + 1, dayOfMonth)
+                            },
+                            initialDay.year,
+                            initialDay.monthValue - 1,
+                            initialDay.dayOfMonth,
+                        ).show()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(targetAnchorDay?.format(dateFormatter) ?: "完了予定日を選ぶ")
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { targetAnchorDay?.let(onConfirm) },
+                enabled = targetAnchorDay != null,
+            ) {
+                Text("作成する")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("キャンセル")
+            }
+        },
+    )
 }
 
 @Composable
@@ -1730,3 +2654,13 @@ private fun String.toDueAt(): Long? {
     }
     return date.atStartOfDay(zoneId).toInstant().toEpochMilli()
 }
+
+private fun String.toRelativeDay(): Int? =
+    trim().takeIf { it.isNotEmpty() }?.toIntOrNull()
+
+private fun Int?.relativeDayLabel(): String =
+    when (this) {
+        null -> "任意"
+        0 -> "当日"
+        else -> if (this > 0) "+${this}日" else "${this}日"
+    }

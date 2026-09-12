@@ -5,16 +5,19 @@ const nullableEpochMillis = z.number().int().nonnegative().nullable();
 export const syncedRunSnapshotSchema = z.object({
   id: z.string().trim().min(1).max(128),
   title: z.string().trim().min(1).max(240),
+  source_cuebook_id: z.string().min(1).max(128).nullable().optional(),
   sort_order: z.number().int(),
   archived_at: nullableEpochMillis,
   completed_anchor_at: nullableEpochMillis,
-  time_zone: z.string().trim().min(1).max(80),
+  target_anchor_day: nullableEpochMillis.optional(),
+  time_zone: z.string().trim().min(1).max(80).refine((value) => { try { new Intl.DateTimeFormat("en", { timeZone: value }); return true; } catch { return false; } }),
   created_at: z.number().int().nonnegative(),
   updated_at: z.number().int().nonnegative(),
   tasks: z.array(
     z.object({
       id: z.string().trim().min(1).max(128),
       title: z.string().trim().min(1).max(240),
+      source_task_id: z.string().min(1).max(128).nullable().optional(),
       user_priority: z.number().int().min(0).max(2).nullable(),
       available_from_at: nullableEpochMillis,
       due_at: nullableEpochMillis,
@@ -24,7 +27,7 @@ export const syncedRunSnapshotSchema = z.object({
       updated_at: z.number().int().nonnegative(),
     }),
   ),
-});
+}).refine((run) => new Set(run.tasks.map((task) => task.id)).size === run.tasks.length, "Task ids must be unique");
 
 export type SyncedRunSnapshot = z.infer<typeof syncedRunSnapshotSchema>;
 
@@ -37,18 +40,19 @@ export function completedRunToSaveDraft(run: SyncedRunSnapshot) {
     throw new Error("完了したリストだけを残せます。");
   }
 
-  const anchorDay = localIsoDay(run.completed_anchor_at, run.time_zone);
+  const anchorDay = run.target_anchor_day == null ? null : localIsoDay(run.target_anchor_day, run.time_zone);
+  const orderedTasks = [...run.tasks].sort((left, right) => left.sort_order - right.sort_order);
   return {
     run_id: run.id,
     title: run.title,
     source_anchor_day: anchorDay,
-    tasks: [...run.tasks]
-      .sort((left, right) => left.sort_order - right.sort_order)
+    task_ids: orderedTasks.map((task) => task.id),
+    tasks: orderedTasks
       .map((task) => ({
         text: task.title,
         default_priority: task.user_priority,
-        relative_start_day: relativeDay(task.available_from_at, anchorDay, run.time_zone),
-        relative_end_day: relativeDay(task.due_at, anchorDay, run.time_zone),
+        relative_start_day: anchorDay ? relativeDay(task.available_from_at, anchorDay, run.time_zone) : null,
+        relative_end_day: anchorDay ? relativeDay(task.due_at, anchorDay, run.time_zone) : null,
       })),
   };
 }

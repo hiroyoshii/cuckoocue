@@ -99,7 +99,7 @@ try {
       await waitForReady(cdp);
       await waitFor(cdp, () => Boolean(document.querySelector('#save-title')), 5000);
       await cdp.eval(`
-        setTimeout(() => [...document.querySelectorAll('button')].find((button) => button.textContent.includes('検索情報を準備')).click(), 100);
+        setTimeout(() => [...document.querySelectorAll('button')].find((button) => button.textContent.includes('再利用情報を準備')).click(), 100);
       `);
       await waitForText(cdp, "検索情報を確認", 30000);
     },
@@ -136,7 +136,7 @@ try {
       await cdp.send("Page.navigate", { url: `${baseUrl}/?run_id=${screenshotRunId}` });
       await waitForReady(cdp);
       await cdp.eval(`
-        setTimeout(() => [...document.querySelectorAll('button')].find((button) => button.textContent.includes('検索情報を準備'))?.click(), 100);
+        setTimeout(() => [...document.querySelectorAll('button')].find((button) => button.textContent.includes('再利用情報を準備'))?.click(), 100);
       `);
       await waitForText(cdp, "検索情報を確認", 30000);
       await cdp.eval(`

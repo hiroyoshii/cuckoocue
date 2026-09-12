@@ -3,7 +3,11 @@ package app.cuckoocue.data
 import android.content.Context
 import android.database.sqlite.SQLiteException
 import app.cuckoocue.transfer.ImportedRunPayload
+import app.cuckoocue.transfer.ImportedRunTask
+import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
 
@@ -18,8 +22,12 @@ class CuckooRepository internal constructor(
         get() = dao.observeFirstRun()
     val runs: Flow<List<RunEntity>>
         get() = dao.observeRuns()
+    val cuebooks: Flow<List<CuebookEntity>>
+        get() = dao.observeCuebooks()
 
     fun observeTasks(runId: String): Flow<List<RunTaskEntity>> = dao.observeTasks(runId)
+
+    fun observeCuebookTasks(cuebookId: String): Flow<List<CuebookTaskEntity>> = dao.observeCuebookTasks(cuebookId)
 
     fun observeTaskPreview(runId: String, limit: Int = RunCardPreviewLimit): Flow<List<RunTaskEntity>> =
         dao.observeTaskPreview(runId, limit)
@@ -45,16 +53,230 @@ class CuckooRepository internal constructor(
         return runId
     }
 
+    suspend fun createCuebook(
+        title: String,
+        tasks: List<CuebookTaskDraft>,
+        originRevisionId: String? = null,
+        clock: () -> Long = { System.currentTimeMillis() },
+    ): String? {
+        val cleanTitle = title.trim()
+        val cleanTasks = tasks.mapNotNull { task ->
+            val cleanTaskTitle = task.title.trim()
+            if (cleanTaskTitle.isEmpty()) {
+                null
+            } else {
+                task.copy(
+                    title = cleanTaskTitle,
+                    defaultPriority = task.defaultPriority?.let { PriorityExposure.normalize(it) },
+                )
+            }
+        }
+        if (cleanTitle.isEmpty() || cleanTasks.isEmpty()) return null
+        if (cleanTasks.any { it.relativeStartDay != null && it.relativeEndDay != null && it.relativeStartDay > it.relativeEndDay }) {
+            return null
+        }
+
+        val now = clock()
+        val cuebookId = UUID.randomUUID().toString()
+        dao.insertCuebookAndTasks(
+            cuebook = CuebookEntity(
+                id = cuebookId,
+                title = cleanTitle,
+                originRevisionId = originRevisionId?.trim()?.ifEmpty { null },
+                createdAt = now,
+                updatedAt = now,
+            ),
+            tasks = cleanTasks.mapIndexed { index, task ->
+                CuebookTaskEntity(
+                    id = UUID.randomUUID().toString(),
+                    cuebookId = cuebookId,
+                    title = task.title,
+                    defaultPriority = task.defaultPriority,
+                    relativeStartDay = task.relativeStartDay,
+                    relativeEndDay = task.relativeEndDay,
+                    sortOrder = index,
+                    createdAt = now,
+                    updatedAt = now,
+                )
+            },
+        )
+        return cuebookId
+    }
+
+    suspend fun createRunFromCuebook(
+        cuebookId: String,
+        targetAnchorDay: LocalDate,
+        clock: () -> Long = { System.currentTimeMillis() },
+        zoneId: ZoneId = ZoneId.systemDefault(),
+    ): String? {
+        val cuebook = dao.cuebookById(cuebookId) ?: return null
+        val cuebookTasks = dao.tasksForCuebook(cuebookId).filter { it.title.isNotBlank() }
+        if (cuebookTasks.isEmpty()) return null
+
+        val now = clock()
+        val runId = UUID.randomUUID().toString()
+        val nextOrder = (dao.maxRunSortOrder() ?: -1) + 1
+        val tasks = cuebookTasks.mapIndexed { index, task ->
+            RunTaskEntity(
+                id = UUID.randomUUID().toString(),
+                runId = runId,
+                sourceTaskId = task.id,
+                title = task.title.trim(),
+                userPriority = task.defaultPriority?.let { PriorityExposure.normalize(it) },
+                availableFromAt = task.relativeStartDay
+                    ?.let { targetAnchorDay.plusDays(it.toLong()) }
+                    ?.atStartOfDay(zoneId)
+                    ?.toInstant()
+                    ?.toEpochMilli(),
+                dueAt = task.relativeEndDay
+                    ?.let { targetAnchorDay.plusDays(it.toLong()) }
+                    ?.atStartOfDay(zoneId)
+                    ?.toInstant()
+                    ?.toEpochMilli(),
+                sortOrder = index,
+                createdAt = now,
+                updatedAt = now,
+            )
+        }
+        dao.insertRunAndTasks(
+            run = RunEntity(
+                id = runId,
+                title = cuebook.title,
+                sourceCuebookId = cuebook.id,
+                targetAnchorDay = targetAnchorDay.atStartOfDay(zoneId).toInstant().toEpochMilli(),
+                sortOrder = nextOrder,
+                createdAt = now,
+                updatedAt = now,
+            ),
+            tasks = tasks,
+            now = now,
+        )
+        runSyncClient?.enqueue(runId)
+        return runId
+    }
+
+    suspend fun renameCuebook(
+        cuebookId: String,
+        title: String,
+        clock: () -> Long = { System.currentTimeMillis() },
+    ): Boolean {
+        val cleanTitle = title.trim()
+        if (cleanTitle.isEmpty()) return false
+        return dao.updateCuebookTitle(cuebookId, cleanTitle, clock()) == 1
+    }
+
+    suspend fun addCuebookTask(
+        cuebookId: String,
+        title: String,
+        defaultPriority: Int? = null,
+        relativeStartDay: Int? = null,
+        relativeEndDay: Int? = null,
+        clock: () -> Long = { System.currentTimeMillis() },
+    ): String? {
+        val cleanTitle = title.trim()
+        if (cleanTitle.isEmpty()) return null
+        if (relativeStartDay != null && relativeEndDay != null && relativeStartDay > relativeEndDay) return null
+        if (dao.cuebookById(cuebookId) == null) return null
+
+        val now = clock()
+        val taskId = UUID.randomUUID().toString()
+        dao.insertCuebookTaskAndTouchCuebook(
+            CuebookTaskEntity(
+                id = taskId,
+                cuebookId = cuebookId,
+                title = cleanTitle,
+                defaultPriority = defaultPriority?.let { PriorityExposure.normalize(it) },
+                relativeStartDay = relativeStartDay,
+                relativeEndDay = relativeEndDay,
+                sortOrder = (dao.maxCuebookTaskSortOrder(cuebookId) ?: -1) + 1,
+                createdAt = now,
+                updatedAt = now,
+            ),
+            now = now,
+        )
+        return taskId
+    }
+
+    suspend fun updateCuebookTask(
+        cuebookId: String,
+        taskId: String,
+        title: String,
+        defaultPriority: Int?,
+        relativeStartDay: Int?,
+        relativeEndDay: Int?,
+        clock: () -> Long = { System.currentTimeMillis() },
+    ): Boolean {
+        val cleanTitle = title.trim()
+        if (cleanTitle.isEmpty()) return false
+        if (relativeStartDay != null && relativeEndDay != null && relativeStartDay > relativeEndDay) return false
+        return dao.updateCuebookTaskAndTouchCuebook(
+            cuebookId = cuebookId,
+            taskId = taskId,
+            title = cleanTitle,
+            defaultPriority = defaultPriority?.let { PriorityExposure.normalize(it) },
+            relativeStartDay = relativeStartDay,
+            relativeEndDay = relativeEndDay,
+            now = clock(),
+        ) == 1
+    }
+
+    suspend fun deleteCuebookTask(
+        cuebookId: String,
+        taskId: String,
+        clock: () -> Long = { System.currentTimeMillis() },
+    ): Boolean = dao.deleteCuebookTaskAndTouchCuebook(cuebookId, taskId, clock()) == 1
+
+    suspend fun cuebookSnapshot(cuebookId: String): CuebookSnapshot? {
+        val cuebook = dao.cuebookById(cuebookId) ?: return null
+        val tasks = dao.tasksForCuebook(cuebookId)
+            .filter { it.title.isNotBlank() }
+            .map {
+                CuebookSnapshotTask(
+                    title = it.title.trim(),
+                    defaultPriority = it.defaultPriority,
+                    relativeStartDay = it.relativeStartDay,
+                    relativeEndDay = it.relativeEndDay,
+                )
+            }
+        if (tasks.isEmpty()) return null
+        return CuebookSnapshot(
+            id = cuebook.id,
+            title = cuebook.title,
+            tasks = tasks,
+        )
+    }
+
     suspend fun importRun(
         payload: ImportedRunPayload,
         clock: () -> Long = { System.currentTimeMillis() },
+        zoneId: ZoneId = ZoneId.systemDefault(),
     ): String? {
         if (payload.title.isBlank() || payload.tasks.isEmpty()) return null
+        if (payload.originRevisionId != null) {
+            val cuebookId = createCuebook(
+                title = payload.title,
+                originRevisionId = payload.originRevisionId,
+                tasks = payload.tasks.map { task ->
+                    CuebookTaskDraft(
+                        title = task.title,
+                        defaultPriority = task.defaultPriority,
+                        relativeStartDay = task.relativeStartDay,
+                        relativeEndDay = task.relativeEndDay,
+                    )
+                },
+                clock = clock,
+            ) ?: return null
+            return createRunFromCuebook(
+                cuebookId = cuebookId,
+                targetAnchorDay = payload.targetAnchorDay,
+                clock = clock,
+                zoneId = zoneId,
+            )
+        }
         val now = clock()
         val runId = UUID.randomUUID().toString()
         val nextOrder = (dao.maxRunSortOrder() ?: -1) + 1
         val anchor = payload.targetAnchorDay
-        val zoneId = ZoneId.systemDefault()
         val tasks = payload.tasks.mapIndexed { index, task ->
             RunTaskEntity(
                 id = UUID.randomUUID().toString(),
@@ -80,6 +302,7 @@ class CuckooRepository internal constructor(
             run = RunEntity(
                 id = runId,
                 title = payload.title.trim(),
+                targetAnchorDay = anchor.atStartOfDay(zoneId).toInstant().toEpochMilli(),
                 sortOrder = nextOrder,
                 createdAt = now,
                 updatedAt = now,
@@ -89,6 +312,41 @@ class CuckooRepository internal constructor(
         )
         runSyncClient?.enqueue(runId)
         return runId
+    }
+
+    suspend fun reuseCompletedRun(
+        sourceRunId: String,
+        targetAnchorDay: LocalDate,
+        clock: () -> Long = { System.currentTimeMillis() },
+        zoneId: ZoneId = ZoneId.systemDefault(),
+    ): String? {
+        val sourceRun = dao.runById(sourceRunId) ?: return null
+        val sourceAnchorAt = sourceRun.completedAnchorAt ?: return null
+        val sourceTasks = dao.tasksForRun(sourceRunId)
+        if (sourceTasks.isEmpty() || sourceTasks.any { it.completedAt == null }) return null
+
+        val sourceAnchorDay = Instant.ofEpochMilli(sourceAnchorAt).atZone(zoneId).toLocalDate()
+        val reusableTasks = sourceTasks
+            .filter { it.title.isNotBlank() }
+            .map { task ->
+                ImportedRunTask(
+                    title = task.title.trim(),
+                    defaultPriority = task.userPriority,
+                    relativeStartDay = task.availableFromAt?.relativeDayFrom(sourceAnchorDay, zoneId),
+                    relativeEndDay = task.dueAt?.relativeDayFrom(sourceAnchorDay, zoneId),
+                )
+            }
+        if (reusableTasks.isEmpty()) return null
+
+        return importRun(
+            payload = ImportedRunPayload(
+                title = sourceRun.title,
+                targetAnchorDay = targetAnchorDay,
+                tasks = reusableTasks,
+            ),
+            clock = clock,
+            zoneId = zoneId,
+        )
     }
 
     suspend fun getTasks(runId: String): List<RunTaskEntity> = dao.tasksForRun(runId)
@@ -235,6 +493,14 @@ class CuckooRepository internal constructor(
     }
 
     suspend fun syncRunNow(runId: String): Boolean = runSyncClient?.sync(runId) ?: false
+    internal suspend fun syncRunResult(runId: String): RunSyncResult = runSyncClient?.syncResult(runId) ?: RunSyncResult.Blocked
+
+    suspend fun receiveRun(runId: String) {
+        val client = runSyncClient ?: error("同期に接続できませんでした")
+        client.receive(runId)
+    }
+
+    suspend fun receiveRuns() { runSyncClient?.receiveAll() }
 
     fun syncAllRuns() {
         runSyncClient?.enqueueAll()
@@ -263,12 +529,38 @@ class CuckooRepository internal constructor(
                 instance ?: CuckooDatabase.getInstance(context).dao().let { dao ->
                     CuckooRepository(
                         dao,
-                        RunSyncClient(dao, context.getString(app.cuckoocue.R.string.cuckoo_cue_web_url)),
+                        RunSyncClient(dao, context.getString(app.cuckoocue.R.string.cuckoo_cue_web_url), context.getSharedPreferences("run_sync", Context.MODE_PRIVATE), schedule = { owner, runId -> RunSyncWorker.enqueue(context.applicationContext, owner, runId) }),
                     ).also { instance = it }
                 }
             }
     }
 }
+
+data class CuebookTaskDraft(
+    val title: String,
+    val defaultPriority: Int? = null,
+    val relativeStartDay: Int? = null,
+    val relativeEndDay: Int? = null,
+)
+
+data class CuebookSnapshot(
+    val id: String,
+    val title: String,
+    val tasks: List<CuebookSnapshotTask>,
+)
+
+data class CuebookSnapshotTask(
+    val title: String,
+    val defaultPriority: Int?,
+    val relativeStartDay: Int?,
+    val relativeEndDay: Int?,
+)
+
+private fun Long.relativeDayFrom(anchorDay: LocalDate, zoneId: ZoneId): Int =
+    ChronoUnit.DAYS.between(
+        anchorDay,
+        Instant.ofEpochMilli(this).atZone(zoneId).toLocalDate(),
+    ).toInt()
 
 private fun RunTaskEntity.effectivePriority(now: Long = System.currentTimeMillis()): Int =
     userPriority?.let { PriorityExposure.normalize(it) } ?: PriorityExposure.compute(dueAt, now)

@@ -56,7 +56,7 @@ export async function embedText(text: string): Promise<number[]> {
 }
 
 export function buildTaskListContextEmbeddingText(
-  input: SaveTaskListInput,
+  input: Pick<SaveTaskListInput, "tasks">,
   enrichment: TaskListEnrichment,
 ) {
   return [
