@@ -30,9 +30,12 @@ private struct RunListView: View {
                     List {
                         Section {
                             WidgetCuePreview(
-                                cues: Array(store.snapshot.widgetCues.prefix(3)),
+                                rows: widgetPreviewRows(
+                                    cues: Array(store.snapshot.widgetCues.prefix(3)),
+                                    snapshot: store.snapshot,
+                                    showsRunTitle: true
+                                ),
                                 totalCount: store.snapshot.widgetCues.count,
-                                runTitle: { cue in store.snapshot.runTitle(for: cue) },
                                 showsRunTitle: true,
                                 emptyMessage: "強・中のCueが、Runをまたいでここからホーム画面へ戻ります。"
                             )
@@ -73,6 +76,25 @@ private struct RunListView: View {
     }
 }
 
+private func widgetPreviewRows(cues: [CueTask], snapshot: CueSnapshot, showsRunTitle: Bool) -> [WidgetCuePreviewRowData] {
+    cues.map { cue in
+        WidgetCuePreviewRowData(
+            id: cue.id,
+            title: cue.title,
+            runTitle: showsRunTitle ? snapshot.runTitle(for: cue) : "",
+            dueLabel: widgetPreviewDueLabel(cue.dueAt),
+            priority: cue.effectivePriority()
+        )
+    }
+}
+
+private func widgetPreviewDueLabel(_ date: Date?) -> String? {
+    guard let date else { return nil }
+    let components = Calendar(identifier: .gregorian).dateComponents([.month, .day], from: date)
+    guard let month = components.month, let day = components.day else { return nil }
+    return "\(month)/\(day)"
+}
+
 struct NewRunSheet: View {
     @EnvironmentObject private var store: CueStore
     @Environment(\.dismiss) private var dismiss
@@ -105,9 +127,12 @@ struct RunDetailView: View {
             if let run {
                 Section {
                     WidgetCuePreview(
-                        cues: Array(store.snapshot.widgetCues(runID: run.id, includeQuiet: false).prefix(3)),
+                        rows: widgetPreviewRows(
+                            cues: Array(store.snapshot.widgetCues(runID: run.id, includeQuiet: false).prefix(3)),
+                            snapshot: store.snapshot,
+                            showsRunTitle: false
+                        ),
                         totalCount: store.snapshot.widgetCues(runID: run.id, includeQuiet: false).count,
-                        runTitle: { _ in "" },
                         showsRunTitle: false,
                         emptyMessage: "このRunからWidgetに出るCueはありません。強・中にするとホーム画面へ戻ります。"
                     )
@@ -141,10 +166,17 @@ struct RunDetailView: View {
     }
 }
 
+private struct WidgetCuePreviewRowData: Identifiable {
+    let id: String
+    let title: String
+    let runTitle: String
+    let dueLabel: String?
+    let priority: CuePriority
+}
+
 private struct WidgetCuePreview: View {
-    let cues: [CueTask]
+    let rows: [WidgetCuePreviewRowData]
     let totalCount: Int
-    let runTitle: (CueTask) -> String
     let showsRunTitle: Bool
     let emptyMessage: String
 
@@ -154,7 +186,7 @@ private struct WidgetCuePreview: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Widgetに出るCue")
                         .font(.subheadline.weight(.semibold))
-                    Text(cues.isEmpty ? emptyMessage : "ホーム画面ではこの順に表示されます")
+                    Text(rows.isEmpty ? emptyMessage : "ホーム画面ではこの順に表示されます")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -164,34 +196,34 @@ private struct WidgetCuePreview: View {
                     .foregroundStyle(.cueTeal)
             }
 
-            ForEach(cues) { cue in
+            ForEach(rows) { row in
                 HStack(spacing: 9) {
                     Circle()
-                        .fill(priorityColor(cue.effectivePriority()))
-                        .frame(width: dotSize(cue.effectivePriority()), height: dotSize(cue.effectivePriority()))
+                        .fill(priorityColor(row.priority))
+                        .frame(width: dotSize(row.priority), height: dotSize(row.priority))
                         .frame(width: 14, height: 14)
                     if showsRunTitle {
-                        Text(runTitle(cue))
+                        Text(row.runTitle)
                             .font(.caption2.weight(.semibold))
                             .foregroundStyle(.cueTeal)
                             .lineLimit(1)
                             .frame(width: 64, alignment: .leading)
                     }
-                    Text(cue.title)
+                    Text(row.title)
                         .font(.caption)
                         .foregroundStyle(.primary)
                         .lineLimit(1)
                     Spacer(minLength: 0)
-                    if let dueAt = cue.dueAt {
-                        Text(formatDueDate(dueAt))
+                    if let dueLabel = row.dueLabel {
+                        Text(dueLabel)
                             .font(.caption2.weight(.semibold))
                             .foregroundStyle(.secondary)
                     }
                 }
             }
 
-            if totalCount > cues.count {
-                Text("ほか\(totalCount - cues.count)件")
+            if totalCount > rows.count {
+                Text("ほか\(totalCount - rows.count)件")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
@@ -220,12 +252,6 @@ private struct WidgetCuePreview: View {
         case .quiet:
             return 6
         }
-    }
-
-    private func formatDueDate(_ date: Date) -> String {
-        let components = Calendar(identifier: .gregorian).dateComponents([.month, .day], from: date)
-        guard let month = components.month, let day = components.day else { return "" }
-        return "\(month)/\(day)"
     }
 }
 
