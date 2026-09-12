@@ -40,11 +40,27 @@ jobs:
           arch: x86_64
           profile: pixel_6
           script: |
+            mkdir -p "$GITHUB_WORKSPACE/build/android-widget-screenshots"
+            set +e
             ADB="$ANDROID_HOME/platform-tools/adb" \
             OUT_DIR="$GITHUB_WORKSPACE/build/android-widget-screenshots" \
             RUN_LAUNCHER_RESIZE=0 \
-            RUN_INSTRUMENTATION=1 \
-            ./android/scripts/verify-widget-phase0.sh
+            RUN_INSTRUMENTATION=0 \
+            ./android/scripts/verify-widget-phase0.sh \
+              2>&1 | tee "$GITHUB_WORKSPACE/build/android-widget-screenshots/verification.log"
+            status=${PIPESTATUS[0]}
+            if [ "$status" -ne 0 ]; then
+              python3 - <<'PY'
+from pathlib import Path
+
+log = Path("build/android-widget-screenshots/verification.log")
+lines = log.read_text(errors="replace").splitlines() if log.exists() else []
+message = "\n".join(lines[-80:]) or "No Android widget verification output was captured."
+message = message.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+print(f"::error title=Android widget verification failed::{message}")
+PY
+              exit "$status"
+            fi
 
       - name: Upload widget screenshots
         if: always()
@@ -54,6 +70,7 @@ jobs:
           path: |
             build/android-widget-screenshots/**/*.png
             build/android-widget-screenshots/*.png
+            build/android-widget-screenshots/verification.log
             android/app/build/reports/androidTests/**
           if-no-files-found: warn
           retention-days: 14

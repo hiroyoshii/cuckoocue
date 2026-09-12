@@ -49,8 +49,9 @@ jobs:
 
       - name: Build app
         timeout-minutes: 15
+        shell: bash
         run: |
-          set -o pipefail
+          set +e
           mkdir -p build
           xcodebuild build \
             -project ios/CuckooCue.xcodeproj \
@@ -59,6 +60,26 @@ jobs:
             -derivedDataPath build/ios-derived-data \
             CODE_SIGNING_ALLOWED=NO \
             | tee build/CuckooCueBuild.log
+          status=${PIPESTATUS[0]}
+          if [ "$status" -ne 0 ]; then
+            echo "xcodebuild failed with status $status"
+            python3 - <<'PY'
+from pathlib import Path
+
+log = Path("build/CuckooCueBuild.log")
+text = log.read_text(errors="replace") if log.exists() else ""
+interesting = [
+    line for line in text.splitlines()
+    if any(token in line for token in (" error: ", ": error:", "BUILD FAILED", "CompileSwift", "Ld "))
+]
+if not interesting:
+    interesting = text.splitlines()[-80:]
+message = "\n".join(interesting[-30:]) or "No xcodebuild output was captured."
+message = message.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+print(f"::error title=Xcode build failed::{message}")
+PY
+            exit "$status"
+          fi
 
       - name: Capture widget previews
         timeout-minutes: 10
