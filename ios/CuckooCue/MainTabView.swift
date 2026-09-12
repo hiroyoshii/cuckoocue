@@ -8,7 +8,7 @@ struct MainTabView: View {
             WidgetSettingsView()
                 .tabItem { Label("ウィジェット", systemImage: "square.grid.2x2") }
         }
-        .tint(.cueTeal)
+        .tint(Color.cueTeal)
     }
 }
 
@@ -193,7 +193,7 @@ private struct WidgetCuePreview: View {
                 Spacer()
                 Text("\(totalCount)件")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(.cueTeal)
+                    .foregroundStyle(Color.cueTeal)
             }
 
             ForEach(rows) { row in
@@ -205,7 +205,7 @@ private struct WidgetCuePreview: View {
                     if showsRunTitle {
                         Text(row.runTitle)
                             .font(.caption2.weight(.semibold))
-                            .foregroundStyle(.cueTeal)
+                            .foregroundStyle(Color.cueTeal)
                             .lineLimit(1)
                             .frame(width: 64, alignment: .leading)
                     }
