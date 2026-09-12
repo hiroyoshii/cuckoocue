@@ -1,7 +1,9 @@
 import SwiftUI
 import WidgetKit
 
-struct ScreenshotGalleryView: View {
+/// Internal screenshot surface used by CI and UI tests.
+/// The product UI exposes "Widgetに出るCue" instead of a standalone widget preview.
+struct WidgetScreenshotHarnessView: View {
     @EnvironmentObject private var store: CueStore
     @State private var family: WidgetFamily
     private let configuredRunID: String?
@@ -53,7 +55,7 @@ struct ScreenshotGalleryView: View {
                 .padding(.horizontal, 20)
                 .padding(.top, 20)
             }
-            .navigationTitle("ウィジェットプレビュー")
+            .navigationTitle("Widget screenshot")
             .navigationBarTitleDisplayMode(.inline)
         }
     }

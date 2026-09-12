@@ -18,7 +18,7 @@ private struct RootView: View {
     var body: some View {
         let arguments = ProcessInfo.processInfo.arguments
         if arguments.contains("--screenshot-gallery") {
-            ScreenshotGalleryView()
+            WidgetScreenshotHarnessView()
         } else if arguments.contains("--screenshot-detail") {
             RunDetailView(runID: store.snapshot.runs.first?.id ?? "missing")
         } else if arguments.contains("--screenshot-settings") {

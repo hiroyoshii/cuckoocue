@@ -1,7 +1,7 @@
 import XCTest
 
 final class CuckooCueScreenshotTests: XCTestCase {
-    func testWidgetGalleryIsAccessibleAtAllSizes() {
+    func testWidgetScreenshotHarnessIsAccessibleAtAllSizes() {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "--screenshot-gallery"]
         app.launch()

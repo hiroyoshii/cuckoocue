@@ -310,9 +310,6 @@ struct WidgetSettingsView: View {
                         ForEach(WidgetTextScale.allCases) { Text($0.label).tag($0) }
                     }
                 }
-                Section("プレビュー") {
-                    NavigationLink("全サイズを確認") { ScreenshotGalleryView() }
-                }
                 Section {
                     Text("ホーム画面を長押しして、Cuckoo Cueウィジェットを追加してください。")
                         .foregroundStyle(.secondary)
