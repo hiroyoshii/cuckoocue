@@ -180,7 +180,7 @@ private struct WidgetCuePreview: View {
                         .lineLimit(1)
                     Spacer(minLength: 0)
                     if let dueAt = cue.dueAt {
-                        Text(Self.dateFormatter.string(from: dueAt))
+                        Text(formatDueDate(dueAt))
                             .font(.caption2.weight(.semibold))
                             .foregroundStyle(.secondary)
                     }
@@ -219,12 +219,11 @@ private struct WidgetCuePreview: View {
         }
     }
 
-    private static let dateFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ja_JP")
-        formatter.setLocalizedDateFormatFromTemplate("M/d")
-        return formatter
-    }()
+    private func formatDueDate(_ date: Date) -> String {
+        let components = Calendar(identifier: .gregorian).dateComponents([.month, .day], from: date)
+        guard let month = components.month, let day = components.day else { return "" }
+        return "\(month)/\(day)"
+    }
 }
 
 struct NewTaskSheet: View {
