@@ -143,7 +143,7 @@ struct RunDetailView: View {
                         Button { store.complete(taskID: task.id) } label: {
                             HStack(spacing: 12) {
                                 Image(systemName: task.completedAt == nil ? "square" : "checkmark.square.fill")
-                                    .foregroundStyle(task.completedAt == nil ? Color.secondary : .cueTeal)
+                                    .foregroundStyle(task.completedAt == nil ? Color.secondary : Color.cueTeal)
                                 Circle().fill(priorityColor(task.effectivePriority())).frame(width: 10, height: 10)
                                 Text(task.title)
                                     .foregroundStyle(task.completedAt == nil ? Color.primary : .secondary)
@@ -162,7 +162,7 @@ struct RunDetailView: View {
     }
 
     private func priorityColor(_ priority: CuePriority) -> Color {
-        priority == .strong ? .cueTeal : priority == .medium ? .cueGreen : .secondary
+        priority == .strong ? Color.cueTeal : priority == .medium ? Color.cueGreen : Color.secondary
     }
 }
 
@@ -235,11 +235,11 @@ private struct WidgetCuePreview: View {
     private func priorityColor(_ priority: CuePriority) -> Color {
         switch priority {
         case .strong:
-            return .cueTeal.opacity(0.62)
+            return Color.cueTeal.opacity(0.62)
         case .medium:
-            return .cueGreen.opacity(0.52)
+            return Color.cueGreen.opacity(0.52)
         case .quiet:
-            return .secondary.opacity(0.45)
+            return Color.secondary.opacity(0.45)
         }
     }
 
