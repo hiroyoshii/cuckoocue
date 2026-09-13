@@ -15,7 +15,7 @@ RUN_INSTRUMENTATION="${RUN_INSTRUMENTATION:-0}" \
 status=$?
 
 if [ "$status" -ne 0 ]; then
-  message="$(tail -80 "$out_dir/verification.log" || true)"
+  message="$(tail -20 "$out_dir/verification.log" || true)"
   if [ -z "$message" ]; then
     message="No Android widget verification output was captured."
   fi

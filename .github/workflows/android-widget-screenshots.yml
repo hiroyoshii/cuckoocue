@@ -51,6 +51,25 @@ jobs:
           script: |
             bash ./android/scripts/ci-widget-screenshots.sh
 
+      - name: Persist failure evidence on branch
+        if: failure() && github.event_name == 'push'
+        shell: bash
+        run: |
+          set -euo pipefail
+          evidence="docs/review-screenshots/android/failures/$GITHUB_RUN_ID"
+          mkdir -p "$evidence"
+          for file in build/android-widget-screenshots/verification.log build/android-widget-screenshots/verification-failure*.png build/android-widget-screenshots/verification-failure.xml; do
+            if [ -f "$file" ]; then cp "$file" "$evidence/"; fi
+          done
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add "$evidence"
+          if ! git diff --cached --quiet; then
+            git commit -m "Record Android widget CI failure evidence"
+            git pull --rebase origin "$GITHUB_REF_NAME"
+            git push
+          fi
+
       - name: Persist screenshots on branch
         if: github.event_name == 'push'
         shell: bash

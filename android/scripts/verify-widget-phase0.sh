@@ -134,6 +134,7 @@ wait_run_open() {
     if [ -n "$(run_open_bounds)" ]; then return 0; fi
     sleep 1
   done
+  echo "Timed out waiting for filtered Run open header: 朝の支度" >&2
   return 1
 }
 
@@ -195,6 +196,7 @@ wait_for_text() {
     sleep "$pause"
   done
 
+  echo "Timed out waiting for text: $text" >&2
   return 1
 }
 
