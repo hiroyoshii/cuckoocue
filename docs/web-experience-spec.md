@@ -1075,3 +1075,5 @@ D4/D5/D7、W02/W07/W08の表示・作成補助。ユーザー決定は「検索�
 - D8/W15/C01: 完了履歴・自分のリストへの移動を既存の`?view=history/library`へ反映し、認証後も消さない。アカウント切替では私的workspaceを破棄し、新しい所有者で取得し直す。画面の場所だけをURLから復元し、私的データを別アカウントにコピーしない。Google SDKの実同意とは分け、アカウント切替・再読込のUI回帰を追加した。
 - 配備元は利用者の承認によりmainへ統一する。検証したWebソース・関連仕様・証跡をコミットしてpushし、そのGitコミットをApp Hostingで配備する。ローカル未コミットソースによる本番上書きを常用しない。build成功だけでなくCloud Runの配信revisionと本番疎通を確認してから、実Google復帰の再確認を依頼する。
 - 最終コードのbuild/lint、検索条件・API境界・BQ再送の単体21件が成功。[追加UI回帰30件](review-screenshots/web/final-web-quality/ui-final-followup.json)も全件成功。履歴画面のアカウント切替/再読込、別ユーザーのデータ破棄、公開先の下書き復元/閉じた際のfocusをPC/mobileで確認した。実Google SDKのpopup/redirect完了はこの30件には含めない。
+- 自動配備はmainを維持し、App Hostingの`rolloutPolicy.requiredPaths`を`web/`のPREFIXに限定した。AndroidやdocsだけのpushではWebを再配備しない。すでに登録された旧版のrolloutは待ち行列に残るため、新しいbuildが成功しただけで切替済みとはしない。[設定前後](review-screenshots/web/final-web-quality/deployment-policy.json)、[公式のパス指定](https://firebase.google.com/docs/reference/apphosting/rest/v1/projects.locations.backends.traffic#RolloutPolicy)。
+- [Web受け渡し・履歴の追試8件](review-screenshots/web/final-web-quality/ui-handoff.json)も全件成功。無効なRunリンクで代替Runを作らないこと、同じ読取の再試行、履歴の再取得を確認。Android側の新たな実機受入ではない。

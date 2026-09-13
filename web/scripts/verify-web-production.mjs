@@ -46,6 +46,14 @@ try {
     evidence.checks.push({ name: "public revision permalink", url: page.url() });
     await page.screenshot({ path: `${output}/production-revision-mobile.png`, fullPage: true });
   }
+  await page.getByRole("button", { name: "完了履歴", exact: true }).filter({ visible: true }).click();
+  await expect(page).toHaveURL(/\?view=history$/);
+  await expect(page.locator(".sign-in-required")).toBeVisible();
+  await page.reload();
+  await expect(page.locator(".sign-in-required")).toBeVisible({ timeout: 60000 });
+  await expect(page).toHaveURL(/\?view=history$/);
+  evidence.checks.push({ name: "anonymous history location survives reload before Google login", url: page.url() });
+  await page.screenshot({ path: `${output}/production-history-login-mobile.png`, fullPage: true });
   for (const path of ["/api/cuebooks", "/api/runs", "/api/cuebooks/acceptance-missing/revisions"]) {
     const response = await context.request.get(`${base}${path}`);
     evidence.checks.push({ name: "unauthenticated private read", path, status: response.status() });
