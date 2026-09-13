@@ -425,12 +425,19 @@ request_pin_widget() {
     home
     start_app
     wait_for_text "ホーム画面にWidgetを追加" 10 1
+    wait_for_text "表示例" 10 1
     screenshot "app-widget-install-entry"
     tap_text "ホーム画面にWidgetを追加" 2
     screenshot "app-widget-install-confirmation"
     if wait_tap_text "Add to home screen" 15 1; then
       sleep 4
       if assert_widget_placed; then
+        start_app
+        wait_for_text "新しいリスト" 10 1
+        assert_text_absent "表示例"
+        assert_text_absent "ホーム画面にWidgetを追加"
+        screenshot "app-widget-installed"
+        home
         return 0
       fi
     fi
