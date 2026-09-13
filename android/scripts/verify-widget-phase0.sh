@@ -198,6 +198,13 @@ wait_for_text() {
   return 1
 }
 
+assert_text_absent() {
+  if [ -n "$(ui_text_bounds "$1" || true)" ]; then
+    echo "Unexpected visible text: $1" >&2
+    return 1
+  fi
+}
+
 drag_resource_to_home() {
   local resource="$1"
   local bounds
@@ -531,27 +538,40 @@ debug_broadcast "$RESET_SEED_ACTION"
 start_app
 wait_home 6
 home
-wait_for_text "水" 20 1 || true
+show_widget_page
+wait_for_text "水" 20 1
 screenshot "fresh-home"
 
 echo "== Widget row tap completes and shows transient undo =="
-tap "$ROW_TAP_X" "$ROW_TAP_Y" 3
+tap_text "水" 3
+wait_for_text "戻す" 10 1
 screenshot "after-row-tap-complete"
 
 echo "== Undo restores the task and clears the transient affordance =="
-tap "$UNDO_TAP_X" "$UNDO_TAP_Y" 3
+tap_text "戻す" 3
+wait_for_text "水" 10 1
+assert_text_absent "戻す"
 screenshot "after-undo-tap"
 
 echo "== Next widget interaction clears transient undo =="
-tap "$ROW_TAP_X" "$ROW_TAP_Y" 2
-tap "$FOOTER_NEXT_X" "$FOOTER_NEXT_Y" 2
+debug_broadcast "$RESET_MANY_RUNS_ACTION"
+wait_for_text "水筒に水を入れる" 20 1
+tap_text "水筒に水を入れる" 3
+wait_for_text "戻す" 10 1
+tap_text "›" 3
+assert_text_absent "戻す"
 screenshot "after-footer-next-clears-undo"
 
 echo "== App launch clears transient undo =="
-tap "$ROW_TAP_X" "$ROW_TAP_Y" 2
+debug_broadcast "$RESET_SEED_ACTION"
+wait_for_text "水" 20 1
+tap_text "水" 3
+wait_for_text "戻す" 10 1
 start_app
 wait_home 4
 home
+show_widget_page
+assert_text_absent "戻す"
 screenshot "after-app-launch-clears-undo"
 
 echo "== App-side mutation redraws the widget =="
@@ -624,7 +644,7 @@ read -r nav_left nav_top nav_right nav_bottom <<<"$nav_footer_bounds"
 tap "$(((nav_left + nav_right) / 2))" "$(((nav_top + nav_bottom) / 2))" 2
 wait_for_text "戸締まりと火元を確認する" 10 1
 screenshot "navigation-filter-cleared"
-tap "$FOOTER_NEXT_X" "$FOOTER_NEXT_Y" 2
+tap_text "›" 2
 screenshot "multi-run-footer-context-after-next"
 
 echo "== Vertical scroll smoke check =="
