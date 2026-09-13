@@ -13,6 +13,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -41,6 +43,7 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -810,13 +813,17 @@ private fun RunListScreen(
     var mode by remember { mutableStateOf("runs") }
 
     if (showAppearance) {
-        ModalBottomSheet(onDismissRequest = onToggleAppearance, containerColor = colors.surfaceBase) {
+        ModalBottomSheet(
+            onDismissRequest = onToggleAppearance,
+            containerColor = colors.surfaceBase,
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        ) {
             AppearanceSettingsPanel(
                 settings = appearanceSettings,
                 onAppThemeChange = onAppThemeChange,
                 onWidgetThemeChange = onWidgetThemeChange,
                 onWidgetTextScaleChange = onWidgetTextScaleChange,
-                modifier = Modifier.padding(18.dp),
+                modifier = Modifier.verticalScroll(rememberScrollState()).padding(18.dp),
             )
             Spacer(Modifier.height(24.dp))
         }

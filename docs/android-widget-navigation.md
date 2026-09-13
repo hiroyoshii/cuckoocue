@@ -43,3 +43,15 @@ CI画像のレビューで、以前の固定座標による完了・Undo試験�
 | [中央余白からトップ](review-screenshots/android/navigation-central-blank-top.png) | 直前にRun詳細を開いていてもトップへ戻る |
 | [完了直後](review-screenshots/android/after-row-tap-complete.png) | 完了した行が消え、footerへUndoが出る |
 | [Undo直後](review-screenshots/android/after-undo-tap.png) | Cueが復帰しUndoが消える |
+
+## Androidアプリ側の入口と戻り先
+
+2026-09-13追補。独自Widgetプレビューは復活させない。未設置時のみ、実行リスト一覧とRun詳細に「ホーム画面にWidgetを追加」を表示し、OSの設置確認へ渡す。対応しないLauncherでは手動設置手順を案内する。アプリ復帰時に設置状態を再確認する。
+
+Run詳細の「閉じる」は「アーカイブ」に変更する。確認で、一覧とWidgetから外れること、内容は削除しないことを明示する。取消時は無変更。リスト一覧の「アーカイブ」から復元すると、同じRun ID・Task・日付・完了状態を保持して詳細を開く。Widget対象の未完了Cueのみ表示を再構築する。既存archived_atを利用するため、テーブル追加・migrationは不要。復元は既存Run同期へ渡す。
+
+「表示」はリスト末尾への設定追加ではなくModalBottomSheetを即時表示する。外観設定の保存先やWidgetの表示仕様は変えない。
+
+「完了履歴をWebで見る」は、未ログインなら認証→同じRunを同期→元のRunのWeb履歴を開く、を一つの要求として処理する。取消・認証失敗・同期失敗ではWebを開かず、再操作可能とする。連打で認証を重複起動しない。端末でのプロセス終了をまたぐ要求の自動再開は行わない。
+
+撮影追加: app-widget-install-entry / app-widget-install-confirmation / app-display-sheet / app-archive-confirmation / app-archive-list / app-archive-restored。認証継続は依存処理を差し替えた計装テストで順序と失敗時の停止を検証し、実Googleアカウントの認証成功を模擬テストの成功と混同しない。
