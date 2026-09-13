@@ -228,7 +228,7 @@ private fun CuckooCueWidgetContent(
                                 .padding(horizontal = 8.dp),
                             contentAlignment = Alignment.CenterStart,
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                            Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                                 Text(selectedRun.runTitle, modifier = GlanceModifier.defaultWeight(), maxLines = 1,
                                     style = TextStyle(color = colors.teal, fontSize = 13.sp, fontWeight = FontWeight.Bold))
                                 Text("↗", style = TextStyle(color = colors.teal, fontSize = 18.sp))

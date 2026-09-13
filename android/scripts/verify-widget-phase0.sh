@@ -184,12 +184,20 @@ drag_resource_to_home() {
 
 show_widget_page() {
   home
+  local display_size display_width display_height swipe_left swipe_right swipe_y
+  display_size="$(adb_shell wm size | tail -n 1 | tr -d '\r' | awk '{print $NF}')"
+  display_width="${display_size%x*}"
+  display_height="${display_size#*x}"
+  swipe_left=$((display_width / 10))
+  swipe_right=$((display_width * 9 / 10))
+  swipe_y=$((display_height / 2))
   if [ -n "$(ui_launcher_widget_bounds)" ]; then
     return 0
   fi
 
-  for _ in 1 2; do
-    adb_shell input swipe 100 1200 980 1200 350
+  # Check ordinary pages before swiping into the launcher's Discover feed.
+  for _ in 1 2 3 4; do
+    adb_shell input swipe "$swipe_right" "$swipe_y" "$swipe_left" "$swipe_y" 350
     sleep 2
     if [ -n "$(ui_launcher_widget_bounds)" ]; then
       return 0
@@ -197,7 +205,7 @@ show_widget_page() {
   done
 
   for _ in 1 2 3 4; do
-    adb_shell input swipe 980 1200 100 1200 350
+    adb_shell input swipe "$swipe_left" "$swipe_y" "$swipe_right" "$swipe_y" 350
     sleep 2
     if [ -n "$(ui_launcher_widget_bounds)" ]; then
       return 0
@@ -463,7 +471,7 @@ run_screen_profile() {
   start_app
   wait_home 3
   home
-  show_widget_page || true
+  show_widget_page
   screenshot "resize-$label-before-scroll"
   swipe_widget
   screenshot "resize-$label-after-scroll"
