@@ -161,6 +161,21 @@
 .publication-panel a { display: inline-flex; align-items: center; min-height: 44px; max-width: 100%; color: var(--teal); overflow-wrap: anywhere; }
 .joined-groups { margin-top: 24px; }
 .mobile-navigation { display: none; }
+.rail-account { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--line); }
+.mobile-header { justify-content: space-between; gap: 16px; }
+.account-control { position: relative; width: 44px; flex-shrink: 0; }
+.account-trigger { position: relative; width: 44px; height: 44px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 50%; background: var(--surface); color: var(--ink); font-size: 14px; font-weight: 700; }
+.account-trigger:hover { background: var(--mint); }
+.account-trigger.signed-in { border-color: #9ac9a8; background: #f3fbf6; color: #2f6d49; box-shadow: 0 0 0 2px #6f9f7924; }
+.account-check { position: absolute; right: -1px; bottom: -1px; display: grid; place-items: center; width: 16px; height: 16px; border: 1px solid white; border-radius: 50%; color: white; background: #39794b; }
+.account-menu { position: absolute; z-index: 40; bottom: calc(100% + 8px); left: 0; width: 288px; max-width: calc(100vw - 36px); padding: 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); box-shadow: 0 12px 28px #19252a1a; }
+.account-control.compact .account-menu { left: auto; right: 0; top: calc(100% + 8px); bottom: auto; }
+.account-menu header { display: grid; gap: 4px; padding: 8px; border-bottom: 1px solid var(--line); }
+.account-menu header strong { font-size: 14px; overflow-wrap: anywhere; }
+.account-menu header span { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.account-menu > button { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 8px; margin-top: 8px; border: 0; border-radius: 6px; background: transparent; color: var(--ink); text-align: left; font-size: 14px; font-weight: 600; }
+.account-menu > button:hover { background: var(--mint); }
+.account-error { color: var(--danger); font-size: 13px; padding: 8px; overflow-wrap: anywhere; }
 @media (max-width: 680px) {
   .mobile-navigation { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 24px; border-bottom: 1px solid #d9ddd9; }
   .mobile-navigation > button { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; background: transparent; border: 0; }

@@ -5,10 +5,10 @@ import { completedEditorSelection } from "@/lib/completed-editor-handoff";
 import {
   AlertCircle, CalendarCheck2,
   History, Library,
-  ListChecks, Loader2, LogIn, LogOut, MoreHorizontal, Plus, RotateCcw, Search,
+  ListChecks, Loader2, LogIn, MoreHorizontal, Plus, RotateCcw, Search,
   Smartphone, User, WandSparkles,
 } from "lucide-react";
-import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, type RefObject, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   GoogleAuthProvider,
   onAuthStateChanged,
@@ -21,7 +21,8 @@ import {
 import { cueApiFetch } from "@/lib/api-client";
 import { firebaseAuth, hasFirebaseClientConfig } from "@/lib/firebase-client";
 import { buildAndroidRunUri, type AndroidImportTransfer } from "@/lib/run-transfer";
-import { BrandHero, BrandLockup } from "./brand-mark";
+import { BrandLockup } from "./brand-mark";
+import { AccountControl } from "./account-control";
 import { SearchResultItem } from "./search/search-result";
 import { TaskEditor } from "./tasks/task-editor";
 import { CompletedRunReview, type CompletedReviewState } from "./tasks/completed-run-review";
@@ -125,32 +126,88 @@ export function CuckooCueWebApp({ importRunId }: { importRunId?: string } = {}) 
   const [authReady, setAuthReady] = useState(!hasFirebaseClientConfig());
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const connecting = useRef(false);
-  const connect = useCallback(async () => {
-    if (connecting.current) return;
-    connecting.current = true; setAuthReady(false); setError(null);
-    try { await signInAnonymously(firebaseAuth()); }
-    catch { setError("検索を始めるための接続を確立できませんでした。"); }
-    finally { connecting.current = false; setAuthReady(true); }
+  const [searchMessage, setSearchMessage] = useState("");
+  const editedSearch = useRef(false);
+  const searchFocus = useRef<{ start: number; end: number } | null>(null);
+  const [queuedSearch, setQueuedSearch] = useState(false);
+  const [accountMenu, setAccountMenu] = useState<"desktop" | "mobile" | null>(null);
+  const [accountBusy, setAccountBusy] = useState<"login" | "logout" | null>(null);
+  const [accountError, setAccountError] = useState<string | null>(null);
+  const connecting = useRef<Promise<void> | null>(null);
+  const previousUser = useRef<FirebaseUser | null>(null);
+  const connect = useCallback(() => {
+    if (connecting.current) return connecting.current;
+    setError(null);
+    connecting.current = (async () => {
+      const auth = firebaseAuth();
+      await auth.authStateReady();
+      if (!auth.currentUser) await signInAnonymously(auth);
+    })().catch(() => {
+      setError("接続できませんでした。もう一度操作してください。"); setQueuedSearch(false);
+    }).finally(() => { connecting.current = null; });
+    return connecting.current;
   }, []);
   useEffect(() => {
     if (!hasFirebaseClientConfig()) return;
     return onAuthStateChanged(firebaseAuth(), (next) => {
-      setUser(next);
-      if (next) setAuthReady(true);
-      else void connect();
+      const field = document.activeElement;
+      if (field instanceof HTMLTextAreaElement && field.getAttribute("aria-label") === "Search query") {
+        searchFocus.current = { start: field.selectionStart, end: field.selectionEnd };
+      }
+      if (previousUser.current && !previousUser.current.isAnonymous && previousUser.current.uid !== next?.uid) {
+        setSearchMessage(""); editedSearch.current = false; setQueuedSearch(false); searchFocus.current = null;
+      }
+      previousUser.current = next;
+      setUser(next); setAuthReady(true);
     });
-  }, [connect]);
-  if (!authReady) return <AuthWorkspace loading />;
-  if (hasFirebaseClientConfig() && !user) return <AuthWorkspace errorMessage={error} onRetry={connect} />;
-  return <AccountWorkspace key={user?.uid ?? devUserId} user={user} devUserId={user?.uid ?? devUserId} setDevUserId={setDevUserId} importRunId={importRunId} />;
+  }, []);
+  const signIn = async () => {
+    if (accountBusy) return false;
+    setAccountBusy("login"); setAccountError(null);
+    try {
+      const provider = new GoogleAuthProvider(); provider.setCustomParameters({ prompt: "select_account" });
+      if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) await signInWithRedirect(firebaseAuth(), provider);
+      else await signInWithPopup(firebaseAuth(), provider);
+      return true;
+    } catch (error) {
+      setAccountError(loginError(error));
+      setAccountMenu(window.matchMedia("(max-width: 680px)").matches ? "mobile" : "desktop");
+      return false;
+    } finally { setAccountBusy(null); }
+  };
+  const logOut = async () => {
+    if (accountBusy) return;
+    setAccountBusy("logout"); setAccountError(null);
+    try {
+      await signOut(firebaseAuth());
+      if (user) sessionStorage.removeItem(`${WorkspaceStorageKey}:${user.uid}`);
+    } catch { setAccountError("ログアウトできませんでした。"); }
+    finally { setAccountBusy(null); }
+  };
+  const closeMenu = useCallback(() => setAccountMenu(null), []);
+  const accountControl = (location: "desktop" | "mobile") => <AccountControl user={user} ready={authReady} busy={accountBusy} error={accountError}
+    compact={location === "mobile"} open={accountMenu === location} onToggle={() => setAccountMenu(current => current === location ? null : location)}
+    onClose={closeMenu} onLogin={() => void signIn()} onLogout={() => void logOut()} />;
+  return <AccountWorkspace key={user?.uid ?? devUserId} user={user} authReady={authReady}
+    devUserId={user?.uid ?? devUserId} setDevUserId={(id) => { editedSearch.current = false; setSearchMessage(""); setDevUserId(id); }} importRunId={importRunId}
+    searchMessage={searchMessage} setSearchMessage={value => { editedSearch.current = true; setSearchMessage(value); }}
+    restoreSearch={value => { if (!editedSearch.current) setSearchMessage(value); }} searchFocus={searchFocus}
+    onConnect={connect} onSignIn={signIn} sessionError={error} queuedSearch={queuedSearch}
+    onQueueSearch={() => { setQueuedSearch(true); if (hasFirebaseClientConfig()) void connect(); }} onConsumeSearch={() => setQueuedSearch(false)}
+    desktopAccount={accountControl("desktop")} mobileAccount={accountControl("mobile")} />;
 }
 
-function AccountWorkspace({ user, devUserId, setDevUserId, importRunId }: {
+function AccountWorkspace({ user, authReady, devUserId, setDevUserId, importRunId, searchMessage, setSearchMessage, restoreSearch, searchFocus,
+  onConnect, onSignIn: signInWithGoogle, sessionError, queuedSearch, onQueueSearch, onConsumeSearch, desktopAccount, mobileAccount }: {
   user: FirebaseUser | null; devUserId: string; setDevUserId: (value: string) => void; importRunId?: string;
+  authReady: boolean; searchMessage: string; setSearchMessage: (value: string) => void; restoreSearch: (value: string) => void;
+  searchFocus: RefObject<{ start: number; end: number } | null>;
+  onConnect: () => Promise<void>; onSignIn: () => Promise<boolean>; sessionError: string | null; queuedSearch: boolean;
+  onQueueSearch: () => void; onConsumeSearch: () => void; desktopAccount: ReactNode; mobileAccount: ReactNode;
 }) {
   const [view, setView] = useState<View>("explore");
-  const authReady = true;
+  const registered = !hasFirebaseClientConfig() || Boolean(user && !user.isAnonymous);
+  const canRequest = authReady && (!hasFirebaseClientConfig() || !!user);
   const identity = user?.uid ?? devUserId;
   const [workspaceOwner, setWorkspaceOwner] = useState<string | null>(null);
   const [cuebookId, setCuebookId] = useState(() => crypto.randomUUID());
@@ -162,7 +219,6 @@ function AccountWorkspace({ user, devUserId, setDevUserId, importRunId }: {
   const [membershipReady, setMembershipReady] = useState(false);
   const [membershipError, setMembershipError] = useState(false);
   const [membershipAttempt, setMembershipAttempt] = useState(0);
-  const [searchMessage, setSearchMessage] = useState("");
   const [saveTitle, setSaveTitle] = useState("");
   const [tasks, setTasks] = useState<TaskDraft[]>([emptyTask(), emptyTask(), emptyTask()]);
   const [enrichment, setEnrichment] = useState<EnrichmentDraft | null>(null);
@@ -205,11 +261,13 @@ function AccountWorkspace({ user, devUserId, setDevUserId, importRunId }: {
   const [failedRunRead, setFailedRunRead] = useState(false);
   const pendingSearch = useRef<AbortController | null>(null);
   const pendingShelfRead = useRef<AbortController | null>(null);
+  const restoreSearchRef = useRef(restoreSearch);
+  useEffect(() => { restoreSearchRef.current = restoreSearch; }, [restoreSearch]);
 
   useEffect(() => () => { pendingSearch.current?.abort(); pendingShelfRead.current?.abort(); }, []);
 
   useEffect(() => {
-    if (!authReady || (hasFirebaseClientConfig() && !user)) return;
+    if (!authReady) return;
     const frame = window.requestAnimationFrame(() => {
       setView("explore"); setSaveTitle(""); setTasks([emptyTask()]); setEnrichment(null);
       setSavedTitle(null); setCompletedReview(null); setReviewingCompleted(false);
@@ -218,14 +276,14 @@ function AccountWorkspace({ user, devUserId, setDevUserId, importRunId }: {
       pendingShelfRead.current?.abort();
       setFailedRunRead(false);
       try {
-        const stored = sessionStorage.getItem(`${WorkspaceStorageKey}:${identity}`);
+        const stored = hasFirebaseClientConfig() && !user ? null : sessionStorage.getItem(`${WorkspaceStorageKey}:${identity}`);
         if (stored) {
           const restored = JSON.parse(stored) as Partial<PersistedWorkspace>;
           if (restored.version === 1) {
             if (restored.view === "history" || restored.view === "library") setView(restored.view);
             else if (restored.view === "publish" && Array.isArray(restored.tasks)) setView("publish");
             else setView("explore");
-            if (typeof restored.searchMessage === "string") setSearchMessage(restored.searchMessage);
+            if (typeof restored.searchMessage === "string") restoreSearchRef.current(restored.searchMessage);
             if (isIsoDay(restored.targetAnchorDay)) setTargetAnchorDay(restored.targetAnchorDay);
             if (Array.isArray(restored.results)) setResults(restored.results);
             if (typeof restored.searchDomain === "string" || restored.searchDomain === null) setSearchDomain(restored.searchDomain);
@@ -266,7 +324,18 @@ function AccountWorkspace({ user, devUserId, setDevUserId, importRunId }: {
   }, [authReady, identity, user]);
 
   useEffect(() => {
-    if (!workspaceRestored || workspaceOwner !== identity) return;
+    if (workspaceOwner !== identity || !searchFocus.current) return;
+    const frame = requestAnimationFrame(() => {
+      const selection = searchFocus.current;
+      const field = document.querySelector<HTMLTextAreaElement>('[aria-label="Search query"]');
+      if (selection && field) { field.focus({ preventScroll: true }); field.setSelectionRange(selection.start, selection.end); }
+      searchFocus.current = null;
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [workspaceOwner, identity, searchFocus]);
+
+  useEffect(() => {
+    if (!workspaceRestored || workspaceOwner !== identity || (hasFirebaseClientConfig() && !user)) return;
     const workspace: PersistedWorkspace = {
       version: 1,
       view,
@@ -300,7 +369,7 @@ function AccountWorkspace({ user, devUserId, setDevUserId, importRunId }: {
     androidImportUri, enrichment, hasSearched, nextCursor, preparedImport,
     results, saveOperationId, savedTitle, saveSource, saveTitle, searchDomain, searchMessage, targetAnchorDay,
     tasks, view, workspaceRestored, completedReview, reviewingCompleted,
-    cuebookId, cuebookTaskIds, savedCuebook, pendingPrivateSave, workspaceOwner, identity,
+    cuebookId, cuebookTaskIds, savedCuebook, pendingPrivateSave, workspaceOwner, identity, user,
     shelfCreateOperation, newShelfTitle, newShelfContext, showShelfCreateForm, shelfCreateSubmitted,
   ]);
 
@@ -314,12 +383,12 @@ function AccountWorkspace({ user, devUserId, setDevUserId, importRunId }: {
   }, [busyAction]);
 
   useEffect(() => {
-    if (importRunId || !authReady || workspaceOwner !== identity || (hasFirebaseClientConfig() && !user)) return;
+    if (importRunId || !authReady || workspaceOwner !== identity) return;
     const url = new URL(window.location.href);
     const runId = url.searchParams.get("run_id");
     const editingFromAndroid = new URLSearchParams(url.hash.slice(1)).has("edit_tasks");
     if (!runId || loadedRunId.current === runId) return;
-    if (user?.isAnonymous) {
+    if (!registered) {
       const frame = window.requestAnimationFrame(() => setView("publish"));
       return () => window.cancelAnimationFrame(frame);
     }
@@ -359,7 +428,7 @@ function AccountWorkspace({ user, devUserId, setDevUserId, importRunId }: {
       cancelled = true;
       if (loadedRunId.current === runId) loadedRunId.current = null;
     };
-  }, [authReady, devUserId, user, workspaceOwner, identity, importRunId, runReadAttempt]);
+  }, [authReady, devUserId, registered, workspaceOwner, identity, importRunId, runReadAttempt]);
 
   const cleanedTasks = useMemo(
     () => tasks.filter((task) => task.text.trim().length > 0),
@@ -371,7 +440,7 @@ function AccountWorkspace({ user, devUserId, setDevUserId, importRunId }: {
   const currentUserId = user?.uid ?? devUserId;
 
   useEffect(() => {
-    if (!authReady || workspaceOwner !== identity || user?.isAnonymous) return;
+    if (!authReady || workspaceOwner !== identity || !registered) return;
     let cancelled = false;
     void cueApiFetch("/api/memberships", devUserId).then(async (response) => {
       const body = await response.json();
@@ -379,7 +448,7 @@ function AccountWorkspace({ user, devUserId, setDevUserId, importRunId }: {
       if (!cancelled) { setMemberships(body.shelf_ids); setMembershipReady(true); setMembershipError(false); }
     }).catch((error) => { if (!cancelled) { setErrorMessage(error.message); setMembershipError(true); } });
     return () => { cancelled = true; };
-  }, [authReady, workspaceOwner, identity, user, devUserId, shelvesLoaded, membershipAttempt]);
+  }, [authReady, workspaceOwner, identity, registered, devUserId, shelvesLoaded, membershipAttempt]);
 
   async function toggleMembership() {
     if (!selectedShelf) return;
@@ -397,32 +466,10 @@ function AccountWorkspace({ user, devUserId, setDevUserId, importRunId }: {
     finally { setBusyAction(null); }
   }
 
-  async function signInWithGoogle(): Promise<boolean> {
-    setErrorMessage(null);
-    const auth = firebaseAuth();
-    const provider = new GoogleAuthProvider();
-    provider.setCustomParameters({ prompt: "select_account" });
-    try {
-      if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-        await signInWithRedirect(auth, provider);
-      } else {
-        await signInWithPopup(auth, provider);
-      }
-      return true;
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "ログインできませんでした。");
-      return false;
-    }
-  }
-
-  async function signOutCurrentUser() {
-    sessionStorage.removeItem(`${WorkspaceStorageKey}:${identity}`);
-    await signOut(firebaseAuth());
-  }
-
   async function searchTaskLists(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault();
     if (!searchMessage.trim()) return;
+    if (!canRequest || workspaceOwner !== identity) { onQueueSearch(); return; }
     pendingSearch.current?.abort();
     const controller = new AbortController();
     pendingSearch.current = controller;
@@ -586,6 +633,14 @@ function AccountWorkspace({ user, devUserId, setDevUserId, importRunId }: {
     setAndroidImportUri(buildAndroidRunUri(runId));
   }
 
+  const queuedAction = useRef<() => void>(() => {});
+  useEffect(() => { queuedAction.current = () => { onConsumeSearch(); void searchTaskLists(); }; });
+  useEffect(() => {
+    if (!queuedSearch || !canRequest || workspaceOwner !== identity) return;
+    const frame = requestAnimationFrame(() => queuedAction.current());
+    return () => cancelAnimationFrame(frame);
+  }, [queuedSearch, canRequest, workspaceOwner, identity]);
+
   const loadShelves = useCallback(async () => {
     setBusySeconds(0);
     setShelvesLoading(true);
@@ -606,10 +661,10 @@ function AccountWorkspace({ user, devUserId, setDevUserId, importRunId }: {
   }, [devUserId]);
 
   useEffect(() => {
-    if (!authReady || workspaceOwner !== identity || (hasFirebaseClientConfig() && !user) || shelvesLoaded || shelvesLoading || shelvesFailed) return;
+    if (!authReady || workspaceOwner !== identity || !registered || shelvesLoaded || shelvesLoading || shelvesFailed) return;
     const frame = window.requestAnimationFrame(() => void loadShelves());
     return () => window.cancelAnimationFrame(frame);
-  }, [view, shelvesLoaded, shelvesLoading, shelvesFailed, loadShelves, authReady, workspaceOwner, identity, user]);
+  }, [view, shelvesLoaded, shelvesLoading, shelvesFailed, loadShelves, authReady, workspaceOwner, identity, registered]);
 
   const openShelf = useCallback(async (id: string) => {
     pendingShelfRead.current?.abort();
@@ -650,11 +705,12 @@ function AccountWorkspace({ user, devUserId, setDevUserId, importRunId }: {
       const revision = params.get("revision_id");
       const original = params.get("cuebook_id");
       const completed = params.get("completed_run_id");
+      if ((shelf || revision) && !canRequest) { void onConnect(); return; }
       if (shelf) { void openShelf(shelf); return; }
       pendingShelfRead.current?.abort(); setSelectedShelf(null); setSelectedRevisionId(revision);
       if (revision) { setView("explore"); return; }
       if (original || completed) {
-        if (user?.isAnonymous) setView("publish");
+        if (!registered) setView("publish");
         else if (navigationAttempt === 0 && ((original && savedCuebook?.id === original) || (completed && completedReview?.run.run_id === completed))) setView("publish");
         else void openOwnedList((original ?? completed)!, !!completed, false);
         return;
@@ -743,12 +799,6 @@ function AccountWorkspace({ user, devUserId, setDevUserId, importRunId }: {
     setView(nextView);
   }
 
-  if (!authReady) {
-    return <AuthWorkspace loading />;
-  }
-
-  if (workspaceOwner !== identity) return <AuthWorkspace loading />;
-
   return (
     <main className="product-shell">
       <ScheduleLoginRecovery key={identity} owner={identity} registered={!hasFirebaseClientConfig() || Boolean(user && !user.isAnonymous)} onSignIn={signInWithGoogle} />
@@ -763,33 +813,30 @@ function AccountWorkspace({ user, devUserId, setDevUserId, importRunId }: {
           <button className={view === "history" || view === "library" || view === "publish" ? "active" : ""} onClick={() => changeView("history")}><History size={18} aria-hidden="true" />完了履歴</button>
           {memberships.length ? <section className="joined-groups"><h2>参加グループ</h2>{shelves.filter((shelf) => memberships.includes(shelf.id)).map((shelf) => <button key={shelf.id} onClick={() => { setView("explore"); void openShelf(shelf.id); }}><Library size={18} aria-hidden="true" />{shelf.title}</button>)}</section> : null}
         </nav>
-        <details className="connection-panel">
-          <summary><User size={17} aria-hidden="true" />{user?.isAnonymous ? "ゲスト利用中" : user?.displayName ?? "接続"}</summary>
-          {user?.isAnonymous ? (
-            <button type="button" onClick={signInWithGoogle}><LogIn size={15} />Googleでログイン</button>
-          ) : user ? (
-            <button type="button" onClick={signOutCurrentUser}><LogOut size={15} />ログアウト</button>
-          ) : (
-            <label>Dev user<input value={devUserId} onChange={(event) => setDevUserId(event.target.value)} /></label>
-          )}
-        </details>
+        <div className="rail-account">{hasFirebaseClientConfig() ? desktopAccount : <details className="connection-panel">
+          <summary><User size={17} aria-hidden="true" />接続</summary><label>Dev user<input value={devUserId} onChange={event => setDevUserId(event.target.value)} /></label>
+        </details>}</div>
       </aside>
 
       <section className="product-main" id="top">
-        <MobileHeader />
+        <MobileHeader account={hasFirebaseClientConfig() ? mobileAccount : null} />
         <nav className="mobile-navigation" aria-label="モバイルの主な操作">
           <button type="button" aria-current={view === "explore" ? "page" : undefined} onClick={() => changeView("explore")}><Search size={17} />探す</button>
           <button type="button" aria-current={view === "history" || view === "library" ? "page" : undefined} onClick={() => changeView("history")}><History size={17} />完了履歴</button>
-          {user?.isAnonymous ? <button type="button" aria-label="Googleでログイン" onClick={signInWithGoogle}><LogIn size={17} /></button> : user ? <button type="button" aria-label="ログアウト" onClick={signOutCurrentUser}><LogOut size={17} /></button> : null}
           {memberships.length ? <details><summary>参加グループ</summary>{shelves.filter((shelf) => memberships.includes(shelf.id)).map((shelf) => <button type="button" key={shelf.id} onClick={() => { setView("explore"); void openShelf(shelf.id); }}>{shelf.title}</button>)}</details> : null}
         </nav>
-        {errorMessage ? (
+        {errorMessage || sessionError ? (
           <div className="error-banner" role="alert">
             <AlertCircle size={18} aria-hidden="true" />
-            <span><strong>処理を完了できませんでした</strong><small>{errorMessage}</small></span>
-            {view === "explore" && searchRetry ? (
-              <button type="button" onClick={() => searchRetry === "more" ? loadMoreResults() : searchTaskLists()} disabled={busyAction !== null}>
-                <RotateCcw size={16} aria-hidden="true" />{searchRetry === "more" ? "続きを再読込" : "再検索"}
+            <span><strong>処理を完了できませんでした</strong><small>{errorMessage || sessionError}</small></span>
+            {view === "explore" && (searchRetry || sessionError) ? (
+              <button type="button" onClick={() => {
+                const params = new URLSearchParams(window.location.search);
+                if (sessionError && (params.has("shelf_id") || params.has("revision_id"))) void onConnect();
+                else if (searchRetry === "more") void loadMoreResults();
+                else void searchTaskLists();
+              }} disabled={busyAction !== null}>
+                <RotateCcw size={16} aria-hidden="true" />{searchRetry === "more" ? "続きを再読込" : sessionError && !searchMessage.trim() ? "再接続" : "再検索"}
               </button>
             ) : null}
           </div>
@@ -814,7 +861,7 @@ function AccountWorkspace({ user, devUserId, setDevUserId, importRunId }: {
             <ExploreWorkspace
               searchMessage={searchMessage} setSearchMessage={setSearchMessage}
               targetAnchorDay={targetAnchorDay} setTargetAnchorDay={setTargetAnchorDay}
-              canSearch={canSearch} busyAction={busyAction} onSearch={searchTaskLists}
+              canSearch={canSearch && !queuedSearch} busyAction={queuedSearch ? "search" : busyAction} onSearch={searchTaskLists}
               searchRetry={searchRetry}
               searchDomain={searchDomain} hasSearched={hasSearched}
               results={results} onImport={finishScheduledImport}
@@ -837,8 +884,10 @@ function AccountWorkspace({ user, devUserId, setDevUserId, importRunId }: {
               onSignIn={signInWithGoogle}
             />
           )
-        ) : hasFirebaseClientConfig() && user?.isAnonymous ? (
-          <SignInRequired title="完了したリストを残す" onBack={() => changeView("explore")} onSignIn={signInWithGoogle} />
+        ) : !authReady || workspaceOwner !== identity ? (
+          <section className="workspace" aria-busy="true"><h1>{view === "history" ? "完了履歴" : "自分のリスト"}</h1></section>
+        ) : !registered ? (
+          <SignInRequired title={view === "history" ? "完了履歴" : view === "library" ? "自分のリスト" : "再利用用に整える"} onBack={() => changeView("explore")} onSignIn={signInWithGoogle} />
         ) : view === "history" || view === "library" ? (
           <OwnerLists key={`${identity}:${view}`} kind={view} devUserId={devUserId} onOpen={(id) => void openOwnedList(id)} onSwitch={() => changeView(view === "history" ? "library" : "history")}
             ownedShelves={shelves.filter(shelf => shelf.created_by === currentUserId)} onShelf={id => void openShelf(id)} />
@@ -866,30 +915,12 @@ function AccountWorkspace({ user, devUserId, setDevUserId, importRunId }: {
   );
 }
 
-function AuthWorkspace({
-  loading = false,
-  errorMessage,
-  onRetry,
-}: {
-  loading?: boolean;
-  errorMessage?: string | null;
-  onRetry?: () => void;
-}) {
-  return (
-    <main className="auth-shell">
-      <section className="auth-workspace">
-        <BrandHero priority />
-        <BrandLockup priority />
-        <span><strong>タスクリストを探す</strong></span>
-        {loading ? (
-          <Loader2 className="spin" size={22} aria-label="接続状態を確認中" />
-        ) : (
-          <button type="button" onClick={onRetry}><RotateCcw size={18} />もう一度接続</button>
-        )}
-        {errorMessage ? <p role="alert">{errorMessage}</p> : null}
-      </section>
-    </main>
-  );
+function loginError(error: unknown): string {
+  const code = typeof error === "object" && error !== null && "code" in error ? error.code : null;
+  if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") return "ログイン画面が閉じられました。";
+  if (code === "auth/popup-blocked") return "ログイン画面を開けませんでした。もう一度ログインを押してください。";
+  if (code === "auth/network-request-failed") return "接続できませんでした。もう一度ログインを押してください。";
+  return "ログインできませんでした。もう一度お試しください。";
 }
 
 function SignInRequired({ title, onBack, onSignIn }: { title: string; onBack: () => void; onSignIn: () => void }) {
@@ -897,16 +928,17 @@ function SignInRequired({ title, onBack, onSignIn }: { title: string; onBack: ()
     <div className="workspace sign-in-required">
       <h1>{title}</h1>
       <span>Googleアカウントでログインしてください。</span>
-      <button type="button" onClick={onSignIn}><LogIn size={18} />Googleでログイン</button>
+      <button type="button" onClick={onSignIn}><LogIn size={18} />ログイン</button>
       <button type="button" className="text-action" onClick={onBack}>探すに戻る</button>
     </div>
   );
 }
 
-function MobileHeader() {
+function MobileHeader({ account }: { account: ReactNode }) {
   return (
     <header className="mobile-header">
       <a className="brand-lockup" href="#top" aria-label="Cuckoo Cue"><BrandLockup priority /></a>
+      {account}
     </header>
   );
 }
@@ -975,6 +1007,13 @@ type SearchWorkspaceProps = {
 };
 
 function SearchWorkspace(props: SearchWorkspaceProps) {
+  const inputMounted = useRef(false);
+  const mountQuery = (field: HTMLTextAreaElement | null) => {
+    if (!field || inputMounted.current) return;
+    inputMounted.current = true;
+    // Preserve text entered into the server-rendered field before hydration.
+    if (field.value && !props.searchMessage) props.setSearchMessage(field.value);
+  };
   const pagingSentinel = useRef<HTMLDivElement>(null);
   const handoffPanel = useRef<HTMLElement>(null);
   const [selectedImport, setSelectedImport] = useState<SearchResult | null>(null);
@@ -1031,7 +1070,7 @@ function SearchWorkspace(props: SearchWorkspaceProps) {
         <h1>探す</h1>
       </header>
       <form className="search-composer" onSubmit={props.onSearch} autoComplete="off">
-        <label><span>目的や条件</span><textarea aria-label="Search query" value={props.searchMessage} onChange={(event) => props.setSearchMessage(event.target.value)} placeholder="猫2匹と東京から名古屋へ引っ越す" rows={2} /></label>
+        <label><span>目的や条件</span><textarea ref={mountQuery} aria-label="Search query" value={props.searchMessage} onChange={(event) => props.setSearchMessage(event.target.value)} placeholder="猫2匹と東京から名古屋へ引っ越す" rows={2} /></label>
         <div>
           <button className="primary-action" type="submit" disabled={!props.canSearch}>{props.busyAction === "search" ? <Loader2 className="spin" size={18} /> : <Search size={18} />}検索</button>
         </div>

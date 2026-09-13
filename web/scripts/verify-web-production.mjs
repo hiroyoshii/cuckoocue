@@ -14,6 +14,9 @@ await mkdir(output, { recursive: true });
 try {
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, locale: "ja-JP", reducedMotion: "reduce" });
   const page = await context.newPage();
+  const initialApiRequests = [];
+  let searchStarted = false;
+  page.on("request", request => { if (!searchStarted && new URL(request.url()).pathname.startsWith("/api/")) initialApiRequests.push(request.url()); });
   page.on("pageerror", error => evidence.pageErrors.push(error.message));
   page.on("response", async response => {
     if (response.url().includes("identitytoolkit.googleapis.com/v1/accounts:signUp") && response.ok()) {
@@ -24,8 +27,18 @@ try {
   const root = await page.goto(base, { timeout: 120000 });
   assert.equal(root.status(), 200);
   await expect(page.getByLabel("Search query")).toBeVisible({ timeout: 60000 });
+  await expect(page.getByRole("button", { name: "アカウント", exact: true }).filter({ visible: true })).toBeEnabled({ timeout: 60000 });
+  assert.equal(anonymousIds.size, 0, "Opening the guest search page must not create an anonymous user");
+  assert.equal(initialApiRequests.length, 0);
+  await expect(page.locator(".auth-shell, .spin")).toHaveCount(0);
+  evidence.checks.push({ name: "initial guest search needs no anonymous signup or application API", anonymousSignups: 0, apiRequests: 0 });
   await page.evaluate(() => document.fonts.ready);
   await page.screenshot({ path: `${output}/production-home-desktop.png`, fullPage: true });
+  await page.getByRole("button", { name: "アカウント", exact: true }).filter({ visible: true }).click();
+  await expect(page.getByRole("menuitem", { name: "ログイン", exact: true })).toBeFocused();
+  await page.screenshot({ path: `${output}/production-account-desktop.png`, fullPage: true });
+  await page.keyboard.press("Escape");
+  searchStarted = true;
   const searched = page.waitForResponse(response => new URL(response.url()).pathname === "/api/search", { timeout: 120000 });
   await page.getByLabel("Search query").fill("引っ越し");
   await page.getByRole("button", { name: "検索", exact: true }).click();
@@ -37,6 +50,9 @@ try {
   await page.screenshot({ path: `${output}/production-search-desktop.png`, fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: `${output}/production-search-mobile.png`, fullPage: true });
+  await page.getByRole("button", { name: "アカウント", exact: true }).filter({ visible: true }).click();
+  await page.screenshot({ path: `${output}/production-account-mobile.png`, fullPage: true });
+  await page.keyboard.press("Escape");
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
   const items = page.locator(".search-result-item");
   if (await items.count()) {

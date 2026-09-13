@@ -1080,3 +1080,19 @@ D4/D5/D7、W02/W07/W08の表示・作成補助。ユーザー決定は「検索�
 - 2026-09-13 15:08 JST、Gitソース`9db65cc`のbuild-2026-09-13-033へ本番トラフィック100%の切替を確認。Web実装commit `3c949fb`と配信元の実行ソースが一致し、Cloud Runの配信revisionも照合した。[build情報](review-screenshots/web/final-web-quality/production-main-build.json)、[配信照合](review-screenshots/web/final-web-quality/production-main-rollout.json)。先行rolloutの待ち行列により初回20分の待機は満了したが、追加配備せず同じrolloutを追跡して切替を確認した。
 - [本番の最終疎通](review-screenshots/web/final-web-quality/production-main/production-evidence.json)は成功。匿名検索200、匿名で完了履歴へ移動/再読込後も`?view=history`を維持、私的GETと開発用IDによる認証回避は401、Shelf生成も登録済み認証を要求。ブラウザーエラー0。検査で新規作成した匿名アカウント1件のみ削除した。本番公開Revisionは0件であり、候補の比較評価は隔離BQの証拠を参照する。
 - 実Googleの同意後の履歴復帰は修正版で利用者へ再確認を依頼済み。匿名疎通とUIのID切替テストを、その受入成功として代用しない。Android配布先URLは利用者の指示どおり未公開のため保留し、捏造しない。
+
+## 26. 初期表示とアカウント操作（2026-09-13）
+
+D8/W01/W15/C01の表示・認証待機を変更する。データモデル、検索条件・順位、Google認証方式、Androidへの受渡し契約は変更しない。
+
+- 探す画面の検索欄とナビゲーションを初期HTMLから表示する。認証確認・workspace復元のために全画面の接続待ち表示へ置き換えない。認証待ちとJavaScriptの初期化前に入力した文字も保持する。
+- 既存のFirebaseセッションは裏で復元する。未ログインで探す画面を開いただけでは匿名アカウントを作らず、検索または公開リンクの取得時に接続する。検索操作が先に押された場合は認証を待ち、一度だけ検索する。接続失敗は表示し、入力を残して明示的に再試行する。
+- 私的データは認証確定後に所有者別で読む。登録済み利用者の参加Shelfなどは裏で取得するが、検索欄の表示条件にはしない。未ログインの履歴・原本・完了Runリンクではログインを要求する。ログアウト・アカウント変更時に私的workspaceを引き継がない。画面の場所は既存URLで維持する。
+- アカウント表示はcapypace_v2の`coach-shell.tsx`のAccountControlに合わせる。PCはサイドバー下部、スマホはヘッダー右側の人物アイコンからメニューを開く。ログイン後は名前/メールの先頭文字と緑のチェック。メニュー内に名前・メール、ログイン/ログアウトを置く。認証確認中はアカウント操作だけを無効にする。Escape・外側クリックで閉じ、キーボードfocusを扱う。バジェット、匿名データ移行、別のプロフィール項目は持ち込まない。書体は既定のZen Kaku Gothic Newを維持する。
+
+検証スクリプトは`web/scripts/verify-initial-display.mjs`。Firebase SDKとAuth emulatorのGoogle providerを使い、アプリAPIのみ応答差し替え。初期HTML、操作前のAPI/匿名作成0件、認証遅延中の入力・focus、検索の一回実行、完了履歴への復帰、ログアウト、接続失敗からの再試行、私的リンクを確認する。スクリーンショット下端の警告はFirebase emulatorが挿入したもので、本番には存在しない。axeではこの警告だけを対象外にし、アプリの検査ルールは除外しない。実Google同意の本人受入、BQ検索精度、Android実機の再検証とは区別する。
+
+- [認証を含む画面検証](review-screenshots/web/initial-display-account/auth-ui-evidence.json)は全項目成功。PC/mobileのaxe違反0、ブラウザーエラー0、私的リンク4種類はログイン画面へ。PC/mobile・未ログイン/ログイン済みの[スクリーンショット](review-screenshots/web/initial-display-account/)を記録した。初期試験で発見したhydration前の入力消失を修正し、SDK警告によるaxe報告とNextのroute announcerを誤選択した試験も訂正した。
+- 共有WSLでメモリ/スワップが逼迫し、ローカルの表示所要時間は大きく変動した。記録したvisibleMsを本番の速度や改善率として採用しない。今回保証するのは、初期検索画面の表示が認証/APIの完了を待たないこと。
+- [初回の広域回帰](review-screenshots/web/initial-display-account/ui-initial.json)は53成功、共用test-resultsの競合によるartifact書込失敗2、メモリ逼迫を避けて中断した大規模axe1、未実行8。未完分は別の出力ディレクトリで再実行する。
+- 最終Webソースのproduction buildとlintは成功。[PCのartifact失敗2件の追試](review-screenshots/web/initial-display-account/ui-desktop-followup.json)も成功。認証試験用のビルドは通常`.next`と分離して、別タスクのビルドを上書きしない。
