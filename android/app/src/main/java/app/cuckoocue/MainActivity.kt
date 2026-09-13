@@ -827,7 +827,6 @@ private fun RunListScreen(
                 }) { Text("Webでリストを探す ↗") }
             }
             if (mode == "runs") {
-                item { WidgetInstallAction() }
                 item {
                     NewRunComposer(
                         value = runDraft,
@@ -1254,7 +1253,6 @@ private fun RunDetailScreen(
                     ImportedNotice(modifier = Modifier.padding(bottom = 8.dp))
                 }
             }
-            item { WidgetInstallAction() }
             item {
                 AddTaskComposer(
                     onAdd = onAddTask,
@@ -2386,6 +2384,7 @@ private fun AppearanceSettingsPanel(
                 selected = settings.widgetTextScale,
                 onSelect = onWidgetTextScaleChange,
             )
+            WidgetInstallAction()
         }
     }
 }

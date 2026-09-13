@@ -46,7 +46,7 @@ CI画像のレビューで、以前の固定座標による完了・Undo試験�
 
 ## Androidアプリ側の入口と戻り先
 
-2026-09-13追補。未設置時のみ、実行リスト一覧とRun詳細に固定画像の「表示例」と「ホーム画面にWidgetを追加」を表示し、OSの設置確認へ渡す。表示例はCIの `multi-run-footer-context.png`（commit f8a56a9）のWidget部分を切り出した同梱画像であり、実データ・設定・テーマには追随しない。専用画面、別のWidget描画実装、自動生成・更新処理は持たず、用途が伝わらなくなる変更時だけ手動差し替えする。対応しないLauncherでは手動設置手順を案内する。アプリ復帰時に設置状態を再確認し、設置後は表示例も追加ボタンも出さない。
+2026-09-13訂正。未設置時の固定画像「表示例」と「ホーム画面にWidgetを追加」は、一覧の「表示」から開くWidget表示設定内だけに置く。一覧本文とRun詳細では表示しない。追加操作はOSの設置確認へ渡す。表示例はCIの `multi-run-footer-context.png`（commit f8a56a9）のWidget部分を切り出した同梱画像であり、実データ・設定・テーマには追随しない。専用画面、別のWidget描画実装、自動生成・更新処理は持たず、用途が伝わらなくなる変更時だけ手動差し替えする。対応しないLauncherでは手動設置手順を案内する。アプリ復帰時に設置状態を再確認し、設置後は表示例も追加ボタンも出さない。
 
 Run詳細の「閉じる」は「アーカイブ」に変更する。確認で、一覧とWidgetから外れること、内容は削除しないことを明示する。取消時は無変更。リスト一覧の「アーカイブ」から復元すると、同じRun ID・Task・日付・完了状態を保持して詳細を開く。Widget対象の未完了Cueのみ表示を再構築する。既存archived_atを利用するため、テーブル追加・migrationは不要。復元は既存Run同期へ渡す。
 
@@ -57,6 +57,8 @@ Run詳細の「閉じる」は「アーカイブ」に変更する。確認で�
 撮影追加: app-widget-install-entry / app-widget-install-confirmation / app-display-sheet / app-archive-confirmation / app-archive-list / app-archive-restored。認証継続は依存処理を差し替えた計装テストで順序と失敗時の停止を検証し、実Googleアカウントの認証成功を模擬テストの成功と混同しない。
 
 ## Webとの責務・接続残件（2026-09-13再照合）
+
+表示例の配置訂正はAndroid 14のUI試験で確認。未設置のRun詳細・一覧に表示例がないこと、全件再利用、Widget表示設定への遷移が成功した（`CompletedReuseUiTest`: 1件成功）。[修正後のRun詳細](review-screenshots/android/widget-settings-only/completed-actions.png)・[Widget表示設定](review-screenshots/android/widget-settings-only/widget-settings.png)はローカルEmulatorの撮影。初回はSystem UIのANRダイアログで画面到達に失敗し、それを閉じた後の再実行で成功した。CIの設置確認も一覧→表示設定→OS追加確認へ変更した。
 
 現行の[Web仕様](web-experience-spec.md)第1・16・17節を基準にする。「Androidで再利用リストを整え、直接公開APIを新契約へ接続することが次の主タスク」という整理は撤回する。
 

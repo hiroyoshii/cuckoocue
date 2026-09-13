@@ -43,6 +43,8 @@ class CompletedReuseUiTest {
                 .putExtra("widget_run_id", sourceId).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             assertTrue(device.wait(Until.hasObject(By.text("このリストは完了しました")), 20_000))
             device.waitForIdle()
+            assertFalse(device.hasObject(By.text("表示例")))
+            assertFalse(device.hasObject(By.text("ホーム画面にWidgetを追加")))
             device.takeScreenshot(File(out, "completed-actions.png"))
             assertFalse(device.hasObject(By.text("内容を選んで使う")))
             assertTrue(device.hasObject(By.text("再利用用に整える ↗")))
@@ -63,6 +65,14 @@ class CompletedReuseUiTest {
             assertTrue(device.wait(Until.hasObject(By.text("家の鍵を確認する")), 10_000))
             device.waitForIdle()
             device.takeScreenshot(File(out, "reused-run.png"))
+            context.startActivity(Intent(context, MainActivity::class.java).setAction("app.cuckoocue.OPEN_WIDGET")
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            assertTrue(device.wait(Until.hasObject(By.text("新しいリスト")), 10_000))
+            assertFalse(device.hasObject(By.text("表示例")))
+            device.findObject(By.text("表示")).click()
+            assertTrue(device.wait(Until.hasObject(By.text("Widget text")), 10_000))
+            device.waitForIdle()
+            device.takeScreenshot(File(out, "widget-settings.png"))
         } finally {
             // Remove only this test's newly created Runs; retain all pre-existing data and widget placement.
             for (id in listOfNotNull(sourceId, createdCopyId)) {

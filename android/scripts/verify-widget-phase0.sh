@@ -441,6 +441,9 @@ request_pin_widget() {
     echo "Trying widget pin request through Pixel Launcher API, attempt $attempt..."
     home
     adb_shell am start -n "$MAIN_ACTIVITY" -a "$PACKAGE.OPEN_WIDGET" >/dev/null || return 1
+    wait_for_text "新しいリスト" 10 1 || return 1
+    assert_text_absent "表示例" || return 1
+    tap_text "表示" 2 || return 1
     wait_for_text "ホーム画面にWidgetを追加" 10 1 || return 1
     wait_for_text "表示例" 10 1 || return 1
     screenshot "app-widget-install-entry" || return 1
@@ -450,6 +453,9 @@ request_pin_widget() {
       sleep 4
       if assert_widget_placed; then
         adb_shell am start -n "$MAIN_ACTIVITY" -a "$PACKAGE.OPEN_WIDGET" >/dev/null || return 1
+        if wait_for_text "Widget text" 2 1; then
+          adb_shell input keyevent KEYCODE_BACK || return 1
+        fi
         wait_for_text "新しいリスト" 10 1 || return 1
         assert_text_absent "表示例" || return 1
         assert_text_absent "ホーム画面にWidgetを追加" || return 1
