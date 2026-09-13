@@ -1,5 +1,7 @@
 "use client";
 
+import { completedEditorSelection } from "@/lib/completed-editor-handoff";
+
 import {
   AlertCircle, CalendarCheck2,
   History, Library,
@@ -315,6 +317,7 @@ function AccountWorkspace({ user, devUserId, setDevUserId, importRunId }: {
     if (importRunId || !authReady || workspaceOwner !== identity || (hasFirebaseClientConfig() && !user)) return;
     const url = new URL(window.location.href);
     const runId = url.searchParams.get("run_id");
+    const editingFromAndroid = new URLSearchParams(url.hash.slice(1)).has("edit_tasks");
     if (!runId || loadedRunId.current === runId) return;
     if (user?.isAnonymous) {
       const frame = window.requestAnimationFrame(() => setView("publish"));
@@ -323,23 +326,26 @@ function AccountWorkspace({ user, devUserId, setDevUserId, importRunId }: {
     loadedRunId.current = runId;
     let cancelled = false;
 
-    void cueApiFetch(`/api/runs/${encodeURIComponent(runId)}`, devUserId)
+    void cueApiFetch(`/api/runs/${encodeURIComponent(runId)}${editingFromAndroid ? "?completed_tasks=true" : ""}`, devUserId)
       .then(async (response) => {
         const body = await response.json();
         if (!response.ok) throw new Error(humanizeApiError(response.status, body.error, "完了したリストを読み込めませんでした。"));
         if (cancelled) return;
+        const selectedIds = completedEditorSelection(url.hash, body.run.task_ids) ?? [...body.run.task_ids];
+        const selectedTasks = body.run.tasks.filter((_: unknown, index: number) => selectedIds.includes(body.run.task_ids[index]));
         setFailedRunRead(false);
         setSaveTitle(body.run.title);
-        setTasks(body.run.tasks);
-        setCuebookId(crypto.randomUUID()); setCuebookTaskIds(body.run.tasks.map(() => crypto.randomUUID())); setSavedCuebook(null); setPendingPrivateSave(null);
+        setTasks(selectedTasks);
+        setCuebookId(crypto.randomUUID()); setCuebookTaskIds(selectedTasks.map(() => crypto.randomUUID())); setSavedCuebook(null); setPendingPrivateSave(null);
         setEnrichment(null);
         setSavedTitle(null);
         setSaveOperationId(crypto.randomUUID());
         setSaveSource("completed");
-        setCompletedReview({ run: body.run, selectedIds: [...body.run.task_ids], operationId: crypto.randomUUID(), submitted: false, savedRunId: null });
-        setReviewingCompleted(true);
+        setCompletedReview({ run: body.run, selectedIds, operationId: crypto.randomUUID(), submitted: false, savedRunId: null });
+        setReviewingCompleted(!editingFromAndroid);
         setView("publish");
         url.searchParams.delete("run_id");
+        if (editingFromAndroid) url.hash = "";
         window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
       })
       .catch((error) => {

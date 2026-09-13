@@ -45,7 +45,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Run not found" }, { status: 404 });
     }
     const run = syncedRunSnapshotSchema.parse(snapshot.data());
-    return NextResponse.json({ run: completedRunToSaveDraft(run) });
+    return NextResponse.json({ run: completedRunToSaveDraft(run, request.nextUrl.searchParams.get("completed_tasks") === "true") });
   } catch (error) {
     return errorResponse(error);
   }

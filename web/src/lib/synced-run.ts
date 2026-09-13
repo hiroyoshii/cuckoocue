@@ -31,17 +31,16 @@ export const syncedRunSnapshotSchema = z.object({
 
 export type SyncedRunSnapshot = z.infer<typeof syncedRunSnapshotSchema>;
 
-export function completedRunToSaveDraft(run: SyncedRunSnapshot) {
+export function completedRunToSaveDraft(run: SyncedRunSnapshot, completedTasksOnly = false) {
   if (
-    run.completed_anchor_at == null ||
-    run.tasks.length === 0 ||
-    run.tasks.some((task) => task.completed_at == null)
+    !run.tasks.some((task) => task.completed_at != null) ||
+    (!completedTasksOnly && (run.completed_anchor_at == null || run.tasks.some((task) => task.completed_at == null)))
   ) {
     throw new Error("完了したリストだけを残せます。");
   }
 
   const anchorDay = run.target_anchor_day == null ? null : localIsoDay(run.target_anchor_day, run.time_zone);
-  const orderedTasks = [...run.tasks].sort((left, right) => left.sort_order - right.sort_order);
+  const orderedTasks = run.tasks.filter((task) => task.completed_at != null).sort((left, right) => left.sort_order - right.sort_order);
   return {
     run_id: run.id,
     title: run.title,

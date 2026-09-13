@@ -4,6 +4,7 @@ import path from "node:path";
 import { completedRunToSaveDraft, syncedRunSnapshotSchema } from "../../src/lib/synced-run";
 import { reuseCompletedRun, reuseCompletedRunSchema } from "../../src/lib/reuse-completed-run";
 import { relativeScheduleLabel } from "../../src/components/tasks/task-values";
+import { completedEditorSelection } from "../../src/lib/completed-editor-handoff";
 
 const day = 86_400_000;
 const anchor = Date.parse("2026-10-01T00:00:00+09:00");
@@ -19,6 +20,50 @@ const source = syncedRunSnapshotSchema.parse({
 });
 const run = completedRunToSaveDraft(source);
 const operationId = "12345678-1234-4234-8234-123456789012";
+
+test("Android handoff validates completed IDs without treating partial Runs as completed history", () => {
+  const partial = { ...source, completed_anchor_at: null, tasks: source.tasks.map((task, i) => i === 2 ? { ...task, completed_at: null } : task) };
+  expect(() => completedRunToSaveDraft(partial)).toThrow();
+  const draft = completedRunToSaveDraft(partial, true);
+  expect(draft.task_ids).toEqual(["task-1", "task-0"]);
+  expect(completedEditorSelection("#edit_tasks=task-0,task-1", draft.task_ids)).toEqual(["task-1", "task-0"]);
+  for (const hash of ["#edit_tasks=", "#edit_tasks=task-2", "#edit_tasks=task-0,task-0", "#edit_tasks=task-0&edit_tasks=task-1"]) {
+    expect(() => completedEditorSelection(hash, draft.task_ids)).toThrow();
+  }
+  expect(completedEditorSelection("", draft.task_ids)).toBeNull();
+});
+
+test("Android selection opens the unsaved editor directly and survives retry and reload", async ({ page }, info) => {
+  let reads = 0;
+  const writes: string[] = [];
+  page.on("request", (request) => { if (request.method() === "POST") writes.push(request.url()); });
+  await page.route("**/api/runs/completed?completed_tasks=true", async (route) => {
+    reads += 1;
+    await route.fulfill(reads === 1 ? { status: 503, json: { error: "同期内容を確認できませんでした" } } : { json: { run } });
+  });
+  await page.goto("/?run_id=completed#edit_tasks=task-0,task-1");
+  await expect(page.getByText("同期内容を確認できませんでした", { exact: false })).toBeVisible();
+  expect(page.url()).toContain("edit_tasks=");
+  await page.reload();
+  await expect(page.locator(".editable-tasks > li")).toHaveCount(2);
+  await expect(page.locator(".completed-review")).toHaveCount(0);
+  await expect(page.getByLabel("1件目のタスク", { exact: true })).toHaveValue("転居先を確認する");
+  const field = page.getByLabel("2件目のタスク", { exact: true });
+  await field.fill("次回用に荷造りをまとめる"); await field.press("Tab");
+  await page.reload();
+  await expect(page.getByLabel("2件目のタスク", { exact: true })).toHaveValue("次回用に荷造りをまとめる");
+  expect(writes).toEqual([]);
+  expect(page.url()).not.toContain("edit_tasks=");
+  if (process.env.CUE_CAPTURE_DIR) await page.screenshot({ path: path.resolve(process.env.CUE_CAPTURE_DIR, `android-editor-${info.project.name}.png`), fullPage: true });
+});
+
+test("Android stale selection fails rather than silently including other tasks", async ({ page }) => {
+  await page.route("**/api/runs/completed?completed_tasks=true", (route) => route.fulfill({ json: { run } }));
+  await page.goto("/?run_id=completed#edit_tasks=missing");
+  await expect(page.getByText(/選択した完了タスクを読み込めませんでした/)).toBeVisible();
+  await expect(page.locator(".editable-tasks > li")).toHaveCount(0);
+  expect(page.url()).toContain("edit_tasks=missing");
+});
 
 test("G07: relative dates use the planned day, never the completion timestamp", () => {
   expect(run.source_anchor_day).toBe("2026-10-01");
