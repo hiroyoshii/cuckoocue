@@ -552,9 +552,11 @@ screenshot "navigation-open-run"
 home
 show_widget_page
 wait_for_text "↗" 10 1
-# The bottom padding belongs to the widget background, not a Cue or footer control.
-read -r nav_left nav_top nav_right nav_bottom <<<"$(ui_launcher_widget_bounds)"
-tap "$(((nav_left + nav_right) / 2))" "$((nav_bottom - 5))" 2
+# Tap below the footer text, inside the widget rather than the launcher's outer padding.
+adb_shell uiautomator dump /sdcard/window.xml >/dev/null 2>&1
+nav_footer_bounds="$("$ADB" exec-out cat /sdcard/window.xml | tr '>' '\n' | grep -F 'text="朝の支度"' | tail -n 1 | sed -n 's/.*bounds="\[\([0-9]*\),\([0-9]*\)\]\[\([0-9]*\),\([0-9]*\)\]".*/\1 \2 \3 \4/p')"
+read -r nav_left nav_top nav_right nav_bottom <<<"$nav_footer_bounds"
+tap "$(((nav_left + nav_right) / 2))" "$((nav_bottom + 12))" 2
 wait_for_text "新しいリスト" 10 1
 screenshot "navigation-background-top"
 home
