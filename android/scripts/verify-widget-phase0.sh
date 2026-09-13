@@ -527,6 +527,7 @@ run_screen_profile() {
 
 capture_verification_failure() {
   local status="$1" line="$2" command="$3"
+  if [ "$status" -eq 0 ]; then return; fi
   trap - EXIT
   set +e
   echo "Verification failed: exit=$status line=$line command=$command" >&2
@@ -536,7 +537,7 @@ capture_verification_failure() {
   exit "$status"
 }
 # Preserve the failing step and visible fixture UI, rather than only exit code 1.
-trap 'failure_status=$?; if [ "$failure_status" -ne 0 ]; then capture_verification_failure "$failure_status" "$LINENO" "$BASH_COMMAND"; fi' EXIT
+trap 'capture_verification_failure "$?" "$LINENO" "$BASH_COMMAND"' EXIT
 
 echo "== Build, install, and run instrumentation checks =="
 (
