@@ -252,6 +252,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        lifecycleScope.launch {
+            CuckooCueWidgetUpdater.clearTransientUndoAndUpdateAll(applicationContext)
+        }
         refreshSharedRuns()
         if (pendingRunId != null && importJob?.isActive != true) loadPendingImport()
     }

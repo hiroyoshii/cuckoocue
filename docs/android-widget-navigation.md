@@ -27,3 +27,19 @@ Cue一覧の空き領域はListViewに吸収されるため、一覧の高さを
 2026-09-13、Android 14のローカルEmulatorで、テーマ・文字サイズ切替後の見出し、行完了、Undo、Run詳細への遷移、一覧下の余白からトップへの遷移を確認した。アプリをforce-stopした後も見出しから該当Runへ起動できる。CuckooDaoInstrumentedTestとRunTransferContractInstrumentedTestは計23件成功。
 
 CIの撮影はAndroid 15 / Pixel 6プロファイル。狭幅・低高さは画面サイズ／密度を変更する試験であり、全Launcherや全Widgetリサイズ寸法での検証を意味しない。通常の集約表示には見出しを追加せず、絞り込み時だけ48dpを使う。長いCue本文の省略は既存仕様のままで、この変更では行の横幅を減らさない。
+
+CI画像のレビューで、以前の固定座標による完了・Undo試験が実際には余白を押していたことを発見した。完了対象と「戻す」の表示位置を取得して操作し、Undo表示の出現・消失を必須条件に変更した。footer送りの検証には複数Runを使い、存在する「›」を押す。CI成功だけでなく、画像と実操作後の状態を照合する。
+
+### 画像の確認箇所
+
+| 画像 | 確認すること |
+| --- | --- |
+| [集約表示](review-screenshots/android/multi-run-footer-context.png) | 常時見出しを置かずCue領域を維持 |
+| [Run絞り込み](review-screenshots/android/navigation-filtered-run.png) | Run名・開く矢印と、固定footerの役割分離 |
+| [ダーク・大きい文字](review-screenshots/android/navigation-filtered-dark-large.png) | 外観設定の即時反映、見出し・Cueの表示維持 |
+| [狭幅](review-screenshots/android/resize-filtered-narrow-before-scroll.png) | 開く矢印が残る。既存の本文・footer省略はあり |
+| [低高さ](review-screenshots/android/resize-filtered-short-before-scroll.png) | 見出し・Cue・footerが重ならない |
+| [Run詳細](review-screenshots/android/navigation-open-run.png) | Widgetで選んだRunへログインなしで到達 |
+| [中央余白からトップ](review-screenshots/android/navigation-central-blank-top.png) | 直前にRun詳細を開いていてもトップへ戻る |
+| [完了直後](review-screenshots/android/after-row-tap-complete.png) | 完了した行が消え、footerへUndoが出る |
+| [Undo直後](review-screenshots/android/after-undo-tap.png) | Cueが復帰しUndoが消える |
