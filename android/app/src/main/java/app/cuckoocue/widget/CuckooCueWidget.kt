@@ -211,7 +211,7 @@ private fun CuckooCueWidgetContent(
         height + cue.rowHeight(metrics)
     }
     val listHeight = contentHeight.coerceAtMost((LocalSize.current.height - 50.dp).coerceAtLeast(1.dp))
-    Column(
+    Box(
         modifier = GlanceModifier
             .fillMaxSize()
             .background(colors.surfaceBase)
@@ -219,15 +219,29 @@ private fun CuckooCueWidgetContent(
             .clickable(actionStartActivity(widgetOpenIntent(context)))
             .padding(start = 8.dp, top = 8.dp, end = 8.dp, bottom = 10.dp),
     ) {
-        if (cues.isEmpty()) {
-            EmptyState(
+        // Keep static controls before collection descendants in the RemoteViews tree.
+        // This prevents reapply from resolving a footer view ID inside a recycled list row.
+        Box(GlanceModifier.fillMaxSize(), contentAlignment = Alignment.BottomStart) {
+            Footer(
+                footerTips = allCues.footerTips(),
+                footerTipStripOffset = footerTipStripOffset,
+                selectedFooterTipKey = selectedFooterTipKey,
+                lastUndoCue = lastUndoCue,
                 colors = colors,
-                modifier = GlanceModifier.defaultWeight(),
+                metrics = metrics,
+                modifier = GlanceModifier.fillMaxWidth().height(32.dp),
             )
-        } else {
+        }
+        Box(GlanceModifier.fillMaxSize(), contentAlignment = Alignment.TopStart) {
+            if (cues.isEmpty()) {
+                EmptyState(
+                    colors = colors,
+                    modifier = GlanceModifier.height((LocalSize.current.height - 50.dp).coerceAtLeast(1.dp)),
+                )
+            } else {
                 LazyColumn(modifier = GlanceModifier.fillMaxWidth().height(listHeight)) {
                     if (selectedRun != null) {
-                        item {
+                        item(itemId = Long.MAX_VALUE) {
                             Box(
                                 modifier = GlanceModifier.fillMaxWidth().height(48.dp)
                                     .semantics { contentDescription = "${selectedRun.runTitle}をアプリで開く" }
@@ -243,7 +257,7 @@ private fun CuckooCueWidgetContent(
                             }
                         }
                     }
-                    items(cues) { cue ->
+                    items(cues, itemId = { it.taskId.hashCode().toLong() and 0xffffffffL }) { cue ->
                         CueRow(
                             cue = cue,
                             colors = colors,
@@ -254,20 +268,8 @@ private fun CuckooCueWidgetContent(
                         )
                     }
                 }
-            Spacer(GlanceModifier.defaultWeight().fillMaxWidth())
+            }
         }
-
-        Footer(
-            footerTips = allCues.footerTips(),
-            footerTipStripOffset = footerTipStripOffset,
-            selectedFooterTipKey = selectedFooterTipKey,
-            lastUndoCue = lastUndoCue,
-            colors = colors,
-            metrics = metrics,
-            modifier = GlanceModifier
-                .fillMaxWidth()
-                .height(32.dp),
-        )
     }
 }
 

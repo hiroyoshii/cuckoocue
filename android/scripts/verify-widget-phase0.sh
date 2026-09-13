@@ -121,6 +121,14 @@ run_open_bounds() {
     sed -n 's/.*bounds="\[\([0-9]*\),\([0-9]*\)\]\[\([0-9]*\),\([0-9]*\)\]".*/\1 \2 \3 \4/p'
 }
 
+footer_run_bounds() {
+  adb_shell uiautomator dump /sdcard/window.xml >/dev/null 2>&1 || return 1
+  "$ADB" exec-out cat /sdcard/window.xml | tr '>' '\n' |
+    grep -F 'text="朝の支度"' |
+    sed -n 's/.*bounds="\[\([0-9]*\),\([0-9]*\)\]\[\([0-9]*\),\([0-9]*\)\]".*/\1 \2 \3 \4/p' |
+    sort -nk2 | tail -n 1
+}
+
 wait_run_open() {
   for _ in $(seq 1 10); do
     if [ -n "$(run_open_bounds)" ]; then return 0; fi
@@ -597,7 +605,7 @@ show_widget_page
 wait_run_open
 # Tap below the footer text, inside the widget rather than the launcher's outer padding.
 adb_shell uiautomator dump /sdcard/window.xml >/dev/null 2>&1
-nav_footer_bounds="$("$ADB" exec-out cat /sdcard/window.xml | tr '>' '\n' | grep -F 'text="朝の支度"' | tail -n 1 | sed -n 's/.*bounds="\[\([0-9]*\),\([0-9]*\)\]\[\([0-9]*\),\([0-9]*\)\]".*/\1 \2 \3 \4/p')"
+nav_footer_bounds="$(footer_run_bounds)"
 read -r nav_left nav_top nav_right nav_bottom <<<"$nav_footer_bounds"
 tap "$(((nav_left + nav_right) / 2))" "$((nav_top - 50))" 2
 wait_for_text "新しいリスト" 10 1
@@ -611,7 +619,7 @@ home
 show_widget_page
 # Use the footer occurrence, since the header also contains the Run title.
 adb_shell uiautomator dump /sdcard/window.xml >/dev/null 2>&1
-nav_footer_bounds="$("$ADB" exec-out cat /sdcard/window.xml | tr '>' '\n' | grep -F 'text="朝の支度"' | tail -n 1 | sed -n 's/.*bounds="\[\([0-9]*\),\([0-9]*\)\]\[\([0-9]*\),\([0-9]*\)\]".*/\1 \2 \3 \4/p')"
+nav_footer_bounds="$(footer_run_bounds)"
 read -r nav_left nav_top nav_right nav_bottom <<<"$nav_footer_bounds"
 tap "$(((nav_left + nav_right) / 2))" "$(((nav_top + nav_bottom) / 2))" 2
 wait_for_text "戸締まりと火元を確認する" 10 1
