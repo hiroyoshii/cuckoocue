@@ -50,3 +50,13 @@ if show_widget_page; then echo 'Unexpected success for missing widget' >&2; exit
 [ "$forward_swipes" -eq 0 ]
 [ "$home_count" -eq 4 ]
 echo 'PASS: missing widget fails and leaves launcher on Home'
+
+(
+  operations=''
+  start_app() { operations+='app '; }
+  wait_home() { :; }
+  adb_shell() { operations+="$*;"; }
+  apply_screen_profile 1080x1800 420
+  [ "$operations" = 'app am force-stop com.google.android.apps.nexuslauncher;wm size 1080x1800;wm density 420;' ]
+  echo 'PASS: profile size and density are applied with launcher stopped'
+)

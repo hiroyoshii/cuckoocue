@@ -89,9 +89,20 @@ swipe_widget() {
   sleep 2
 }
 
+apply_screen_profile() {
+  # These are independent display profiles, not launcher grid-migration tests.
+  # Apply size + density while the app is foreground and the launcher is stopped,
+  # so Pixel Launcher sees one final configuration rather than two intermediate
+  # grids. Keep its database and the existing widget ID; never clear or re-pin.
+  start_app
+  adb_shell am force-stop com.google.android.apps.nexuslauncher
+  adb_shell wm size "$1" >/dev/null
+  adb_shell wm density "$2" >/dev/null
+  wait_home 2
+}
+
 reset_screen_profile() {
-  adb_shell wm size reset >/dev/null
-  adb_shell wm density reset >/dev/null
+  apply_screen_profile reset reset
 }
 
 ui_text_bounds() {
@@ -519,10 +530,7 @@ run_screen_profile() {
   local size="$2"
   local density="$3"
 
-  adb_shell wm size "$size" >/dev/null
-  adb_shell wm density "$density" >/dev/null
-  sleep 2
-  start_app
+  apply_screen_profile "$size" "$density"
   wait_home 3
   home
   show_widget_page
@@ -542,6 +550,7 @@ capture_verification_failure() {
   screenshot "verification-failure-line-$line"
   timeout 15s "$ADB" shell uiautomator dump /sdcard/verification-failure.xml
   timeout 10s "$ADB" pull /sdcard/verification-failure.xml "$OUT_DIR/verification-failure.xml"
+  timeout 10s "$ADB" shell dumpsys appwidget > "$OUT_DIR/verification-appwidget.txt"
   exit "$status"
 }
 # Preserve the failing step and visible fixture UI, rather than only exit code 1.

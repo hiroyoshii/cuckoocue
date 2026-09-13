@@ -58,7 +58,7 @@ jobs:
           set -euo pipefail
           evidence="docs/review-screenshots/android/failures/$GITHUB_RUN_ID"
           mkdir -p "$evidence"
-          for file in build/android-widget-screenshots/verification.log build/android-widget-screenshots/verification-failure*.png build/android-widget-screenshots/verification-failure.xml; do
+          for file in build/android-widget-screenshots/verification.log build/android-widget-screenshots/verification-failure*.png build/android-widget-screenshots/verification-failure.xml build/android-widget-screenshots/verification-appwidget.txt; do
             if [ -f "$file" ]; then cp "$file" "$evidence/"; fi
           done
           git config user.name github-actions[bot]
@@ -106,6 +106,7 @@ jobs:
             build/android-widget-screenshots/*.png
             build/android-widget-screenshots/verification.log
             build/android-widget-screenshots/verification-failure.xml
+            build/android-widget-screenshots/verification-appwidget.txt
             android/app/build/reports/androidTests/**
           if-no-files-found: warn
           retention-days: 14
