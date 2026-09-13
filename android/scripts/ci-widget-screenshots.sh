@@ -6,6 +6,8 @@ workspace="${GITHUB_WORKSPACE:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pw
 out_dir="$workspace/build/android-widget-screenshots"
 mkdir -p "$out_dir"
 
+bash "$workspace/android/scripts/test-widget-page-discovery.sh" || exit "$?"
+
 ADB="${ANDROID_HOME:-/home/hiroyoshii/Android/Sdk}/platform-tools/adb" \
 OUT_DIR="$out_dir" \
 RUN_LAUNCHER_RESIZE="${RUN_LAUNCHER_RESIZE:-0}" \
