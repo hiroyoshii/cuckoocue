@@ -230,27 +230,31 @@ show_widget_page() {
   swipe_left=$((display_width / 10))
   swipe_right=$((display_width * 9 / 10))
   swipe_y=$((display_height / 2))
-  if [ -n "$(ui_launcher_widget_bounds)" ]; then
-    return 0
-  fi
-
-  # Check ordinary pages before swiping into the launcher's Discover feed.
-  for _ in 1 2 3 4; do
-    adb_shell input swipe "$swipe_right" "$swipe_y" "$swipe_left" "$swipe_y" 350
-    sleep 2
-    if [ -n "$(ui_launcher_widget_bounds)" ]; then
-      return 0
-    fi
+  # A size/density change rebuilds the launcher. Wait for the host on each page
+  # before moving on; searching through a transient empty hierarchy misses it.
+  # Each direction starts from Home, never from the opposite end / Discover.
+  for direction in forward backward; do
+    home
+    for page in 0 1 2 3 4; do
+      for attempt in 1 2 3; do
+        if [ -n "$(ui_launcher_widget_bounds)" ]; then return 0; fi
+        sleep 1
+      done
+      # Discover is a separate Google surface, not another launcher page.
+      # Do not continue sending swipes into it after crossing the boundary.
+      if ! "$ADB" exec-out cat /sdcard/window.xml | grep -F 'package="com.google.android.apps.nexuslauncher"' >/dev/null; then
+        break
+      fi
+      if [ "$direction" = forward ]; then
+        adb_shell input swipe "$swipe_right" "$swipe_y" "$swipe_left" "$swipe_y" 350
+      else
+        adb_shell input swipe "$swipe_left" "$swipe_y" "$swipe_right" "$swipe_y" 350
+      fi
+      sleep 2
+    done
   done
-
-  for _ in 1 2 3 4; do
-    adb_shell input swipe "$swipe_left" "$swipe_y" "$swipe_right" "$swipe_y" 350
-    sleep 2
-    if [ -n "$(ui_launcher_widget_bounds)" ]; then
-      return 0
-    fi
-  done
-
+  home
+  echo "Widget host not found on launcher pages after size/density change" >&2
   return 1
 }
 
@@ -425,20 +429,20 @@ request_pin_widget() {
   for attempt in 1 2; do
     echo "Trying widget pin request through Pixel Launcher API, attempt $attempt..."
     home
-    start_app
-    wait_for_text "ホーム画面にWidgetを追加" 10 1
-    wait_for_text "表示例" 10 1
-    screenshot "app-widget-install-entry"
-    tap_text "ホーム画面にWidgetを追加" 2
-    screenshot "app-widget-install-confirmation"
+    adb_shell am start -n "$MAIN_ACTIVITY" -a "$PACKAGE.OPEN_WIDGET" >/dev/null || return 1
+    wait_for_text "ホーム画面にWidgetを追加" 10 1 || return 1
+    wait_for_text "表示例" 10 1 || return 1
+    screenshot "app-widget-install-entry" || return 1
+    tap_text "ホーム画面にWidgetを追加" 2 || return 1
+    screenshot "app-widget-install-confirmation" || return 1
     if wait_tap_text "Add to home screen" 15 1; then
       sleep 4
       if assert_widget_placed; then
-        start_app
-        wait_for_text "新しいリスト" 10 1
-        assert_text_absent "表示例"
-        assert_text_absent "ホーム画面にWidgetを追加"
-        screenshot "app-widget-installed"
+        adb_shell am start -n "$MAIN_ACTIVITY" -a "$PACKAGE.OPEN_WIDGET" >/dev/null || return 1
+        wait_for_text "新しいリスト" 10 1 || return 1
+        assert_text_absent "表示例" || return 1
+        assert_text_absent "ホーム画面にWidgetを追加" || return 1
+        screenshot "app-widget-installed" || return 1
         home
         return 0
       fi
