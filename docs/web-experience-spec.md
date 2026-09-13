@@ -1098,3 +1098,42 @@ D8/W01/W15/C01の表示・認証待機を変更する。データモデル、検
 - 最終Webソースのproduction buildとlintは成功。[PCのartifact失敗2件の追試](review-screenshots/web/initial-display-account/ui-desktop-followup.json)も成功。認証試験用のビルドは通常`.next`と分離して、別タスクのビルドを上書きしない。
 - [mobileの未完9件の追試](review-screenshots/web/initial-display-account/ui-mobile-followup.json)も全件成功。初回53件とPC追試2件を合わせ、対象64件を確認済み。200タスクのaxe、日程編集、履歴からの整形、Shelfの参加/コピーも含む。API応答差し替えによるWeb回帰であり、認証試験と本番疎通は別記録にする。
 - 16:00 JST、mainの`ed5a0c8`をソースとするbuild-2026-09-13-041への本番トラフィック100%を[照合](review-screenshots/web/initial-display-account/production-rollout.json)。[本番疎通](review-screenshots/web/initial-display-account/production/production-evidence.json)は成功。初期表示時の匿名作成/API呼出し0件、操作後の匿名検索200、未ログインの履歴URL維持、私的読取と開発用IDによる認証回避の401、ブラウザーエラー0を確認。検査で作った匿名アカウント1件のみ削除した。実Google同意操作そのものは未実施で、本人受入の代用とはしない。
+
+## 27. 検索前の使い方画像（2026-09-13）
+
+W01/C04/C07。ユーザーが選んだ棚のイラストを「探す → 選ぶ → スマホで管理」に更新し、検索前の空結果メッセージを置き換えた。日付設定を独立した説明ステップにしない。検索欄は画像より先に置き、入力例も「猫と一緒に引っ越す」に揃える。
+
+- 検索と文脈のあるShelf、選んだリスト、ホーム画面のWidgetを静的な使用例として示す。実データの検索候補ではなく、参加・共同編集・交流機能を表すものでもない。
+- 横並び版とモバイル縦並び版を`web/public/brand/search-select-manage*.png`へ保存。Next.jsの`getImageProps`と`picture`で680px以下は縦版を配信する。縦横比を予約し、画像の説明はaltにも用意する。
+- 初期HTMLから表示し、追加の認証・API呼出しは行わない。検索開始後は従来の読み込み・失敗・0件・検索結果を表示する。結果を復元した再読込で紹介へ戻さない。検索、Shelf、Runのデータ契約は変更しない。
+- production build、lint成功。関連UI回帰12件（検索比較・展開、読み込み/失敗/0件、ページング復帰、検索再読込、Shelf遷移/fork）成功。紹介画像が検索後・再読込後に残らないアサーション追加後のPC/mobile追試2件も成功。
+- [表示確認](review-screenshots/web/search-introduction/intro-display.json): 320/390/768/1024/1440pxで適切な画像選択、画像読込、横はみ出しなし、ブラウザーエラーなし。390/1440pxのaxe違反0。PC/mobileスクリーンショットを同ディレクトリへ保存して目視確認した。
+- 検証はローカルのWeb表示およびAPI応答差し替えによる回帰。実Google認証・BQ・Firestore・端末受信の追加統合証拠ではない。本番への配備はこの変更では実施していない。
+
+## 28. キャラクターとShelfを中心にした初回画面（2026-09-13）
+
+W01/C04/C07。ユーザーが選んだ②（青い鳥がShelfからリストを渡す案）を採用し、第27節の「検索欄の後に画像」の構成を更新。初回は「暮らしのやることリスト」「探して、選んで、スマホで管理する。」、使用例画像、検索欄の順にする。紹介部分は最大1040px、画像は840px、検索欄は720pxとし、画像の下に実際の入力先をまとめる。主ナビゲーションと検索後の情報構造は維持する。
+
+- 採用画像は`web/public/brand/search-shelf-introduction.png`。680px以下は同じ鳥・棚・使用例を縦組みにした`search-shelf-introduction-mobile.png`。内蔵imagegenの生成指示は`output/imagegen/brand-introduction/mobile-prompt.md`に保存。画像内は静的な使い方の例であり実データや対応OSの一覧ではない。
+- 初回は空の検索結果領域を隠し、使用例を独立した説明領域とする。検索開始後は紹介を外し、既存の検索状態・エラー復帰・入力・結果の再読込復元を維持。新しいEntity・API・認証要求は追加しない。
+- production build、lint、diff whitespace検査成功。関連UI回帰24件中18件が初回成功、見出し改行のアクセシブル名を空白として扱う照合の修正後、残り6件のPC/mobile追試が成功。検索比較・失敗・ページング・再読込・Shelf遷移/fork・保存中の画面離脱を対象とした。API応答差し替えによるUI証拠。
+- [表示検査](review-screenshots/web/shelf-landing/initial-display.json): 320/390/768/1024/1440pxで横はみ出し・ブラウザーエラーなし。390/1440pxのaxe違反0。[PC](review-screenshots/web/shelf-landing/initial-1440.png)と[スマホ](review-screenshots/web/shelf-landing/initial-390.png)を目視確認。手動検査スクリプト初回のaxe呼出しはcontext生成方法の誤りで停止し、修正後に全幅を再実行した。
+- ローカルプレビューは3143。本番配備・実サービス統合の追加検証は実施していない。
+
+第28節追記（C07）: サイドバーとモバイルWebヘッダーのブランド表示を、Androidと同じ既存`brand/icon-192.png`（40px）＋アプリ名テキストへ変更。使用例の鳥は維持。build/lint、PC/mobileの検索比較・再読込回帰4件成功。[PC](review-screenshots/web/shelf-landing/app-icon-1440.png)・[mobile](review-screenshots/web/shelf-landing/app-icon-390.png)の表示を確認。ローカル3143のみ反映。
+
+第28節ロゴ更新（C07）: ユーザー承認の生成ロゴ`brand/lockup-abstract.png`へ置換。アイボリー地・緑の輪郭の抽象鳥とポップな茶色の文字を一体の画像として幅180pxで表示。前の通常テキストとの組み合わせを更新した。[PC](review-screenshots/web/shelf-landing/abstract-lockup-1440.png)・[mobile](review-screenshots/web/shelf-landing/abstract-lockup-390.png)を目視確認し、横はみ出しなし。build/lint・関連回帰4件成功。ローカル3143に反映、本番未配備。
+
+## 29. タスク管理・アプリ配布案内（2026-09-13）
+
+W01/C07/D8。ユーザー承認で主ナビゲーションとモバイルナビに「タスク管理」を追加。`/?view=apps`でAndroid/iOSのアプリ案内をログイン不要で表示。検索入力を保持して戻り、再読込・ブラウザー履歴でも案内の選択を復元する。Web上のRun操作や公開・私的データモデルは追加しない。
+
+- 配布URLは後日差し替える合意。`NEXT_PUBLIC_ANDROID_APP_URL`と`NEXT_PUBLIC_IOS_APP_URL`にHTTPS URLを設定して再ビルドする。未設定・不正URLは「準備中」。設定済みのみストアへのリンクと、同じURLのQRを表示する。QRはqrcode.reactでローカル生成し外部QRサービスへ送らない。
+- Android/iOS端末では対応OSを先に表示し「この端末向け」とする。端末を識別できない場合は両OSとQRを示す。iOSアプリ公開済みとは扱わない。図は静的な使用例。
+- PC/mobileの追加ナビ・ログイン不要表示・入力保持・再読込・履歴移動と既存検索回帰、計6件成功。axe検査含む。320/390/768/1024/1440pxで横はみ出しなし。[PC](review-screenshots/web/task-management/1440.png)・[mobile](review-screenshots/web/task-management/390.png)目視確認。
+- URL設定分岐はexample.comのテストURLを使った静的レンダリングでリンク2件とQR2件を確認（外部通信なし）。実配布先・QR読み取り後のインストールは未検証。端末判定はhydration対応のuseSyncExternalStoreへ調整しbuild/lint成功。
+- ローカル3143に反映。本番未配備。
+
+第28節モバイル省スペース化（W01/C07）: ユーザー指定で680px以下の導入見出しを24pxに縮小し、画像をPCと同じ横並び版に統一。見出し・画像・検索欄の間隔も縮めた。縦版素材は保持するが表示しない。390px幅では検索欄の上端が約503px、下端が約686pxとなり、844px高の初期表示内で検索操作できる。[表示記録](review-screenshots/web/compact-introduction/display.json)と[mobile](review-screenshots/web/compact-introduction/390.png)。320/390/768/1024/1440pxで横はみ出しなし。PCの構成は維持。build/lint成功、関連PC/mobile回帰4件を実行。ローカル3143に反映、本番未配備。
+
+第29節省スペース化（C07）: ユーザー指定でタスク管理の紹介画像・アプリアイコン・大見出し・Widgetの静的使用例を削除。「タスクの管理には、スマホアプリをご利用ください。」の短い説明からAndroid/iOSの配布案内へ直結させる。配布URL・QR・準備中・端末順序のロジックは維持。[mobile](review-screenshots/web/task-management/compact-390.png)と[PC](review-screenshots/web/task-management/compact-1440.png)を確認。320/390/1440pxで横はみ出しなし。build/lint成功、案内と検索比較のPC/mobile回帰4件成功。ローカル3143に反映、本番未配備。

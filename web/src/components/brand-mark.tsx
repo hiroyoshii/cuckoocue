@@ -18,11 +18,11 @@ export function BrandLockup({ priority = false }: { priority?: boolean }) {
   return (
     <Image
       alt="Cuckoo Cue"
-      className="brand-lockup-image"
-      height={44}
+      className="brand-abstract-lockup"
+      height={60}
       priority={priority}
-      src="/brand/lockup-header.png"
-      width={151}
+      src="/brand/lockup-abstract.png"
+      width={180}
     />
   );
 }

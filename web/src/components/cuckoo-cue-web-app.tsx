@@ -21,9 +21,11 @@ import {
 import { cueApiFetch } from "@/lib/api-client";
 import { firebaseAuth, hasFirebaseClientConfig } from "@/lib/firebase-client";
 import { buildAndroidRunUri, type AndroidImportTransfer } from "@/lib/run-transfer";
+import { TaskManagement } from "./task-management";
 import { BrandLockup } from "./brand-mark";
 import { AccountControl } from "./account-control";
 import { SearchResultItem } from "./search/search-result";
+import { SearchIntroduction } from "./search/search-introduction";
 import { TaskEditor } from "./tasks/task-editor";
 import { CompletedRunReview, type CompletedReviewState } from "./tasks/completed-run-review";
 import { RunHandoff } from "./run-handoff";
@@ -58,7 +60,7 @@ type SearchResult = {
 };
 type EnrichmentDraft = { domain: string; context_text: string; task_groupings: TaskGrouping[] };
 type ImportPayload = AndroidImportTransfer;
-type View = "explore" | "publish" | "history" | "library";
+type View = "explore" | "publish" | "history" | "library" | "apps";
 type ShelfRevision = {
   id: string;
   source_cuebook_id: string;
@@ -280,7 +282,7 @@ function AccountWorkspace({ user, authReady, devUserId, setDevUserId, importRunI
         if (stored) {
           const restored = JSON.parse(stored) as Partial<PersistedWorkspace>;
           if (restored.version === 1) {
-            if (restored.view === "history" || restored.view === "library") setView(restored.view);
+            if (restored.view === "history" || restored.view === "library" || restored.view === "apps") setView(restored.view);
             else if (restored.view === "publish" && Array.isArray(restored.tasks)) setView("publish");
             else setView("explore");
             if (typeof restored.searchMessage === "string") restoreSearchRef.current(restored.searchMessage);
@@ -315,7 +317,7 @@ function AccountWorkspace({ user, authReady, devUserId, setDevUserId, importRunI
       } finally {
         const entryUrl = new URL(window.location.href);
         const entryView = entryUrl.searchParams.get("view");
-        if (entryView === "history" || entryView === "library") setView(entryView);
+        if (entryView === "history" || entryView === "library" || entryView === "apps") setView(entryView);
         setWorkspaceRestored(true);
         setWorkspaceOwner(identity);
       }
@@ -715,7 +717,7 @@ function AccountWorkspace({ user, authReady, devUserId, setDevUserId, importRunI
         else void openOwnedList((original ?? completed)!, !!completed, false);
         return;
       }
-      if (params.get("view") === "history" || params.get("view") === "library") setView(params.get("view") as View);
+      if (params.get("view") === "history" || params.get("view") === "library" || params.get("view") === "apps") setView(params.get("view") as View);
       else if (navigationAttempt > 0) setView("explore");
     };
   });
@@ -811,6 +813,7 @@ function AccountWorkspace({ user, authReady, devUserId, setDevUserId, importRunI
             <Search size={18} aria-hidden="true" />探す
           </button>
           <button className={view === "history" || view === "library" || view === "publish" ? "active" : ""} onClick={() => changeView("history")}><History size={18} aria-hidden="true" />完了履歴</button>
+          <button className={view === "apps" ? "active" : ""} aria-current={view === "apps" ? "page" : undefined} onClick={() => changeView("apps")}><Smartphone size={18} aria-hidden="true" />タスク管理</button>
           {memberships.length ? <section className="joined-groups"><h2>参加グループ</h2>{shelves.filter((shelf) => memberships.includes(shelf.id)).map((shelf) => <button key={shelf.id} onClick={() => { setView("explore"); void openShelf(shelf.id); }}><Library size={18} aria-hidden="true" />{shelf.title}</button>)}</section> : null}
         </nav>
         <div className="rail-account">{hasFirebaseClientConfig() ? desktopAccount : <details className="connection-panel">
@@ -823,6 +826,7 @@ function AccountWorkspace({ user, authReady, devUserId, setDevUserId, importRunI
         <nav className="mobile-navigation" aria-label="モバイルの主な操作">
           <button type="button" aria-current={view === "explore" ? "page" : undefined} onClick={() => changeView("explore")}><Search size={17} />探す</button>
           <button type="button" aria-current={view === "history" || view === "library" ? "page" : undefined} onClick={() => changeView("history")}><History size={17} />完了履歴</button>
+          <button type="button" aria-current={view === "apps" ? "page" : undefined} onClick={() => changeView("apps")}><Smartphone size={17} aria-hidden="true" />タスク管理</button>
           {memberships.length ? <details><summary>参加グループ</summary>{shelves.filter((shelf) => memberships.includes(shelf.id)).map((shelf) => <button type="button" key={shelf.id} onClick={() => { setView("explore"); void openShelf(shelf.id); }}>{shelf.title}</button>)}</details> : null}
         </nav>
         {errorMessage || sessionError ? (
@@ -851,7 +855,7 @@ function AccountWorkspace({ user, authReady, devUserId, setDevUserId, importRunI
         {membershipError ? <button className="secondary-action" onClick={() => setMembershipAttempt((value) => value + 1)}>参加状態を再取得</button> : null}
         {shelvesFailed ? <button className="secondary-action" onClick={() => void loadShelves()}>グループ一覧を再取得</button> : null}
         {failedShelfId ? <button className="secondary-action" onClick={() => void openShelf(failedShelfId)}>グループを再取得</button> : null}
-        {importRunId ? <RunHandoff key={`${identity}:${importRunId}`} runId={importRunId} devUserId={devUserId} registered={!hasFirebaseClientConfig() || Boolean(user && !user.isAnonymous)} onSignIn={signInWithGoogle} /> : view === "explore" ? (
+        {importRunId ? <RunHandoff key={`${identity}:${importRunId}`} runId={importRunId} devUserId={devUserId} registered={!hasFirebaseClientConfig() || Boolean(user && !user.isAnonymous)} onSignIn={signInWithGoogle} /> : view === "apps" ? <TaskManagement /> : view === "explore" ? (
           selectedRevisionId ? <PublicRevision key={selectedRevisionId} id={selectedRevisionId} userId={currentUserId} onSignIn={signInWithGoogle} onBack={() => changeView("explore")} onOpenShelf={(id) => void openShelf(id)} /> : selectedShelf ? (
             <ShelfDetailView key={`${identity}:${selectedShelf.id}:${shelfReadVersion}`} shelf={{ ...selectedShelf, items: selectedShelf.items ?? [] }} userId={currentUserId}
               registered={!hasFirebaseClientConfig() || Boolean(user && !user.isAnonymous)} onSignIn={signInWithGoogle}
@@ -1065,12 +1069,18 @@ function SearchWorkspace(props: SearchWorkspaceProps) {
   }, [props.preparedImport]);
 
   return (
-    <div className="workspace">
-      <header className="workspace-heading">
-        <h1>探す</h1>
-      </header>
+    <div className={`workspace${!props.hasSearched ? " search-landing" : ""}`}>
+      {!props.hasSearched ? (
+        <section className="search-welcome" aria-labelledby="search-welcome-title">
+          <header>
+            <p className="search-welcome-eyebrow">暮らしのやることリスト</p>
+            <h1 id="search-welcome-title">探して、選んで、<br />スマホで管理する。</h1>
+          </header>
+          <SearchIntroduction />
+        </section>
+      ) : <header className="workspace-heading"><h1>探す</h1></header>}
       <form className="search-composer" onSubmit={props.onSearch} autoComplete="off">
-        <label><span>目的や条件</span><textarea ref={mountQuery} aria-label="Search query" value={props.searchMessage} onChange={(event) => props.setSearchMessage(event.target.value)} placeholder="猫2匹と東京から名古屋へ引っ越す" rows={2} /></label>
+        <label><span>{!props.hasSearched ? "どんなことの準備をしますか？" : "目的や条件"}</span><textarea ref={mountQuery} aria-label="Search query" value={props.searchMessage} onChange={(event) => props.setSearchMessage(event.target.value)} placeholder="猫と一緒に引っ越す" rows={2} /></label>
         <div>
           <button className="primary-action" type="submit" disabled={!props.canSearch}>{props.busyAction === "search" ? <Loader2 className="spin" size={18} /> : <Search size={18} />}検索</button>
         </div>
@@ -1102,7 +1112,7 @@ function SearchWorkspace(props: SearchWorkspaceProps) {
       {props.results.length > 0 ? (
         <div className="result-heading"><span>{props.results.length}件</span>{props.searchDomain ? <span>{props.searchDomain}</span> : null}</div>
       ) : null}
-      <section className="cue-surface" aria-label="検索結果" aria-busy={props.busyAction === "search"}>
+      <section className="cue-surface" aria-label="検索結果" hidden={!props.hasSearched} aria-busy={props.busyAction === "search"}>
         {props.busyAction === "search" ? <div className="search-skeleton" aria-hidden="true"><span /><span /><span /></div> : props.results.length === 0 ? (props.searchRetry ? null : <EmptySearch hasSearched={props.hasSearched} />) : (
           <div className="cue-stack">
             {props.results.map((result) => <SearchResultItem key={result.id} result={result} disabled={props.busyAction !== null} onImport={() => setSelectedImport(result)} onOpenShelf={props.onOpenShelf} expanded={expandedResults.has(result.id)} onExpand={(expanded) => expandResult(result.id, expanded)} />)}
@@ -1120,10 +1130,11 @@ function SearchWorkspace(props: SearchWorkspaceProps) {
 }
 
 function EmptySearch({ hasSearched }: { hasSearched: boolean }) {
+  if (!hasSearched) return null;
   return (
     <div className="empty-state">
       <Search size={22} aria-hidden="true" />
-      <span className="empty-copy"><strong>{hasSearched ? "条件に合うリストはありません" : "検索結果はここに表示されます"}</strong>{hasSearched ? <span>条件を変えて検索</span> : null}</span>
+      <span className="empty-copy"><strong>条件に合うリストはありません</strong><span>条件を変えて検索</span></span>
     </div>
   );
 }

@@ -66,7 +66,7 @@ test.beforeEach(async ({ page }) => {
 test("search is scannable, accessible, and restored after reload", async ({ page }) => {
   await page.goto("/");
   await expect(page.locator('img[alt="Cuckoo Cue"]:visible')).toBeVisible();
-  await expect(page.getByRole("region", { name: "検索結果" })).toContainText("検索結果はここに表示されます");
+  await expect(page.getByRole("region", { name: /探して、選んで、\s*スマホで管理する。/ }).getByRole("img", { name: /使い方の例/ })).toBeVisible();
   await expect(page.locator(".brand-empty")).toHaveCount(0);
   await expect(page.locator("#target-anchor-day")).toHaveCount(0);
   await page.getByLabel("Search query").fill("東京から名古屋へ引っ越す。役所とライフラインを整理したい");
@@ -76,6 +76,7 @@ test("search is scannable, accessible, and restored after reload", async ({ page
   await page.keyboard.press("Enter");
 
   await expect(page.getByRole("heading", { name: searchResults[0].title })).toBeVisible();
+  await expect(page.locator(".search-introduction")).toHaveCount(0);
   await expect(page.locator(".cue-result")).toHaveCount(2);
   await expect(page.locator(".result-task-preview input, .result-task-preview button")).toHaveCount(0);
   await expect(page.locator(".cue-result").first()).toContainText(searchResults[0].context_text);
@@ -96,6 +97,7 @@ test("search is scannable, accessible, and restored after reload", async ({ page
 
   await page.reload();
   await expect(page.getByLabel("Search query")).toHaveValue(/東京から名古屋/);
+  await expect(page.locator(".search-introduction")).toHaveCount(0);
   await expect(page.locator(".cue-result")).toHaveCount(2);
   await expect(page.locator(".handoff-panel")).toBeVisible();
 
@@ -190,7 +192,7 @@ test("public contexts fork into an independently editable shelf", async ({ page 
   });
 
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "探す", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /探して、選んで、\s*スマホで管理する。/, exact: true })).toBeVisible();
   await page.getByLabel("Search query").fill("猫と引っ越す");
   await page.locator(".search-composer").getByRole("button", { name: "検索", exact: true }).click();
   await expect(page.getByRole("heading", { name: "状況から探す" })).toBeVisible();

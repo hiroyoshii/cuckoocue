@@ -188,7 +188,7 @@ test("C01: a save finishing after navigation does not reopen the old group; its 
   const nav = page.getByRole("navigation", { name: test.info().project.name === "mobile" ? "モバイルの主な操作" : "主な操作", exact: true });
   await nav.getByRole("button", { name: "探す", exact: true }).click();
   release(); await response;
-  await expect(page.getByRole("heading", { name: "探す", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /探して、選んで、\s*スマホで管理する。/, exact: true })).toBeVisible();
   if (test.info().project.name === "mobile") await nav.locator("summary").click();
   await nav.getByRole("button", { name: source.title, exact: true }).click();
   await page.getByRole("button", { name: "保存を再試行" }).click();
