@@ -1,6 +1,9 @@
 package app.cuckoocue.widget
 
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import app.cuckoocue.MainActivity
 import android.content.res.Configuration
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -18,6 +21,10 @@ import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.action.actionRunCallback
+import androidx.glance.appwidget.action.actionStartActivity
+import androidx.glance.LocalContext
+import androidx.glance.semantics.semantics
+import androidx.glance.semantics.contentDescription
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.lazy.LazyColumn
 import androidx.glance.appwidget.lazy.items
@@ -195,13 +202,31 @@ private fun CuckooCueWidgetContent(
     colors: WidgetColors,
     metrics: WidgetMetrics,
 ) {
+    val context = LocalContext.current
+    val selectedRun = allCues.firstOrNull { it.runId == selectedFooterTipKey }
     Column(
         modifier = GlanceModifier
             .fillMaxSize()
             .background(colors.surfaceBase)
             .cornerRadius(24.dp)
+            .clickable(actionStartActivity(widgetOpenIntent(context)))
             .padding(start = 8.dp, top = 8.dp, end = 8.dp, bottom = 10.dp),
     ) {
+        if (selectedRun != null) {
+            Box(
+                modifier = GlanceModifier.fillMaxWidth().height(48.dp)
+                    .semantics { contentDescription = "${selectedRun.runTitle}をアプリで開く" }
+                    .clickable(actionStartActivity(widgetOpenIntent(context, selectedRun.runId)))
+                    .padding(horizontal = 8.dp),
+                contentAlignment = Alignment.CenterStart,
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(selectedRun.runTitle, modifier = GlanceModifier.defaultWeight(), maxLines = 1,
+                        style = TextStyle(color = colors.teal, fontSize = 13.sp, fontWeight = FontWeight.Bold))
+                    Text("↗", style = TextStyle(color = colors.teal, fontSize = 18.sp))
+                }
+            }
+        }
         if (cues.isEmpty()) {
             EmptyState(
                 colors = colors,
@@ -235,6 +260,15 @@ private fun CuckooCueWidgetContent(
         )
     }
 }
+
+private fun widgetOpenIntent(context: Context, runId: String? = null): Intent =
+    Intent(context, MainActivity::class.java).apply {
+        action = "app.cuckoocue.OPEN_WIDGET"
+        data = Uri.Builder().scheme("cuckoocue").authority("local")
+            .appendPath(runId ?: "top").build()
+        putExtra("widget_run_id", runId)
+        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+    }
 
 @Composable
 private fun EmptyState(

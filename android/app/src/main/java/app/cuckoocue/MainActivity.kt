@@ -144,6 +144,13 @@ class MainActivity : ComponentActivity() {
     private val incomingImport = MutableStateFlow<ImportedRunPayload?>(null)
     private val receivedRunId = MutableStateFlow<String?>(null)
     private var pendingRunId: String? = null
+    private var widgetNavigation by mutableStateOf<Pair<Long, String?>?>(null)
+
+    private fun handleWidgetNavigation(intent: Intent?) {
+        if (intent?.action == "app.cuckoocue.OPEN_WIDGET") {
+            widgetNavigation = System.nanoTime() to intent.getStringExtra("widget_run_id")
+        }
+    }
     private var pendingImportReference: ImportReference? = null
     private var importJob: Job? = null
     private var receiveJob: Job? = null
@@ -171,6 +178,7 @@ class MainActivity : ComponentActivity() {
         shelfClient = PublicShelfClient(getString(R.string.cuckoo_cue_web_url))
         pendingImportReference = RunTransferContract.parseImportUri(intent?.data)
         pendingRunId = RunTransferContract.parseRunId(intent?.data)
+        handleWidgetNavigation(intent)
         cuckooAuth.addListener(authListener)
         authUser.value = cuckooAuth.currentUser
         if (pendingImportReference?.revisionId != null || cuckooAuth.currentUser != null) loadPendingImport()
@@ -205,6 +213,8 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     CuckooCueScreen(
+                        widgetNavigation = widgetNavigation,
+                        onWidgetNavigationConsumed = { widgetNavigation = null },
                         repository = repository,
                         shelfClient = shelfClient,
                         appearanceRepository = appearanceRepository,
@@ -234,6 +244,7 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        handleWidgetNavigation(intent)
         pendingImportReference = RunTransferContract.parseImportUri(intent.data)
         pendingRunId = RunTransferContract.parseRunId(intent.data)
         loadPendingImport()
@@ -398,6 +409,8 @@ private class WidgetRedrawScheduler(
 
 @Composable
 private fun CuckooCueScreen(
+    widgetNavigation: Pair<Long, String?>?,
+    onWidgetNavigationConsumed: () -> Unit,
     repository: CuckooRepository,
     shelfClient: PublicShelfClient,
     appearanceRepository: AppearanceRepository,
@@ -427,6 +440,17 @@ private fun CuckooCueScreen(
     var publishShelves by remember { mutableStateOf<List<EditableShelfSummary>>(emptyList()) }
     var isLoadingPublishShelves by remember { mutableStateOf(false) }
     var isPublishingCuebook by remember { mutableStateOf(false) }
+
+    LaunchedEffect(widgetNavigation) {
+        if (widgetNavigation != null) {
+            selectedRunId = null
+            selectedCuebookId = null
+            publishingCuebook = null
+            showAppearance = false
+            pendingOpenRunId = widgetNavigation.second
+            onWidgetNavigationConsumed()
+        }
+    }
 
     LaunchedEffect(repository) {
         widgetRedrawScheduler.request()
