@@ -83,3 +83,7 @@ Web仕様には原本をモバイルでも取得・編集する将来契約も�
 対策は製品UIではなく`show_widget_page`に限定する。各ページで再構築中のWidget hostを短く再確認し、左右それぞれの探索をHomeから開始する。Google DiscoverなどLauncher外のUIに入ったら探索を打ち切ってHomeへ戻す。見つからない場合は失敗のままとし、テストをスキップして成功扱いにしない。表示遅延・Discover境界・対象欠落の3ケースを`test-widget-page-discovery.sh`で検証する。
 
 設置検証も、関数が`if`内で呼ばれたときに途中の失敗が無視されないよう明示的に終了コードを伝播する。検証開始時は既存のWidget背景と同じ`OPEN_WIDGET`アクションでアプリトップへ戻し、前回の詳細画面に依存しない。失敗時は短いエラー注記・画面・UI階層・完全ログを保存する。一回限りのアーティファクト回収用workflowは回収完了後に削除した。
+
+追試34740349950ではページ探索対策だけでは不十分だった。[完全ログ](review-screenshots/android/failures/34740349950/verification.log)で`filtered-narrow`成功後の`filtered-short`への切替に限定できた。[失敗画面](review-screenshots/android/failures/34740349950/verification-failure-line-1.png)はLauncher上だがWidgetは見えていない。Discoverは探索失敗後の到達先であり、それだけを根本原因とはしない。
+
+サイズと密度の連続変更による途中のLauncher配置再構築を検証から切り離すため、各display profileはアプリを前面にしてLauncherを停止し、サイズ・密度の両方を設定後にLauncherへ戻す方式に変更した。Launcherのデータ削除・Widget再設置・検証対象のスキップはしない。ローカルAndroid 14で狭幅→低高さ→resetの表示と同じWidget IDの維持を確認した。これは端末profileごとの描画検証であり、Launcher起動中の連続grid migrationや実際のリサイズハンドル操作の合格を意味しない。CIでの最終受入は別途確認する。
