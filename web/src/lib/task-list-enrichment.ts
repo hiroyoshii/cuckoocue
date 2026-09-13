@@ -24,6 +24,7 @@ function googleAuth() {
 
 export async function enrichTaskList(
   input: Omit<SaveTaskListInput, "operation_id">,
+  existingDomains: string[],
 ): Promise<TaskListEnrichment> {
   const model = process.env.CUE_LLM_MODEL || "gemini-2.5-flash";
   const url = [
@@ -45,14 +46,15 @@ export async function enrichTaskList(
               role: "user",
               parts: [
                 {
-                  text: buildPrompt(input),
+                  text: buildPrompt(input, existingDomains),
                 },
               ],
             },
           ],
           generationConfig: {
-            temperature: 0.2,
+            temperature: 0,
             responseMimeType: "application/json",
+            ...(model === "gemini-2.5-flash" ? { thinkingConfig: { thinkingBudget: 1024 } } : {}),
           },
         },
       }),
@@ -95,7 +97,7 @@ export function normalizeEnrichment(value: unknown, taskCount: number): TaskList
   };
 }
 
-function buildPrompt(input: Omit<SaveTaskListInput, "operation_id">) {
+function buildPrompt(input: Omit<SaveTaskListInput, "operation_id">, existingDomains: string[]) {
   return `
 あなたは reusable task list corpus の curator です。
 完了済み task list を、将来の検索と Android/widget での再利用に使いやすい形へ分類してください。
@@ -103,8 +105,12 @@ function buildPrompt(input: Omit<SaveTaskListInput, "operation_id">) {
 重要な制約:
 - user profile やユーザ個人の好みは書かない。これは Memory Bank 側で扱う。
 - domain は粗い日本語名にする。地域・制度・国は domain に含めず、context_text に残す。例: "引っ越し", "端末移行", "旅行準備"。
+- domainはタイトルとタスク全体の活動種別。活動の中の一部の手続き名や利用者属性だけをdomainにしない。対応する既存domainがあればその文字列をそのまま使い、新しい細分類を作らない。
 - context_text は、この task list が再利用される状況を1から2文の日本語で説明する。
 - context_text には、再利用判断に効く地域、制度、行政手続き、サービス名、制約を残す。汎用化しすぎない。
+- タイトルやタスクにある地域名・移動経路・サービス名を説明から落とさない。地域や制度から国が確実に分かる場合は国名も明記する。言語だけから国を推定しない。不明な国・地域は補わない。
+- context_textの最初に、確実に判定できる国と地域・経路を書く。その後に再利用状況を書く。地名を書いたからといって国名を省略しない。国を判定できない入力では状況だけを書く。
+- 移動元と移動先が同じ国だと確定できる場合は「日本国内」「英国国内」など国内で完結する制度範囲も明記する。国境を越える場合は「日本から英国への国際移動」のように書き、「日本国内」だけの活動と誤認させない。
 - ただし、住所、氏名、個人の好み、今回だけの感情や試行錯誤は含めない。
 - task_groupings は Web の検索結果で一覧を理解しやすい粒度にする。Android には渡さない。
 - task_offsets は 0 始まりの task index。存在しない index は含めない。
@@ -124,5 +130,8 @@ function buildPrompt(input: Omit<SaveTaskListInput, "operation_id">) {
 
 入力:
 ${JSON.stringify(input, null, 2)}
+
+既存の粗いdomain候補:
+${JSON.stringify(existingDomains)}
 `.trim();
 }

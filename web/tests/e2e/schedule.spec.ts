@@ -18,7 +18,7 @@ async function open(page: Page) {
   await page.goto("/");
   await page.getByLabel("Search query").fill("猫2匹と引っ越す");
   await page.locator(".search-composer").getByRole("button", { name: "検索", exact: true }).click();
-  await page.getByRole("button", { name: `${result.title}をAndroidに取り込む` }).click();
+  await page.getByRole("button", { name: `${result.title}の日程を決めて使う` }).click();
   await expect(page.getByLabel("最終日", { exact: true })).toBeEnabled();
 }
 async function capture(page: Page, name: string, info: TestInfo) {
@@ -68,13 +68,13 @@ test("W04: generated dates, keep/recalculate/cancel, nulls, validation and ident
   await capture(page, "schedule-edited", info);
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   await page.reload();
-  await page.getByRole("button", { name: `${result.title}をAndroidに取り込む` }).click();
+  await page.getByRole("button", { name: `${result.title}の日程を決めて使う` }).click();
   await expect(due).toHaveValue("2026-11-10");
   await expect(page.getByLabel("2件目の開始日")).toHaveValue("");
   await page.getByRole("button", { name: "この日程で保存" }).click();
   await expect(page.getByText("保存結果を確認できませんでした。", { exact: true })).toBeVisible();
   await page.reload();
-  await page.getByRole("button", { name: `${result.title}をAndroidに取り込む` }).click();
+  await page.getByRole("button", { name: `${result.title}の日程を決めて使う` }).click();
   await expect(due).toHaveValue("2026-11-10");
   await expect(due).toBeDisabled();
   await page.getByRole("button", { name: "保存を再試行" }).click();
@@ -85,7 +85,7 @@ test("W04: generated dates, keep/recalculate/cancel, nulls, validation and ident
     { task_id: "source-2", available_from_day: null, due_day: null },
   ] });
   await expect(page.locator(".handoff-panel li").first()).toContainText("2026/11/10");
-  await page.getByRole("button", { name: `${result.title}をAndroidに取り込む` }).click();
+  await page.getByRole("button", { name: `${result.title}の日程を決めて使う` }).click();
   await expect(page.getByRole("dialog").getByText("日程付きのリストを保存しました。", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "別の日程で使う" }).click();
   await expect(anchor).toHaveValue("");

@@ -8,6 +8,8 @@ import {
 } from "./task-list-embeddings";
 import { enrichTaskList } from "./task-list-enrichment";
 import { withRetry } from "./resilience";
+import { buildSearchText } from "./search-text";
+import { compileSearchPlan, type SearchPlan } from "./search-plan";
 import type { SaveTaskListInput, TaskListEnrichment, TaskListEntry } from "./schema";
 
 let bigQueryClient: BigQuery | null = null;
@@ -39,9 +41,10 @@ export async function insertTaskListEntry(
           context_text: input.context_text,
           task_groupings: input.task_groupings,
         }
-      : await enrichTaskList(input);
+      : await enrichTaskList(input, await listTaskListDomains());
   const contextEmbedding = await embedText(
     buildTaskListContextEmbeddingText(input, enrichment),
+    "RETRIEVAL_DOCUMENT",
   );
   const searchText = buildSearchText(input, enrichment);
   const row: TaskListEntry = {
@@ -128,22 +131,17 @@ export type SearchPage = {
 export async function searchTaskListEntries(
   message: string,
   userProfileAttributes: string[],
-  searchDomain: string | null,
+  searchPlan: SearchPlan,
   pageSize: number,
   owner = "",
 ): Promise<SearchPage> {
-  const explicitTokens = tokenize(message);
-  const hasExplicitTokens = explicitTokens.length > 0;
-  const explicitTokensParam = hasExplicitTokens
-    ? explicitTokens
-    : ["__cuckoo_no_query_token__"];
-  const explicitHitExpression = explicitTokensParam
-    .map((_, index) => `IF(SEARCH(search_text, @explicitToken${index}), 1, 0)`)
-    .join(" + ");
+  const filter = compileSearchPlan(searchPlan);
+  // A null domain is a genuine no-match, not permission to search every domain.
+  if (!filter.domain) return { results: [], nextCursor: null };
   const contextEmbedding = await embedText(
     buildSearchContextEmbeddingText(message, userProfileAttributes),
+    "RETRIEVAL_QUERY",
   );
-  const searchDomainParam = searchDomain?.trim() || "__cuckoo_no_search_domain__";
 
   const query = `
     WITH prepared AS (
@@ -157,8 +155,13 @@ export async function searchTaskListEntries(
         task_groupings,
         context_embedding,
         FORMAT_TIMESTAMP('%Y-%m-%dT%H:%M:%E*S%Ez', created_at) AS created_at,
-        IFNULL(search_text, '') AS search_text,
-        LOWER(IFNULL(domain, '')) = LOWER(@searchDomain) AS domain_matched,
+        ARRAY_CONCAT(
+          ARRAY(SELECT NORMALIZE_AND_CASEFOLD(task.text, NFKC) FROM UNNEST(tasks) task),
+          ARRAY(SELECT NORMALIZE_AND_CASEFOLD(task_group.label, NFKC) FROM UNNEST(task_groupings) task_group
+            WHERE EXISTS(SELECT 1 FROM UNNEST(task_group.task_offsets) task_offset WHERE task_offset >= 0 AND task_offset < ARRAY_LENGTH(tasks)))
+        ) AS task_text,
+        NORMALIZE_AND_CASEFOLD(CONCAT(IFNULL(title, ''), '\\n', IFNULL(context_text, ''), '\\n',
+          ARRAY_TO_STRING(ARRAY(SELECT task.text FROM UNNEST(tasks) task), '\\n')), NFKC) AS context_search_text,
         TO_HEX(SHA256(TO_JSON_STRING(STRUCT(
           LOWER(TRIM(title)) AS title,
           ARRAY(
@@ -168,12 +171,18 @@ export async function searchTaskListEntries(
           ) AS task_texts
         )))) AS content_key
       FROM ${bqTable("cuebook_revisions")}
-      WHERE ARRAY_LENGTH(context_embedding) = ARRAY_LENGTH(@contextEmbedding)
+      WHERE withdrawn_at IS NULL
+        AND NORMALIZE_AND_CASEFOLD(TRIM(IFNULL(domain, '')), NFKC) = @searchDomain
+        AND ARRAY_LENGTH(context_embedding) = ARRAY_LENGTH(@contextEmbedding)
+    ),
+    filtered AS (
+      SELECT *, @hasTextConditions AS text_matched
+      FROM prepared
+      WHERE ${filter.predicate}
     ),
     scored AS (
       SELECT
         *,
-        (${explicitHitExpression}) AS explicit_hit_count,
         (
           SELECT SAFE_DIVIDE(
             SUM(document_value * context_value),
@@ -183,21 +192,19 @@ export async function searchTaskListEntries(
           JOIN UNNEST(@contextEmbedding) AS context_value WITH OFFSET context_position
           ON document_position = context_position
         ) AS context_score
-      FROM prepared
+      FROM filtered
     )
     , related AS (
       SELECT item.revision_id, ARRAY_AGG(STRUCT(s.id, s.title) ORDER BY s.title, s.id) AS shelves
       FROM ${bqTable("shelves")} s CROSS JOIN UNNEST(s.items) item GROUP BY item.revision_id
     )
     SELECT scored.* EXCEPT(
-      content_key, domain_matched, explicit_hit_count, search_text,
+      content_key, task_text, context_search_text,
       context_embedding, owner_user_id, context_score
     ),
-      explicit_hit_count > 0 AS text_matched,
       IFNULL(context_score, 0) AS context_score,
       IFNULL(related.shelves, []) AS shelves
     FROM scored LEFT JOIN related ON related.revision_id = scored.id
-    WHERE explicit_hit_count > 0 OR domain_matched OR @hasExplicitTokens = FALSE
     ORDER BY context_score DESC, created_at DESC, scored.id
   `;
 
@@ -209,11 +216,9 @@ export async function searchTaskListEntries(
         jobTimeoutMs: BigQueryJobTimeoutMs,
         location: cueEnv.googleCloudLocation(),
         params: {
-          ...Object.fromEntries(
-            explicitTokensParam.map((token, index) => [`explicitToken${index}`, token]),
-          ),
-          hasExplicitTokens,
-          searchDomain: searchDomainParam,
+          ...filter.params,
+          hasTextConditions: filter.hasTextConditions,
+          searchDomain: filter.domain,
           contextEmbedding,
         },
       }),
@@ -227,6 +232,8 @@ export async function searchTaskListEntries(
       }),
     { attempts: 2, timeoutMs: BigQueryCallTimeoutMs, delayMs: 500 },
   );
+
+  console.info(JSON.stringify({ event: "search.executed", query_hash: digest(message), plan: searchPlan, context_attribute_hashes: userProfileAttributes.map(attribute => digest(attribute)), job_id: job.id, first_page_count: rows.length }));
 
   return {
     results: rows as SearchResult[],
@@ -301,6 +308,10 @@ export async function getTaskListEntry(
   return (rows[0] as TaskListEntry | undefined) ?? null;
 }
 
+export function invalidateTaskListDomains() {
+  domainCache = null;
+}
+
 export async function listTaskListDomains(): Promise<string[]> {
   const now = Date.now();
   if (domainCache && domainCache.expiresAt > now) {
@@ -310,7 +321,7 @@ export async function listTaskListDomains(): Promise<string[]> {
   const query = `
     SELECT DISTINCT domain
     FROM ${bqTable("cuebook_revisions")}
-    WHERE domain IS NOT NULL
+    WHERE withdrawn_at IS NULL AND domain IS NOT NULL
       AND TRIM(domain) != ''
     ORDER BY domain
   `;
@@ -333,66 +344,6 @@ export async function listTaskListDomains(): Promise<string[]> {
   };
 
   return domains;
-}
-
-export function tokenize(input: string): string[] {
-  const stopWords = new Set([
-    "ある",
-    "い",
-    "する",
-    "した",
-    "したい",
-    "たい",
-    "ため",
-    "できる",
-    "で",
-    "と",
-    "に",
-    "の",
-    "へ",
-    "まとめ",
-    "まとめる",
-    "を",
-  ]);
-  const normalized = input.toLowerCase().normalize("NFKC");
-  const segmenterConstructor = Intl as typeof Intl & {
-    Segmenter?: new (
-      locales: string[],
-      options: { granularity: "word" },
-    ) => {
-      segment(input: string): Iterable<{ segment: string; isWordLike?: boolean }>;
-    };
-  };
-  const segmenter = segmenterConstructor.Segmenter
-    ? new segmenterConstructor.Segmenter(["ja", "en"], { granularity: "word" })
-    : null;
-  const parts = segmenter
-    ? Array.from(segmenter.segment(normalized))
-        .filter((part) => part.isWordLike)
-        .map((part) => part.segment)
-    : normalized.split(/[^\p{Letter}\p{Number}]+/u);
-
-  const tokens = parts
-    .map((part) => part.trim())
-    .filter((part) => part.length >= 2)
-    .filter((part) => !stopWords.has(part));
-
-  return Array.from(new Set(tokens)).slice(0, 64);
-}
-
-function buildSearchText(
-  input: SaveTaskListInput,
-  enrichment: { domain: string; context_text: string; task_groupings: { label: string }[] },
-): string {
-  return tokenize(
-    [
-      input.title,
-      enrichment.domain,
-      enrichment.context_text,
-      ...enrichment.task_groupings.map((grouping) => grouping.label),
-      ...input.tasks.map((task) => task.text),
-    ].join("\n"),
-  ).join(" ");
 }
 
 function encodeSearchCursor(value: { jobId: string; pageToken: string }): string {

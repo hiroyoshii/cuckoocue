@@ -30,8 +30,8 @@ test("search and detail link only to actual placements without joining", async (
   const item = page.locator(".search-result-item");
   await expect(item.getByRole("navigation", { name: "関連グループ" })).toContainText(shelf.title);
   await expect(item.getByRole("button", { name: "参加する" })).toHaveCount(0);
-  await item.getByRole("button", { name: "内容を見る", exact: true }).click();
-  const dialog = page.getByRole("dialog");
+  await item.getByRole("button", { name: "全1件を見る", exact: true }).click();
+  const dialog = item;
   await expect(dialog.getByRole("navigation", { name: "関連グループ" })).toContainText(shelf.title);
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   await dialog.getByRole("button", { name: shelf.title, exact: true }).click();
@@ -49,6 +49,7 @@ test("group validation can be corrected; unknown publication outcome retries ide
     const path = new URL(route.request().url()).pathname;
     const method = route.request().method();
     if (path === "/api/memberships") return route.fulfill({ json: { shelf_ids: groupCreated ? [shelf.id] : [] } });
+    if (path === "/api/shelf-description") return route.fulfill({ json: { description: { title: shelf.title, context: "猫2匹と電車で移動する" } } });
     if (path === "/api/cuebooks") return route.fulfill({ json: { cuebooks: [original], nextCursor: null } });
     if (path === `/api/cuebooks/${original.id}`) return route.fulfill({ json: { cuebook: original } });
     if (path === "/api/shelves" && method === "GET") return route.fulfill({ json: { shelves: groupCreated ? [shelf] : [] } });
@@ -69,7 +70,7 @@ test("group validation can be corrected; unknown publication outcome retries ide
   await expect(page.getByRole("heading", { name: "自分のリスト", exact: true })).toBeVisible();
   await page.reload();
   await expect(page.getByRole("heading", { name: "自分のリスト", exact: true })).toBeVisible();
-  await page.locator(".owner-list-rows button").click();
+  await page.locator(".owner-list-workspace > .owner-list-rows button").click();
   await page.getByRole("button", { name: "グループに公開する", exact: true }).click();
   const panel = page.getByRole("region", { name: "公開先の確認" });
   await panel.getByLabel("グループ名", { exact: true }).fill(shelf.title);
@@ -81,12 +82,12 @@ test("group validation can be corrected; unknown publication outcome retries ide
   await panel.getByLabel("対象となる状況", { exact: true }).fill("猫2匹と電車で引っ越す");
   await panel.getByRole("button", { name: "公開する", exact: true }).click();
   await expect(panel.getByRole("alert")).toContainText("公開結果を確認できませんでした");
-  await expect(page.getByText("保存済み・自分だけ", { exact: true })).toBeVisible();
+  await expect(panel).toContainText("保存済みの内容");
   await page.reload();
   await panel.getByRole("button", { name: "公開を再試行", exact: true }).click();
   await expect(page.getByText("公開しました。", { exact: true })).toBeVisible();
   expect(publicationRequests[1]).toEqual(publicationRequests[0]);
-  expect(groupRequests[2]).toEqual(groupRequests[1]);
+  expect(groupRequests).toHaveLength(2);
   if (test.info().project.name === "mobile") await page.locator(".mobile-navigation summary").click();
   const navigation = page.getByRole("navigation", { name: test.info().project.name === "mobile" ? "モバイルの主な操作" : "主な操作", exact: true });
   await expect(navigation.getByRole("button", { name: shelf.title, exact: true })).toBeVisible();

@@ -25,7 +25,10 @@ function googleAuth() {
   return authClient;
 }
 
-export async function embedText(text: string): Promise<number[]> {
+export async function embedText(
+  text: string,
+  taskType: "RETRIEVAL_QUERY" | "RETRIEVAL_DOCUMENT",
+): Promise<number[]> {
   const model = process.env.CUE_EMBEDDING_MODEL || "text-multilingual-embedding-002";
   const url = [
     `https://${cueEnv.googleCloudLocation()}-aiplatform.googleapis.com/v1`,
@@ -41,7 +44,7 @@ export async function embedText(text: string): Promise<number[]> {
         method: "POST",
         timeout: 5000,
         data: {
-          instances: [{ content: text }],
+          instances: [{ content: text, task_type: taskType }],
         },
       }),
     { attempts: 2, timeoutMs: 7000, delayMs: 250 },
@@ -56,10 +59,11 @@ export async function embedText(text: string): Promise<number[]> {
 }
 
 export function buildTaskListContextEmbeddingText(
-  input: Pick<SaveTaskListInput, "tasks">,
+  input: Pick<SaveTaskListInput, "tasks" | "title">,
   enrichment: TaskListEnrichment,
 ) {
   return [
+    `title: ${input.title}`,
     `domain: ${enrichment.domain}`,
     `context: ${enrichment.context_text}`,
     "groups:",
@@ -88,6 +92,7 @@ export function buildSearchContextEmbeddingText(
 
 export function buildTaskListEntryContextText(entry: TaskListEntry) {
   return [
+    `title: ${entry.title}`,
     `domain: ${entry.domain ?? ""}`,
     `context: ${entry.context_text ?? ""}`,
     "groups:",

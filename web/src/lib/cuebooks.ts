@@ -47,14 +47,18 @@ export async function saveCuebook(owner: string, id: string, input: SaveCuebookI
     CREATE TEMP TABLE saved AS SELECT ${projection} FROM ${table} WHERE id = @id AND owner_user_id = @owner;
     COMMIT TRANSACTION;
     SELECT * FROM saved;
-  `, { owner, id, content: JSON.stringify(input.content), ...(create ? {} : { expected: input.expected_updated_at }) });
+  `, { owner, id, content: JSON.stringify(input.content), ...(create ? {} : { expected: input.expected_updated_at }) }, async () => {
+    const saved = await getCuebook(owner, id);
+    if (!saved) throw new Error("Committed Cuebook is unavailable");
+    return [saved];
+  });
   return rows[0];
 }
 
 export async function borrowRevision(owner: string, id: string, revisionId: string): Promise<Cuebook> {
   const rows = await bqWrite<Cuebook>(owner, `borrow:${id}`, { revisionId }, `
     BEGIN TRANSACTION;
-    ASSERT EXISTS(SELECT 1 FROM ${bqTable("cuebook_revisions")} WHERE id = @revision) AS 'CUE_NOT_FOUND';
+    ASSERT EXISTS(SELECT 1 FROM ${bqTable("cuebook_revisions")} WHERE id = @revision AND withdrawn_at IS NULL) AS 'CUE_NOT_FOUND';
     ASSERT NOT EXISTS(SELECT 1 FROM ${bqTable("cuebooks")} WHERE id = @id) AS 'CUE_CONFLICT';
     INSERT INTO ${bqTable("cuebooks")} (id, owner_user_id, origin_revision_id, title, tasks, domain, context_text, task_groupings, updated_at)
     SELECT @id, @owner, id, title,
@@ -65,6 +69,10 @@ export async function borrowRevision(owner: string, id: string, revisionId: stri
     CREATE TEMP TABLE saved AS SELECT ${projection} FROM ${bqTable("cuebooks")} WHERE id = @id AND owner_user_id = @owner;
     COMMIT TRANSACTION;
     SELECT * FROM saved;
-  `, { owner, id, revision: revisionId });
+  `, { owner, id, revision: revisionId }, async () => {
+    const saved = await getCuebook(owner, id);
+    if (!saved) throw new Error("Committed Cuebook is unavailable");
+    return [saved];
+  });
   return rows[0];
 }

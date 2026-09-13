@@ -21,6 +21,7 @@ export async function POST(request: NextRequest) {
     const privateCuebook = input.source.type === "cuebook" ? await getCuebook(owner, input.source.id) : null;
     const source = input.source.type === "revision" ? await getRevisionById(input.source.id) : privateCuebook;
     if (!source) return NextResponse.json({ error: "リストが見つかりません。" }, { status: 404 });
+    if ("withdrawn_at" in source && source.withdrawn_at) return NextResponse.json({ error: "この公開版は公開を停止しています。" }, { status: 410 });
     validateConfirmedDates(source.tasks.map((task) => task.id), input.task_dates, input.target_anchor_day, input.time_zone);
     const cuebook = input.source.type === "revision"
       ? await borrowRevision(owner, input.operation_id, input.source.id)

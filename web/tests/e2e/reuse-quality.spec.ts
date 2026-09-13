@@ -20,6 +20,7 @@ test.beforeEach(async ({ page }) => {
   await page.route("**/api/memberships", (route) => route.fulfill({ json: { shelf_ids: [] } }));
   await page.route("**/api/cuebooks/*", (route) => route.fulfill({ json: { cuebook: { ...route.request().postDataJSON().content, id: "owned", origin_revision_id: null, updated_at: "2026-09-12T00:00:00.000000Z" } } }));
   await page.route("**/api/shelves", (route) => route.fulfill({ json: { shelves: [] } }));
+  await page.route("**/api/shelf-description", route => route.fulfill({ json: { description: { title: "猫との引っ越し", context: "猫と国内で引っ越す" } } }));
   await page.route("**/api/search", (route) => route.fulfill({ json: { results: [result], nextCursor: null, searchDomain: "引っ越し" } }));
   await page.route("**/api/runs/completed", (route) => route.fulfill({ json: { run: { title: result.title, run_id: "completed", task_ids: tasks.map((_, i) => `task-${i}`), source_anchor_day: "2026-10-30", tasks } } }));
   await page.route("**/api/task-list-enrichment", (route) => route.fulfill({ json: { enrichment: { domain: result.domain, context_text: result.context_text, task_groupings: result.task_groupings } } }));
@@ -42,36 +43,28 @@ async function capture(page: Page, name: string, info: TestInfo) {
   await page.screenshot({ path: path.resolve(process.env.CUE_CAPTURE_DIR, `${name}-${info.project.name}.png`), fullPage: await page.getByRole("dialog").count() === 0 });
 }
 
-test("W02/C04: expand and inspect without completion controls; close restores focus", async ({ page }, info) => {
+test("W02/C04: compare compact results and expand all metadata inline without a second detail surface", async ({ page }, info) => {
   await page.goto("/");
   await capture(page, "search", info);
   await search(page);
   const card = page.locator(".search-result-item");
   await expect(card).toBeVisible();
-  await expect(card.locator(".task-preview li")).toHaveCount(3);
+  await expect(card.locator(".result-task-preview")).toContainText(tasks[0].text);
+  await expect(card.locator(".read-task-list li")).toHaveCount(0);
+  await capture(page, "results-compact", info);
   await card.getByRole("button", { name: "全6件を見る" }).click();
   await expect(card.getByText("鍵を受け取る", { exact: true })).toBeVisible();
   await capture(page, "results-expanded", info);
-  const detailButton = card.getByRole("button", { name: "内容を見る" });
-  await detailButton.click();
-  const dialog = page.getByRole("dialog");
-  await expect(dialog.locator(".read-task-list > li")).toHaveCount(6);
-  await expect(dialog).toContainText("最終日の30日前〜3週間前");
-  await expect(dialog).toContainText("当日まで");
-  await expect(dialog.getByRole("checkbox")).toHaveCount(0);
-  await expect(dialog.getByText("未設定", { exact: true })).toHaveCount(0);
-  if (info.project.name === "mobile") {
-    const bounds = await dialog.boundingBox();
-    expect(bounds?.x).toBe(0);
-    expect(bounds?.y).toBe(0);
-    expect(bounds?.width).toBe(page.viewportSize()!.width);
-  }
-  await capture(page, "detail", info);
+  await expect(card.locator(".read-task-list > li")).toHaveCount(6);
+  await expect(card).toContainText("最終日の30日前〜3週間前");
+  await expect(card).toContainText("当日まで");
+  await expect(card.getByRole("checkbox")).toHaveCount(0);
+  await expect(card.getByText("未設定", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
-  await page.keyboard.press("Escape");
-  await expect(dialog).toHaveCount(0);
-  await expect(detailButton).toBeFocused();
-  await expect(card.getByRole("button", { name: "折りたたむ" })).toHaveAttribute("aria-expanded", "true");
+  await card.getByRole("button", { name: "折りたたむ" }).click();
+  await expect(card.getByRole("button", { name: "全6件を見る" })).toBeFocused();
+  await expect(card.locator(".read-task-list li")).toHaveCount(0);
 });
 
 test("W17/W18: loading and failed requests never appear as zero results", async ({ page }, info) => {
@@ -93,6 +86,37 @@ test("W17/W18: loading and failed requests never appear as zero results", async 
   await expect(page.getByText("条件に合うリストはありません")).toBeVisible();
   await expect(page.locator(".error-banner")).toHaveCount(0);
   await capture(page, "search-empty", info);
+});
+
+test("C04: several results stay comparable; long names and inline detail fit every width", async ({ page }, info) => {
+  await page.route("**/api/search", route => route.fulfill({ json: { results: Array.from({ length: 4 }, (_, i) => ({ ...result, id: `result-${i}`, title: [result.title, "子どもの転校と住所変更", "新居の設備と入居準備", "退去から引き渡しまで"][i], shelves: [{ id: "shelf", title: "猫と暮らす人の引っ越し" }] })), nextCursor: null } }));
+  await page.goto("/"); await search(page);
+  await expect(page.locator(".search-result-item")).toHaveCount(4);
+  await capture(page, "results-comparison", info);
+  if (info.project.name === "desktop") {
+    const third = await page.locator(".search-result-item").nth(2).boundingBox();
+    expect(third!.y).toBeLessThan(page.viewportSize()!.height);
+  }
+  await page.locator(".search-result-item").first().getByRole("button", { name: "全6件を見る" }).click();
+  for (const width of [320, 390, 768, 1024, 1440]) {
+    await page.setViewportSize({ width, height: 1000 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  }
+});
+
+test("W12/C06: tabs preserve task edits and review; keyboard switching never saves", async ({ page }) => {
+  await openEditor(page);
+  await page.getByLabel("1件目のタスク", { exact: true }).fill("編集したタスク");
+  await page.getByLabel("1件目のタスク", { exact: true }).press("Enter");
+  const tasksTab = page.getByRole("tab", { name: "タスク 6件", exact: true });
+  await tasksTab.focus();
+  await tasksTab.press("ArrowRight");
+  await expect(page.getByRole("tab", { name: "再利用情報", exact: true })).toBeFocused();
+  await expect(page.getByLabel("1件目のタスク", { exact: true })).toBeHidden();
+  await page.getByRole("tab", { name: "再利用情報", exact: true }).press("Home");
+  await expect(tasksTab).toBeFocused();
+  await expect(page.getByLabel("1件目のタスク", { exact: true })).toHaveValue("編集したタスク");
+  await expect(page.getByText("保存済み・自分だけ", { exact: true })).toHaveCount(0);
 });
 
 test("W18-2: paging fails once, retains results, retries only on request, deduplicates", async ({ page }, info) => {
@@ -169,6 +193,10 @@ test("W13: editing a reviewed snapshot clears confirmation and preserves typing 
   await page.getByRole("button", { name: "グループに公開する", exact: true }).click();
   const confirmation = page.getByRole("checkbox", { name: /個人情報が含まれていない/ });
   await confirmation.check();
+  await capture(page, "publication-dialog", info);
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await page.getByRole("button", { name: "公開先の確認を閉じる" }).click();
+  await expect(page.getByRole("button", { name: "グループに公開する", exact: true })).toBeFocused();
   await page.getByLabel("Group label 1").fill("引っ越し前の確認");
   await expect(page.getByLabel("Group label 1")).toBeFocused();
   await expect(confirmation).toHaveCount(0);
@@ -183,6 +211,7 @@ test("W13: cell edits retain reviewed context; reorder keeps grouping membership
   await openEditor(page);
   await page.getByRole("button", { name: "再利用情報を準備" }).click();
   await page.getByLabel("対象となる状況").fill("確認済みの対象条件を残す");
+  await page.getByRole("tab", { name: "タスク 6件", exact: true }).click();
   await page.getByLabel("1件目のタスク", { exact: true }).fill("入居条件を確認する");
   await page.getByLabel("1件目のタスク", { exact: true }).press("Enter");
   await page.getByLabel("1件目の優先度").selectOption("2");
@@ -194,6 +223,7 @@ test("W13: cell edits retain reviewed context; reorder keeps grouping membership
   expect(groups[1].task_offsets).toEqual([0, 2, 3, 4, 5]);
   await page.getByLabel("新しい項目").fill("銀行に住所変更を届ける");
   await page.getByLabel("新しい項目").press("Enter");
+  await page.getByRole("tab", { name: "再利用情報", exact: true }).click();
   await expect(page.getByLabel("銀行に住所変更を届けるのまとまり")).toHaveValue("");
   await page.getByLabel("銀行に住所変更を届けるのまとまり").selectOption("1");
   await expect(page.locator(".ungrouped-tasks")).toHaveCount(0);
@@ -235,6 +265,8 @@ test("C01: unavailable browser storage warns without losing the working edit", a
 });
 
 test("C06: 200 long tasks fit at supported widths; editing and validation remain usable", async ({ page }, info) => {
+  // Full axe analysis of 200 editable rows is a bulk audit, not an interaction latency target.
+  test.setTimeout(180000);
   const manyTasks = Array.from({ length: 200 }, (_, index) => ({ ...tasks[1], text: `${index + 1}: 長いタスクの内容と必要な書類の確認 / ${"LongTaskWithoutSpaces".repeat(4)}` }));
   await page.route("**/api/runs/completed", (route) => route.fulfill({ json: { run: { title: result.title, run_id: "completed", task_ids: manyTasks.map((_, i) => `task-${i}`), source_anchor_day: "2026-10-30", tasks: manyTasks } } }));
   await openEditor(page);
@@ -247,5 +279,8 @@ test("C06: 200 long tasks fit at supported widths; editing and validation remain
   }
   await page.setViewportSize({ width: info.project.name === "mobile" ? 320 : 1440, height: 900 });
   await expect(page.getByLabel("200件目のタスク", { exact: true })).toBeFocused();
-  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  const started = Date.now();
+  const audit = await new AxeBuilder({ page }).analyze();
+  await info.attach("200-task-accessibility", { body: JSON.stringify({ milliseconds: Date.now() - started, violations: audit.violations, passes: audit.passes.map(rule => rule.id) }), contentType: "application/json" });
+  expect(audit.violations).toEqual([]);
 });

@@ -27,6 +27,8 @@ import { RunHandoff } from "./run-handoff";
 import { taskErrors } from "./tasks/task-values";
 import { OwnerLists } from "./owner-lists";
 import { PublishCuebook } from "./publish-cuebook";
+import { PublicationLinks } from "./publication-links";
+import { PublicRevision } from "./public-revision";
 import { ShelfDetailView } from "./shelf-detail";
 import type { ShelfDetail } from "@/lib/shelves";
 import { ScheduledReuse, ScheduleDialog, ScheduleLoginRecovery } from "./scheduled-reuse";
@@ -107,6 +109,7 @@ type PersistedWorkspace = {
   cuebookTaskIds: string[];
   savedCuebook: Cuebook | null;
   pendingPrivateSave: SaveCuebookInput | null;
+  shelfCreation?: { operation: string; title: string; context: string; open: boolean; submitted: boolean };
 };
 
 const WorkspaceStorageKey = "cuckoo-cue:web-workspace:v1";
@@ -116,10 +119,36 @@ const emptyTask = (): TaskDraft => ({
 });
 
 export function CuckooCueWebApp({ importRunId }: { importRunId?: string } = {}) {
-  const [view, setView] = useState<View>("explore");
   const [devUserId, setDevUserId] = useState("local-user");
   const [authReady, setAuthReady] = useState(!hasFirebaseClientConfig());
   const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const connecting = useRef(false);
+  const connect = useCallback(async () => {
+    if (connecting.current) return;
+    connecting.current = true; setAuthReady(false); setError(null);
+    try { await signInAnonymously(firebaseAuth()); }
+    catch { setError("検索を始めるための接続を確立できませんでした。"); }
+    finally { connecting.current = false; setAuthReady(true); }
+  }, []);
+  useEffect(() => {
+    if (!hasFirebaseClientConfig()) return;
+    return onAuthStateChanged(firebaseAuth(), (next) => {
+      setUser(next);
+      if (next) setAuthReady(true);
+      else void connect();
+    });
+  }, [connect]);
+  if (!authReady) return <AuthWorkspace loading />;
+  if (hasFirebaseClientConfig() && !user) return <AuthWorkspace errorMessage={error} onRetry={connect} />;
+  return <AccountWorkspace key={user?.uid ?? devUserId} user={user} devUserId={user?.uid ?? devUserId} setDevUserId={setDevUserId} importRunId={importRunId} />;
+}
+
+function AccountWorkspace({ user, devUserId, setDevUserId, importRunId }: {
+  user: FirebaseUser | null; devUserId: string; setDevUserId: (value: string) => void; importRunId?: string;
+}) {
+  const [view, setView] = useState<View>("explore");
+  const authReady = true;
   const identity = user?.uid ?? devUserId;
   const [workspaceOwner, setWorkspaceOwner] = useState<string | null>(null);
   const [cuebookId, setCuebookId] = useState(() => crypto.randomUUID());
@@ -162,6 +191,9 @@ export function CuckooCueWebApp({ importRunId }: { importRunId?: string } = {}) 
   const [newShelfContext, setNewShelfContext] = useState("");
   const [showShelfCreateForm, setShowShelfCreateForm] = useState(false);
   const [shelfCreateOperation, setShelfCreateOperation] = useState(() => crypto.randomUUID());
+  const [shelfCreateSubmitted, setShelfCreateSubmitted] = useState(false);
+  const [selectedRevisionId, setSelectedRevisionId] = useState<string | null>(null);
+  const [navigationAttempt, setNavigationAttempt] = useState(0);
   const [shelvesLoaded, setShelvesLoaded] = useState(false);
   const [shelvesLoading, setShelvesLoading] = useState(false);
   const [shelvesFailed, setShelvesFailed] = useState(false);
@@ -173,31 +205,6 @@ export function CuckooCueWebApp({ importRunId }: { importRunId?: string } = {}) 
   const pendingShelfRead = useRef<AbortController | null>(null);
 
   useEffect(() => () => { pendingSearch.current?.abort(); pendingShelfRead.current?.abort(); }, []);
-
-  useEffect(() => {
-    if (!hasFirebaseClientConfig()) return;
-    const auth = firebaseAuth();
-    let startingAnonymousSession = false;
-    return onAuthStateChanged(auth, (nextUser) => {
-      if (nextUser) {
-        setUser(nextUser);
-        setAuthReady(true);
-        return;
-      }
-      setUser(null);
-      setAuthReady(false);
-      if (startingAnonymousSession) return;
-      startingAnonymousSession = true;
-      void signInAnonymously(auth)
-        .catch(() => {
-          setErrorMessage("検索を始めるための接続を確立できませんでした。");
-          setAuthReady(true);
-        })
-        .finally(() => {
-          startingAnonymousSession = false;
-        });
-    });
-  }, []);
 
   useEffect(() => {
     if (!authReady || (hasFirebaseClientConfig() && !user)) return;
@@ -236,19 +243,19 @@ export function CuckooCueWebApp({ importRunId }: { importRunId?: string } = {}) 
             if (restored.cuebookTaskIds) setCuebookTaskIds(restored.cuebookTaskIds);
             if (restored.savedCuebook) setSavedCuebook(restored.savedCuebook);
             if (restored.pendingPrivateSave) setPendingPrivateSave(restored.pendingPrivateSave);
+            if (restored.shelfCreation) {
+              setShelfCreateOperation(restored.shelfCreation.operation); setNewShelfTitle(restored.shelfCreation.title);
+              setNewShelfContext(restored.shelfCreation.context); setShowShelfCreateForm(restored.shelfCreation.open);
+              setShelfCreateSubmitted(restored.shelfCreation.submitted);
+            }
           }
         }
       } catch {
         try { sessionStorage.removeItem(`${WorkspaceStorageKey}:${identity}`); } catch { /* Storage may be disabled. */ }
       } finally {
         const entryUrl = new URL(window.location.href);
-        if (entryUrl.searchParams.get("view") === "history") {
-          setView("history");
-          if (!user?.isAnonymous) {
-            entryUrl.searchParams.delete("view");
-            window.history.replaceState({}, "", `${entryUrl.pathname}${entryUrl.search}${entryUrl.hash}`);
-          }
-        }
+        const entryView = entryUrl.searchParams.get("view");
+        if (entryView === "history" || entryView === "library") setView(entryView);
         setWorkspaceRestored(true);
         setWorkspaceOwner(identity);
       }
@@ -278,6 +285,7 @@ export function CuckooCueWebApp({ importRunId }: { importRunId?: string } = {}) 
       completedReview,
       reviewingCompleted,
       cuebookId, cuebookTaskIds, savedCuebook, pendingPrivateSave,
+      shelfCreation: { operation: shelfCreateOperation, title: newShelfTitle, context: newShelfContext, open: showShelfCreateForm, submitted: shelfCreateSubmitted },
     };
     try {
       sessionStorage.setItem(`${WorkspaceStorageKey}:${identity}`, JSON.stringify(workspace));
@@ -291,6 +299,7 @@ export function CuckooCueWebApp({ importRunId }: { importRunId?: string } = {}) 
     results, saveOperationId, savedTitle, saveSource, saveTitle, searchDomain, searchMessage, targetAnchorDay,
     tasks, view, workspaceRestored, completedReview, reviewingCompleted,
     cuebookId, cuebookTaskIds, savedCuebook, pendingPrivateSave, workspaceOwner, identity,
+    shelfCreateOperation, newShelfTitle, newShelfContext, showShelfCreateForm, shelfCreateSubmitted,
   ]);
 
   useEffect(() => {
@@ -397,19 +406,6 @@ export function CuckooCueWebApp({ importRunId }: { importRunId?: string } = {}) 
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "ログインできませんでした。");
       return false;
-    }
-  }
-
-  async function retryAnonymousSession() {
-    setAuthReady(false);
-    setErrorMessage(null);
-    try {
-      const credential = await signInAnonymously(firebaseAuth());
-      setUser(credential.user);
-    } catch {
-      setErrorMessage("検索を始めるための接続を確立できませんでした。");
-    } finally {
-      setAuthReady(true);
     }
   }
 
@@ -544,10 +540,14 @@ export function CuckooCueWebApp({ importRunId }: { importRunId?: string } = {}) 
     }
   }
 
-  async function openOwnedList(id: string) {
+  async function openOwnedList(id: string, history = view === "history", record = true) {
+    if (record) {
+      const url = new URL(window.location.href);
+      url.search = new URLSearchParams({ [history ? "completed_run_id" : "cuebook_id"]: id }).toString();
+      window.history.pushState({}, "", `${url.pathname}${url.search}`);
+    }
     setBusyAction("save"); setErrorMessage(null);
     try {
-      const history = view === "history";
       const response = await cueApiFetch(history ? `/api/runs/${encodeURIComponent(id)}` : `/api/cuebooks/${encodeURIComponent(id)}`, devUserId);
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || "リストを開けませんでした。");
@@ -610,8 +610,11 @@ export function CuckooCueWebApp({ importRunId }: { importRunId?: string } = {}) 
     const controller = new AbortController();
     pendingShelfRead.current = controller;
     const url = new URL(window.location.href);
-    url.searchParams.set("shelf_id", id);
-    window.history.replaceState({}, "", `${url.pathname}${url.search}`);
+    if (url.searchParams.get("shelf_id") !== id) {
+      url.search = new URLSearchParams({ shelf_id: id }).toString();
+      window.history.pushState({}, "", `${url.pathname}${url.search}`);
+    }
+    setSelectedRevisionId(null);
     setFailedShelfId(null);
     setBusySeconds(0);
     setBusyAction("shelves");
@@ -633,13 +636,37 @@ export function CuckooCueWebApp({ importRunId }: { importRunId?: string } = {}) 
     }
   }, [devUserId]);
 
+  const readLocation = useRef<() => void>(() => {});
   useEffect(() => {
-    if (!authReady || workspaceOwner !== identity || importRunId) return;
-    const id = new URL(window.location.href).searchParams.get("shelf_id");
-    if (!id) return;
-    const frame = window.requestAnimationFrame(() => void openShelf(id));
+    readLocation.current = () => {
+      const params = new URL(window.location.href).searchParams;
+      const shelf = params.get("shelf_id");
+      const revision = params.get("revision_id");
+      const original = params.get("cuebook_id");
+      const completed = params.get("completed_run_id");
+      if (shelf) { void openShelf(shelf); return; }
+      pendingShelfRead.current?.abort(); setSelectedShelf(null); setSelectedRevisionId(revision);
+      if (revision) { setView("explore"); return; }
+      if (original || completed) {
+        if (user?.isAnonymous) setView("publish");
+        else if (navigationAttempt === 0 && ((original && savedCuebook?.id === original) || (completed && completedReview?.run.run_id === completed))) setView("publish");
+        else void openOwnedList((original ?? completed)!, !!completed, false);
+        return;
+      }
+      if (params.get("view") === "history" || params.get("view") === "library") setView(params.get("view") as View);
+      else if (navigationAttempt > 0) setView("explore");
+    };
+  });
+  useEffect(() => {
+    const changed = () => setNavigationAttempt(value => value + 1);
+    window.addEventListener("popstate", changed);
+    return () => window.removeEventListener("popstate", changed);
+  }, []);
+  useEffect(() => {
+    if (workspaceOwner !== identity || importRunId) return;
+    const frame = window.requestAnimationFrame(() => readLocation.current());
     return () => window.cancelAnimationFrame(frame);
-  }, [authReady, workspaceOwner, identity, importRunId, openShelf]);
+  }, [workspaceOwner, identity, importRunId, navigationAttempt]);
 
   function shelfSaved(shelf: ShelfDetail, joined = false) {
     setSelectedShelf(shelf);
@@ -655,6 +682,7 @@ export function CuckooCueWebApp({ importRunId }: { importRunId?: string } = {}) 
     if (!newShelfTitle.trim() || !newShelfContext.trim()) return;
     setBusySeconds(0);
     setBusyAction("createShelf");
+    setShelfCreateSubmitted(true);
     setErrorMessage(null);
     try {
       const response = await cueApiFetch("/api/shelves", devUserId, {
@@ -666,14 +694,19 @@ export function CuckooCueWebApp({ importRunId }: { importRunId?: string } = {}) 
         }),
       });
       const body = await response.json();
-      if (!response.ok) throw new Error(humanizeApiError(response.status, body.error, "まとまりを作成できませんでした。"));
+      if (!response.ok) {
+        if (response.status === 400 || response.status === 422) setShelfCreateSubmitted(false);
+        throw new Error(humanizeApiError(response.status, body.error, "まとまりを作成できませんでした。"));
+      }
       setNewShelfTitle("");
       setNewShelfContext("");
       setShowShelfCreateForm(false);
       setSelectedShelf(body.shelf);
       setShelfCreateOperation(crypto.randomUUID());
+      setShelfCreateSubmitted(false);
       setMemberships((current) => [...new Set([...current, body.shelf.id])]);
       setShelvesLoaded(false);
+      await openShelf(body.shelf.id);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "まとまりを作成できませんでした。");
     } finally {
@@ -697,8 +730,9 @@ export function CuckooCueWebApp({ importRunId }: { importRunId?: string } = {}) 
     setErrorMessage(null);
     pendingShelfRead.current?.abort();
     const url = new URL(window.location.href);
-    url.searchParams.delete("shelf_id");
-    window.history.replaceState({}, "", `${url.pathname}${url.search}`);
+    url.search = nextView === "explore" ? "" : new URLSearchParams({ view: nextView }).toString();
+    if (`${url.pathname}${url.search}` !== `${window.location.pathname}${window.location.search}`) window.history.pushState({}, "", `${url.pathname}${url.search}`);
+    setSelectedRevisionId(null);
     if (nextView === "explore") setSelectedShelf(null);
     setView(nextView);
   }
@@ -708,10 +742,6 @@ export function CuckooCueWebApp({ importRunId }: { importRunId?: string } = {}) 
   }
 
   if (workspaceOwner !== identity) return <AuthWorkspace loading />;
-
-  if (hasFirebaseClientConfig() && !user) {
-    return <AuthWorkspace errorMessage={errorMessage} onRetry={retryAnonymousSession} />;
-  }
 
   return (
     <main className="product-shell">
@@ -769,7 +799,7 @@ export function CuckooCueWebApp({ importRunId }: { importRunId?: string } = {}) 
         {shelvesFailed ? <button className="secondary-action" onClick={() => void loadShelves()}>グループ一覧を再取得</button> : null}
         {failedShelfId ? <button className="secondary-action" onClick={() => void openShelf(failedShelfId)}>グループを再取得</button> : null}
         {importRunId ? <RunHandoff key={`${identity}:${importRunId}`} runId={importRunId} devUserId={devUserId} registered={!hasFirebaseClientConfig() || Boolean(user && !user.isAnonymous)} onSignIn={signInWithGoogle} /> : view === "explore" ? (
-          selectedShelf ? (
+          selectedRevisionId ? <PublicRevision key={selectedRevisionId} id={selectedRevisionId} userId={currentUserId} onSignIn={signInWithGoogle} onBack={() => changeView("explore")} onOpenShelf={(id) => void openShelf(id)} /> : selectedShelf ? (
             <ShelfDetailView key={`${identity}:${selectedShelf.id}:${shelfReadVersion}`} shelf={{ ...selectedShelf, items: selectedShelf.items ?? [] }} userId={currentUserId}
               registered={!hasFirebaseClientConfig() || Boolean(user && !user.isAnonymous)} onSignIn={signInWithGoogle}
               joined={memberships.includes(selectedShelf.id)} membershipReady={membershipReady || !!user?.isAnonymous}
@@ -796,6 +826,7 @@ export function CuckooCueWebApp({ importRunId }: { importRunId?: string } = {}) 
               showCreateForm={showShelfCreateForm}
               setShowCreateForm={setShowShelfCreateForm}
               onCreateShelf={createShelfFromForm}
+              createSubmitted={shelfCreateSubmitted}
               canManage={!hasFirebaseClientConfig() || Boolean(user && !user.isAnonymous)}
               onSignIn={signInWithGoogle}
             />
@@ -803,7 +834,8 @@ export function CuckooCueWebApp({ importRunId }: { importRunId?: string } = {}) 
         ) : hasFirebaseClientConfig() && user?.isAnonymous ? (
           <SignInRequired title="完了したリストを残す" onBack={() => changeView("explore")} onSignIn={signInWithGoogle} />
         ) : view === "history" || view === "library" ? (
-          <OwnerLists key={`${identity}:${view}`} kind={view} devUserId={devUserId} onOpen={(id) => void openOwnedList(id)} onSwitch={() => changeView(view === "history" ? "library" : "history")} />
+          <OwnerLists key={`${identity}:${view}`} kind={view} devUserId={devUserId} onOpen={(id) => void openOwnedList(id)} onSwitch={() => changeView(view === "history" ? "library" : "history")}
+            ownedShelves={shelves.filter(shelf => shelf.created_by === currentUserId)} onShelf={id => void openShelf(id)} />
         ) : reviewingCompleted && completedReview ? (
           <CompletedRunReview state={completedReview} onChange={setCompletedReview} devUserId={devUserId}
             onBack={() => changeView("history")} onEdit={(selected) => { setTasks(selected); setCuebookTaskIds(selected.map(() => crypto.randomUUID())); setEnrichment(null); setReviewingCompleted(false); }} />
@@ -819,6 +851,7 @@ export function CuckooCueWebApp({ importRunId }: { importRunId?: string } = {}) 
             savedTitle={savedTitle} onPrepare={prepareSave} onSave={saveTaskList} onReset={resetSave}
             savedCuebook={savedCuebook} devUserId={devUserId} ownedShelves={shelves.filter((shelf) => shelf.created_by === currentUserId)}
             onPublished={() => { setShelvesLoaded(false); }}
+            onReloadOriginal={() => void openOwnedList(cuebookId, false)}
             onLibrary={() => changeView("library")}
           />
         )}
@@ -911,6 +944,7 @@ function ExploreWorkspace(props: ExploreWorkspaceProps) {
         showCreateForm={props.showCreateForm}
         setShowCreateForm={props.setShowCreateForm}
         onCreateShelf={props.onCreateShelf}
+        createSubmitted={props.createSubmitted}
         canManage={props.canManage}
         onSignIn={props.onSignIn}
         embedded
@@ -939,6 +973,31 @@ function SearchWorkspace(props: SearchWorkspaceProps) {
   const handoffPanel = useRef<HTMLElement>(null);
   const [selectedImport, setSelectedImport] = useState<SearchResult | null>(null);
   const [expandedResults, setExpandedResults] = useState<Set<string>>(new Set());
+  const searchPositionKey = `cuckoo-cue:search-position:${props.currentUserId}:${props.searchMessage}`;
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      try {
+        const stored = JSON.parse(sessionStorage.getItem(searchPositionKey) ?? "null");
+        setExpandedResults(new Set(stored?.expanded ?? []));
+        requestAnimationFrame(() => { if (stored?.scroll != null) window.scrollTo(0, stored.scroll); });
+      } catch { /* Search remains usable without browser storage. */ }
+    });
+    const trackScroll = () => {
+      try {
+        const stored = JSON.parse(sessionStorage.getItem(searchPositionKey) ?? "{}");
+        sessionStorage.setItem(searchPositionKey, JSON.stringify({ ...stored, scroll: window.scrollY }));
+      } catch { /* Do not interrupt search for a storage failure. */ }
+    };
+    window.addEventListener("scroll", trackScroll, { passive: true });
+    return () => { cancelAnimationFrame(frame); window.removeEventListener("scroll", trackScroll); };
+  }, [searchPositionKey]);
+  function expandResult(id: string, expanded: boolean) {
+    setExpandedResults(current => {
+      const next = new Set(current); if (expanded) next.add(id); else next.delete(id);
+      try { sessionStorage.setItem(searchPositionKey, JSON.stringify({ expanded: [...next], scroll: window.scrollY })); } catch { /* In-memory expansion remains available. */ }
+      return next;
+    });
+  }
   const { busyAction, nextCursor, onMore } = props;
 
   useEffect(() => {
@@ -1001,7 +1060,7 @@ function SearchWorkspace(props: SearchWorkspaceProps) {
       <section className="cue-surface" aria-label="検索結果" aria-busy={props.busyAction === "search"}>
         {props.busyAction === "search" ? <div className="search-skeleton" aria-hidden="true"><span /><span /><span /></div> : props.results.length === 0 ? (props.searchRetry ? null : <EmptySearch hasSearched={props.hasSearched} />) : (
           <div className="cue-stack">
-            {props.results.map((result) => <SearchResultItem key={result.id} result={result} disabled={props.busyAction !== null} onImport={() => setSelectedImport(result)} onOpenShelf={props.onOpenShelf} expanded={expandedResults.has(result.id)} onExpand={(expanded) => setExpandedResults((current) => { const next = new Set(current); if (expanded) next.add(result.id); else next.delete(result.id); return next; })} />)}
+            {props.results.map((result) => <SearchResultItem key={result.id} result={result} disabled={props.busyAction !== null} onImport={() => setSelectedImport(result)} onOpenShelf={props.onOpenShelf} expanded={expandedResults.has(result.id)} onExpand={(expanded) => expandResult(result.id, expanded)} />)}
             {props.nextCursor ? <div ref={pagingSentinel}>{props.searchRetry !== "more" ? <button className="more-button" type="button" disabled={props.busyAction !== null} onClick={props.onMore}>{props.busyAction === "more" ? <Loader2 className="spin" size={16} /> : <MoreHorizontal size={16} />}続きを読み込む</button> : <p className="page-error-note">読み込み済みのリストは表示しています。</p>}</div> : null}
           </div>
         )}
@@ -1025,6 +1084,7 @@ function EmptySearch({ hasSearched }: { hasSearched: boolean }) {
 }
 
 type ShelfWorkspaceProps = {
+  createSubmitted: boolean;
   shelves: Shelf[];
   busyAction: string | null;
   busySeconds: number;
@@ -1054,9 +1114,9 @@ function ShelfWorkspace(props: ShelfWorkspaceProps) {
       </header>
       {props.showCreateForm && props.canManage ? (
         <form className="shelf-create-form" onSubmit={props.onCreateShelf}>
-          <label><span>状況名</span><input value={props.newShelfTitle} onChange={(event) => props.setNewShelfTitle(event.target.value)} required /></label>
-          <label><span>どんな状況か</span><textarea value={props.newShelfContext} onChange={(event) => props.setNewShelfContext(event.target.value)} required rows={2} /></label>
-          <div><button type="button" className="secondary-action" onClick={() => props.setShowCreateForm(false)}>キャンセル</button><button type="submit" className="primary-action" disabled={props.busyAction !== null}>作成</button></div>
+          <label><span>状況名</span><input disabled={props.createSubmitted} value={props.newShelfTitle} onChange={(event) => props.setNewShelfTitle(event.target.value)} required /></label>
+          <label><span>どんな状況か</span><textarea disabled={props.createSubmitted} value={props.newShelfContext} onChange={(event) => props.setNewShelfContext(event.target.value)} required rows={2} /></label>
+          <div>{!props.createSubmitted ? <button type="button" className="secondary-action" onClick={() => props.setShowCreateForm(false)}>キャンセル</button> : null}<button type="submit" className="primary-action" disabled={props.busyAction !== null}>{props.createSubmitted ? "作成を再試行" : "作成"}</button></div>
         </form>
       ) : null}
       {props.busyAction === "shelves" ? <ProgressNotice label={`状況を読み込んでいます${props.busySeconds > 1 ? "" : ""}`} /> : null}
@@ -1083,6 +1143,7 @@ function ShelfWorkspace(props: ShelfWorkspaceProps) {
 }
 
 type SaveWorkspaceProps = {
+  onReloadOriginal: () => void;
   title: string; setTitle: (value: string) => void;
   tasks: TaskDraft[]; setTasks: (tasks: TaskDraft[]) => void;
   taskIds: string[]; onTaskIds: (ids: string[]) => void;
@@ -1097,9 +1158,9 @@ type SaveWorkspaceProps = {
 
 function SaveWorkspace(props: SaveWorkspaceProps) {
   const [scheduleEditing, setScheduleEditing] = useState(false);
+  const [editorView, setEditorView] = useState<"tasks" | "review">("tasks");
   const savedMatches = props.savedCuebook && JSON.stringify([props.title, props.tasks.map((task) => [task.text, task.default_priority, task.relative_start_day, task.relative_end_day]), props.enrichment]) ===
     JSON.stringify([props.savedCuebook.title, props.savedCuebook.tasks.map((task) => [task.text, task.default_priority ?? null, task.relative_start_day ?? null, task.relative_end_day ?? null]), props.savedCuebook.enrichment]);
-  const reviewTasks = props.tasks.filter((task) => task.text.trim().length > 0);
   const ungroupedOffsets = props.tasks.flatMap((_, index) => props.enrichment && !props.enrichment.task_groupings.some((group) => group.task_offsets.includes(index)) ? [index] : []);
   function updateGroupingLabel(index: number, value: string) {
     if (!props.enrichment) return;
@@ -1123,8 +1184,19 @@ function SaveWorkspace(props: SaveWorkspaceProps) {
         <h1>再利用用に整える</h1>
         <button type="button" className="text-action" onClick={props.onLibrary}>自分のリスト</button>
       </header>
+      {props.savedCuebook?.origin_revision_id ? <a className="text-action source-reference" href={`/?revision_id=${encodeURIComponent(props.savedCuebook.origin_revision_id)}`}>借りた公開リストを見る</a> : null}
       <form className="save-form" onSubmit={(event) => { if (!props.canPrepare || (props.enrichment && !props.canSave) || scheduleEditing) { event.preventDefault(); return; } props.onSave(event); }} autoComplete="off">
         <label className="save-title-field" htmlFor="save-title"><span>タイトル</span><input id="save-title" required maxLength={240} disabled={props.busyAction !== null} value={props.title} onChange={(event) => props.setTitle(event.target.value)} placeholder="リストの名前" /></label>
+        <div className="editor-view-tabs" role="tablist" aria-label="編集する内容">
+          {(["tasks", "review"] as const).map((view, index) => <button key={view} type="button" role="tab" id={`editor-tab-${view}`} aria-controls={`editor-panel-${view}`} aria-selected={editorView === view} tabIndex={editorView === view ? 0 : -1} disabled={scheduleEditing || props.busyAction !== null} onClick={() => setEditorView(view)} onKeyDown={event => {
+            if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+            event.preventDefault();
+            const next = event.key === "Home" ? "tasks" : event.key === "End" ? "review" : index === 0 ? "review" : "tasks";
+            setEditorView(next);
+            document.getElementById(`editor-tab-${next}`)?.focus();
+          }}>{view === "tasks" ? `タスク ${props.tasks.length}件` : "再利用情報"}</button>)}
+        </div>
+        <div id="editor-panel-tasks" role="tabpanel" aria-labelledby="editor-tab-tasks" hidden={editorView !== "tasks"}>
         {props.scheduleUnavailable ? <p className="field-error" role="status">元の最終日が同期されていないため、日程の目安は未設定です。</p> : null}
         <TaskEditor tasks={props.tasks} taskIds={props.taskIds} disabled={props.busyAction !== null} onScheduleEditing={setScheduleEditing} onChange={(next, previousIndices, ids) => {
           props.setTasks(next);
@@ -1135,10 +1207,13 @@ function SaveWorkspace(props: SaveWorkspaceProps) {
           })).filter((group) => group.task_offsets.length > 0);
           props.setEnrichment({ ...props.enrichment, task_groupings: groups });
         }} />
+        </div>
         <div className="save-actions">
-          <button type="button" disabled={!props.canPrepare || scheduleEditing} onClick={props.onPrepare}>{props.busyAction === "enrich" ? <Loader2 className="spin" size={16} /> : <WandSparkles size={16} />}再利用情報を準備</button>
+          <button type="button" disabled={!props.canPrepare || scheduleEditing} onClick={() => { setEditorView("review"); props.onPrepare(); }}>{props.busyAction === "enrich" ? <Loader2 className="spin" size={16} /> : <WandSparkles size={16} />}再利用情報を準備</button>
         </div>
         {props.busyAction === "enrich" ? <ProgressNotice label={progressLabel("enrich")} /> : null}
+        <div id="editor-panel-review" role="tabpanel" aria-labelledby="editor-tab-review" hidden={editorView !== "review"}>
+        {!props.enrichment && props.busyAction !== "enrich" ? <p className="result-facts">再利用情報は未設定</p> : null}
         {props.enrichment ? (
           <section className="review-strip" aria-label="保存前の確認">
             <header><span><strong>再利用情報</strong></span></header>
@@ -1157,10 +1232,10 @@ function SaveWorkspace(props: SaveWorkspaceProps) {
                   <ol>
                     {group.task_offsets.map((taskOffset) => (
                       <li key={`${taskOffset}-${props.tasks[taskOffset]?.text}`}>
-                        <span>{reviewTasks[taskOffset]?.text || `項目 ${taskOffset + 1}`}</span>
+                        <span>{props.tasks[taskOffset]?.text || `項目 ${taskOffset + 1}`}</span>
                         <label>
-                          <span className="sr-only">{reviewTasks[taskOffset]?.text}のまとまり</span>
-                          <select aria-label={`${reviewTasks[taskOffset]?.text}のまとまり`} value={groupIndex} onChange={(event) => moveGroupingTask(taskOffset, Number(event.target.value))}>
+                          <span className="sr-only">{props.tasks[taskOffset]?.text}のまとまり</span>
+                          <select aria-label={`${props.tasks[taskOffset]?.text}のまとまり`} value={groupIndex} onChange={(event) => moveGroupingTask(taskOffset, Number(event.target.value))}>
                             {props.enrichment!.task_groupings.map((candidate, candidateIndex) => <option key={`${candidate.label}-${candidateIndex}`} value={candidateIndex}>{candidate.label}</option>)}
                           </select>
                         </label>
@@ -1172,11 +1247,13 @@ function SaveWorkspace(props: SaveWorkspaceProps) {
             </div>
           </section>
         ) : null}
+        </div>
         <div className="save-actions"><button type="submit" disabled={!props.canPrepare || Boolean(props.enrichment && !props.canSave) || scheduleEditing}>{props.busyAction === "save" ? "保存しています" : "自分用に保存"}</button>
           {savedMatches ? <span role="status">保存済み・自分だけ</span> : props.savedCuebook ? <span>未保存の変更</span> : null}
         </div>
       </form>
-      {savedMatches && props.savedCuebook ? <PublishCuebook key={`${props.savedCuebook.id}:${props.savedCuebook.updated_at}`} cuebook={props.savedCuebook} devUserId={props.devUserId} shelves={props.ownedShelves} onPublished={props.onPublished} /> : null}
+      {savedMatches && props.savedCuebook ? <PublishCuebook key={`${props.savedCuebook.id}:${props.savedCuebook.updated_at}`} cuebook={props.savedCuebook} devUserId={props.devUserId} shelves={props.ownedShelves} onPublished={props.onPublished} onReloadOriginal={props.onReloadOriginal} /> : null}
+      {props.savedCuebook ? <PublicationLinks key={props.savedCuebook.updated_at} id={props.savedCuebook.id} userId={props.devUserId} /> : null}
       {savedMatches && props.savedCuebook ? <ScheduledReuse key={`schedule:${props.savedCuebook.id}:${props.savedCuebook.updated_at}`} source={{ type: "cuebook", id: props.savedCuebook.id, expected_updated_at: props.savedCuebook.updated_at }} title={props.savedCuebook.title} tasks={props.savedCuebook.tasks.map((task) => ({ ...task, relative_start_day: task.relative_start_day ?? null, relative_end_day: task.relative_end_day ?? null }))} devUserId={props.devUserId} /> : null}
     </div>
   );

@@ -1,5 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const port = Number(process.env.CUE_TEST_PORT ?? 3111);
+if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error("Invalid CUE_TEST_PORT");
+const baseURL = `http://127.0.0.1:${port}`;
+
 export default defineConfig({
   testDir: "./tests/e2e",
   timeout: 60_000,
@@ -8,7 +12,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   reporter: "line",
   use: {
-    baseURL: "http://127.0.0.1:3111",
+    baseURL,
     locale: "ja-JP",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
@@ -26,8 +30,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "/home/hiroyoshii/.local/share/devbox/global/default/.devbox/nix/profile/default/bin/node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3111",
-    url: "http://127.0.0.1:3111",
+    command: `/home/hiroyoshii/.local/share/devbox/global/default/.devbox/nix/profile/default/bin/node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port ${port}`,
+    url: baseURL,
     reuseExistingServer: !process.env.CI,
     env: {
       CUE_ALLOW_DEV_AUTH: "true",

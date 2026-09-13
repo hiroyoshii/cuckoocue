@@ -18,6 +18,7 @@ test("G03/W09/W11/W13: history, private original, conflict, publication recovery
   await page.route("**/api/shelves", (route) => route.fulfill({ json: { shelves: [{ id: "mine", title: "猫との引っ越し", created_by: "local-user" }] } }));
   await page.route("**/api/runs", (route) => route.fulfill({ json: { runs: [{ id: "done", title: original.title, task_count: 2, completed_at: Date.parse("2026-09-10") }], nextCursor: null } }));
   await page.route("**/api/cuebooks", (route) => route.fulfill({ json: { cuebooks: [saved], nextCursor: null } }));
+  await page.route(`**/api/cuebooks/${id}/revisions`, route => route.fulfill({ json: { revisions: [] } }));
   await page.route(`**/api/cuebooks/${id}`, async (route) => {
     if (route.request().method() === "PUT") {
       if (conflict) {
@@ -33,7 +34,7 @@ test("G03/W09/W11/W13: history, private original, conflict, publication recovery
   });
   await page.route("**/api/cuebook-revisions", async (route) => {
     publicationRequests.push(route.request().postDataJSON());
-    await route.fulfill(publicationRequests.length === 1 ? { status: 503, json: { error: "公開を確認できませんでした。自分用の保存は完了しています。" } } : { status: 201, json: { revision: { id: "published" } } });
+    await route.fulfill(publicationRequests.length === 1 ? { status: 503, json: { error: "公開を確認できませんでした。自分用の保存は完了しています。" } } : { status: 201, json: { revision: { id: "published" }, shelf: { id: "mine" } } });
   });
   const capture = async (name: string) => {
     await page.evaluate(() => document.fonts.ready);
@@ -41,12 +42,12 @@ test("G03/W09/W11/W13: history, private original, conflict, publication recovery
   };
   await page.goto("/");
   await page.getByRole("button", { name: "完了履歴", exact: true }).click();
-  await expect(page.locator(".owner-list-rows")).toContainText(original.title);
+  await expect(page.locator(".owner-list-workspace > .owner-list-rows")).toContainText(original.title);
   await capture("history");
   await page.getByRole("button", { name: "自分のリスト", exact: true }).click();
-  await expect(page.locator(".owner-list-rows")).toContainText(original.title);
+  await expect(page.locator(".owner-list-workspace > .owner-list-rows")).toContainText(original.title);
   await capture("private-library");
-  await page.locator(".owner-list-rows button").click();
+  await page.locator(".owner-list-workspace > .owner-list-rows button").click();
   await page.getByLabel("1件目のタスク", { exact: true }).fill("猫と移動する便とケージを予約する");
   await page.getByLabel("1件目のタスク", { exact: true }).press("Enter");
   await page.getByRole("button", { name: "自分用に保存" }).click();

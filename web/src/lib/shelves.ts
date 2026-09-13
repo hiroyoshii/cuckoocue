@@ -2,7 +2,8 @@ import type { CreateShelfInput, PublishCuebookRevisionInput, UpdateShelfInput } 
 import { bqRead, bqTable, bqWrite } from "./bq-store";
 import { getCuebook } from "./cuebooks";
 import { embedText, buildTaskListContextEmbeddingText } from "./task-list-embeddings";
-import { tokenize } from "./bigquery";
+import { buildSearchText } from "./search-text";
+import { invalidateTaskListDomains } from "./bigquery";
 import { assertPublicCorpusSafe } from "./public-corpus-safety";
 
 export type PublicRevisionTask = {
@@ -12,6 +13,12 @@ export type PublicRevisionTask = {
 export type PublicRevisionSummary = {
   id: string; source_cuebook_id: string; title: string; tasks: PublicRevisionTask[];
   published_at: string; withdrawn_at: string | null;
+};
+export type PublicRevisionDetail = PublicRevisionSummary & {
+  domain: string | null;
+  context_text: string | null;
+  task_groupings: { label: string; task_offsets: number[] }[] | null;
+  shelves: { id: string; title: string }[];
 };
 export type ShelfSummary = {
   id: string; title: string; context: string; forked_from_shelf_id: string | null;
@@ -27,7 +34,7 @@ const shelfColumns = `id, title, context, forked_from_shelf_id, created_by,
 const revisionColumns = `id, source_cuebook_id, title,
   ARRAY(SELECT AS STRUCT t.id, t.text AS title, t.default_priority, t.relative_start_day, t.relative_end_day FROM UNNEST(tasks) t WITH OFFSET pos ORDER BY pos) AS tasks,
   FORMAT_TIMESTAMP('%Y-%m-%dT%H:%M:%E6SZ', created_at) AS published_at,
-  CAST(NULL AS STRING) AS withdrawn_at`;
+  FORMAT_TIMESTAMP('%Y-%m-%dT%H:%M:%E6SZ', withdrawn_at) AS withdrawn_at`;
 
 export async function listShelves(): Promise<ShelfSummary[]> {
   return bqRead(`SELECT ${shelfColumns} FROM ${bqTable("shelves")} ORDER BY updated_at DESC`);
@@ -42,7 +49,11 @@ export async function createShelf(owner: string, input: CreateShelfInput): Promi
     CREATE TEMP TABLE saved AS SELECT ${shelfColumns} FROM ${bqTable("shelves")} WHERE id = @id;
     COMMIT TRANSACTION;
     SELECT * FROM saved;
-  `, { id: input.operation_id, owner, title: input.title, context: input.context });
+  `, { id: input.operation_id, owner, title: input.title, context: input.context }, async () => {
+    const saved = await getShelfDetail(input.operation_id);
+    if (!saved) throw new Error("Committed Shelf is unavailable");
+    return [saved];
+  });
   return rows[0];
 }
 
@@ -71,7 +82,10 @@ export async function updateShelf(owner: string, id: string, input: UpdateShelfI
     BEGIN TRANSACTION;
     ASSERT EXISTS(SELECT 1 FROM ${bqTable("shelves")} WHERE id = @id AND created_by = @owner) AS 'CUE_NOT_FOUND';
     ${input.items ? `ASSERT NOT EXISTS(SELECT 1 FROM UNNEST(JSON_QUERY_ARRAY(@input, '$.items')) item
-      WHERE NOT EXISTS(SELECT 1 FROM ${bqTable("cuebook_revisions")} WHERE id = JSON_VALUE(item, '$.revision_id'))) AS 'CUE_NOT_FOUND';` : ""}
+      WHERE NOT EXISTS(SELECT 1 FROM ${bqTable("cuebook_revisions")} r
+        WHERE r.id = JSON_VALUE(item, '$.revision_id') AND (r.withdrawn_at IS NULL OR EXISTS(
+          SELECT 1 FROM ${bqTable("shelves")} s CROSS JOIN UNNEST(s.items) existing
+          WHERE s.id = @id AND existing.revision_id = r.id)))) AS 'CUE_NOT_FOUND';` : ""}
     UPDATE ${bqTable("shelves")} SET
       title = COALESCE(JSON_VALUE(@input, '$.title'), title), context = COALESCE(JSON_VALUE(@input, '$.context'), context),
       ${input.items ? `items = ARRAY(SELECT AS STRUCT JSON_VALUE(item, '$.revision_id') AS revision_id, pos AS position
@@ -96,9 +110,12 @@ export async function publishCuebookRevision(owner: string, input: PublishCueboo
   }
   const enrichment = cuebook.enrichment;
   if (!existing) assertPublicCorpusSafe({ ...cuebook, ...enrichment });
-  const embedding = existing ? [] : await embedText(buildTaskListContextEmbeddingText(cuebook, enrichment!));
-  const searchText = tokenize([cuebook.title, enrichment?.domain, enrichment?.context_text,
-    ...(enrichment?.task_groupings.map((g) => g.label) ?? []), ...cuebook.tasks.map((t) => t.text)].join("\n")).join(" ");
+  const embedding = existing ? [] : await embedText(buildTaskListContextEmbeddingText(cuebook, enrichment!), "RETRIEVAL_DOCUMENT");
+  const searchText = buildSearchText(cuebook, {
+    domain: enrichment?.domain ?? "",
+    context_text: enrichment?.context_text ?? "",
+    task_groupings: enrichment?.task_groupings ?? [],
+  });
   await bqWrite(owner, `publish:${input.revision_id}`, input, `
     BEGIN TRANSACTION;
     ASSERT EXISTS(SELECT 1 FROM ${bqTable("cuebooks")} WHERE id = @source AND owner_user_id = @owner AND updated_at = TIMESTAMP(@expected)) AS 'CUE_CONFLICT';
@@ -113,6 +130,7 @@ export async function publishCuebookRevision(owner: string, input: PublishCueboo
     COMMIT TRANSACTION;
     SELECT @id AS id;
   `, { owner, id: input.revision_id, source: cuebook.id, expected: input.expected_source_updated_at, shelf: input.shelf_id, searchText, embedding: JSON.stringify(embedding) });
+  invalidateTaskListDomains();
   return { revision: (await getRevisionById(input.revision_id))!, shelf: (await getShelfDetail(input.shelf_id))! };
 }
 
@@ -133,5 +151,17 @@ export async function forkShelf(owner: string, sourceId: string, input: { operat
 
 export async function getRevisionById(id: string): Promise<PublicRevisionSummary | null> {
   const rows = await bqRead<PublicRevisionSummary>(`SELECT ${revisionColumns} FROM ${bqTable("cuebook_revisions")} WHERE id = @id LIMIT 1`, { id });
+  return rows[0] ?? null;
+}
+
+export async function getPublicRevisionDetail(id: string): Promise<PublicRevisionDetail | null> {
+  const rows = await bqRead<PublicRevisionDetail>(`
+    SELECT ${revisionColumns}, domain, context_text, task_groupings,
+      ARRAY(
+        SELECT AS STRUCT s.id, s.title FROM ${bqTable("shelves")} s
+        WHERE EXISTS(SELECT 1 FROM UNNEST(s.items) item WHERE item.revision_id = @id)
+        ORDER BY s.title, s.id
+      ) AS shelves
+    FROM ${bqTable("cuebook_revisions")} WHERE id = @id LIMIT 1`, { id });
   return rows[0] ?? null;
 }

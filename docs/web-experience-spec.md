@@ -2,13 +2,15 @@
 
 Status: Implementation / 合意済みUI基準に沿って段階実装中
 
-Updated: 2026-09-12
+Updated: 2026-09-13
 
 ## 1. この文書の役割
 
 WebのUC・画面・受け入れ条件をこの1文書で管理する。ドメインと保存・データ遷移の基礎は [design_v2.md](design_v2.md) を参照する。現行Web実装は要件の根拠にしない。
 
 「確定」はユーザーが明示した要件。「提案」「未決」は実装への承認ではない。design_v2.mdとの差分は第5節に記録し、合意したデータ契約だけを同文書へ反映する。
+
+最新の画面構成・残件対応は第25節、Shelf命名は第24節、検索フィルタの修正・受入範囲は第23節。初期モックの記述と後続実装の記録を混同しない。Android/Widgetの残件は今回のWebレビュー・実装から除外する。
 
 ## 2. 確定している体験
 
@@ -65,7 +67,7 @@ Cuebook自体に完了状態はない。完了履歴の事実はRunが持ち、�
 | D6 | 導線・受渡し方式確定 | Webで最終日を入力し、保存された日単位のduration/相対日程から各タスクの日付を自動生成。今回のRunをFirestoreに保存し、AndroidへRun IDだけを渡す | Androidは本人の同じRunを受信し、再作成や日程再入力をしない。desktopでは別途アプリで受信できる。iOSは後追い。実装・一周の検証状態は第16節。方式選定の未決ではない |
 | D7 | 編集方針確定・Private Shelf案を試す | Shelfの名前・context・Revision追加/除外/順序を編集。自作/forkした公開Shelfへ自動参加する。Private Shelfで原本整理・再訪を簡潔にできるか試す | 既存公開Revision本文は不変で、変更は新Revision。Private Shelfは現在の「Shelfは公開」と異なる。私的原本を格納するか、既存Revisionを参照するか、棚なし原本の扱いを未決として記録する。モック内の「自分のCuebook」は仮の到達経路 |
 | D8 | 方針確定 | 検索/閲覧はゲスト可。端末間で共有する個人状態の永続化時にアカウントへ接続する | 参加・私的保存・公開・forkの操作前に接続し、ログイン後は元の操作へ戻る。実際の認証連携はモック対象外 |
-| D9 | 未決 | 検索の絞り込み/順位、ページング、空・失敗・再試行、公開確認と部分失敗 | 検索失敗と0件は別表示。参加・公開・forkの失敗を成功表示にしない。保存済み内容と未確定編集を区別し、再試行で重複作成しない |
+| D9 | 現行契約は後続節で確定 | 検索はdomain+作業目的の全文条件で絞り、検索文+今回に関係するプロフィールの類似度順。全件をJob cursorで遅延取得 | [検索再評価](search-relevance-evaluation.md)を現行契約とする。検索失敗と0件は別表示。参加・公開・forkの失敗を成功表示にしない。保存済み内容と未確定編集を区別し、再試行で重複作成しない |
 | D10 | 保存先確定・物理契約未決 | Private Cuebookの共有正本はBQ、Runの実行中・完了履歴はFirestore。所有権・競合・削除・未同期データ・編集途中の保存契約が残る | 公開後も原本を保持し、公開失敗時にも保存済み原本を失わない。BQ保存だから公開という意味ではない。table/STRUCT・競合等を保存先決定から推測追加しない |
 
 「Private Cuebookは本人専用」「Revision本文は不変」「既存のShelfは公開」「Shelf編集は作成者のみ」を基礎制約として扱う。Private ShelfはD7の検討差分で、公開Shelfへのvisibilityカラム追加などを先回りして実装しない。ローカル限定保存はD2の合意で撤回済み。
@@ -234,7 +236,7 @@ Widgetは別の公開・保存対象ではなく、端末内の実行データ�
 
 ### 10.3 画面に先行するデータギャップ
 
-ここを放置してフォームだけ作ると、画面に入力できても結果を保存・再取得できない。元の指摘IDは維持する。以下の指摘表は初回の実装監査を起点とし、全体の実装差分・残件は第14節、この往復経路の最新受入結果は第16節を参照する。
+ここを放置してフォームだけ作ると、画面に入力できても結果を保存・再取得できない。元の指摘IDは維持する。以下の指摘表は初回の実装監査を起点とする履歴であり、各行の「不足」を現在の未実装件数として数えない。実装差分・経路の受入は第14〜18節、現在の残件は第19節を参照する。
 
 | ID | 優先 | 状態 | 問題と実用化に必要な対応 | 関係 |
 | --- | --- | --- | --- | --- |
@@ -610,16 +612,16 @@ design_v2.md第16節の物理契約に対応する。第10節のG/W/Cは削除�
 
 ### 未完・未決の再確認
 
-以下は未完のままであり、上記の実装差分をもって解消扱いにしない。新規Entityを追加して埋めるものでもない。
+以下は第14節時点の確認記録。後続実装を含む現在の残件は第19節に集約する。新規Entityを追加して埋めるものではない。
 
 | 既存対象 | 残る実装・判断 | 現時点の利用者への影響 |
 | --- | --- | --- |
 | G03/G09 | Android `PublicShelfClient`は原本保存/確認版を含まない旧公開リクエスト。Android原本のBQ取得・編集同期と新公開契約への接続が必要 | Androidからの既存公開は新APIにそのまま接続できない。今回の変更を本番配備する前の必須確認 |
 | G04/G05/W16 | `/import`のWeb受け皿とAndroidの受信再試行を実装。一周の検証状態は第16節 | 「Android反映済み」とは表示しない。実Google認証/本番環境と検証環境の証拠を分ける |
 | G06 | 既存Runの他端末更新取得、Android競合UI、アカウント別ローカル表示、削除伝播 | 新規Run受信と古いPUT拒否だけでは一般的な双方向同期は成立しない |
-| G06/G14/W20 | BQ Job自体が失敗確定した場合の再実行方式。現実装は固定Job IDの結果を再取得する。Shelf更新の応答消失後の復帰も残る | 通信切断からの同一Job再取得と、失敗済みJobの再実行は別。すべての503を再試行ボタンだけで回復できるわけではない |
+| G06/G14/W20 | BQ Job自体が失敗確定した場合の再実行方式。現実装は固定Job IDの結果を再取得する | 通信切断からの同一Job再取得と、失敗済みJobの再実行は別。Shelf更新の応答消失後の復帰は第18節で実装・UI検証済み |
 | W04 | 日程編集は第15節で実装。今回限定の名前/本文/採用タスク編集の範囲は別途未決 | 今回は日程だけを変更し、実行内容の編集範囲を推測追加しない |
-| W07/W08/G14 | Shelf一覧のページング | 公開Revisionの検索追加・全件コピー確認・一括配置編集・再訪は第18節。新しい版への自動置換はしない |
+| W07/W08/G14 | 「公開グループ一覧のページング」は誤った残件として撤回 | 全公開Shelfを閲覧する導線は要件にない。内部の全件取得を画面機能の不足に読み替えない。公開Revisionの検索追加・全件コピー確認・一括配置編集・再訪は第18節 |
 | W15 | 全操作の実ログインredirect復帰・別アカウント切替の検証 | 日程付き再利用に限る匿名→登録済み復帰は第16節。全操作の認証E2Eが完了したとはしない |
 | W13-5/C03 | v2第4.3節の`withdrawn_at`は現BQ物理定義に未対応。公開停止API自体はMVP対象外 | 現APIはnullを返すだけ。停止可能な保存境界が実装済みであるとは扱わない |
 
@@ -820,7 +822,7 @@ sequenceDiagram
 
 | 既存ID | 今回の契約と対応 | 残る範囲 |
 | --- | --- | --- |
-| G02/W06-1〜3 | 実配置リンクから詳細。参加読込未確認を未参加にしない。失敗は明示再取得、参加成功後にサイドバーへ反映。欠けたRevisionを黙って除外した全件表示にしない | Shelf削除時のmembership整理、一覧のページング |
+| G02/W06-1〜3 | 実配置リンクから詳細。参加読込未確認を未参加にしない。失敗は明示再取得、参加成功後にサイドバーへ反映。欠けたRevisionを黙って除外した全件表示にしない | Shelf削除時のmembership整理は削除方針に従う未決事項。公開グループ一覧のページングは要件ではなく撤回 |
 | G14/W07-1〜3 | コピー前に公開名/contextと全件の固定版を確認。新IDのShelf/itemsだけを作る。応答不明・自動参加失敗は同じ要求で再試行。元が変わっても確認済み版を無断で変更しない | BQコピーとFirestore参加は単一transactionではない。途中はコピー済み・参加未完になりうる |
 | W08-1〜3 | 公開検索→版/内容を確認→配置に追加。名前/context/追加/除外/順序を一つのPATCHで保存。取消、破棄、未保存表示、UID別draft復元、同一要求再送、競合後の最新確認を実装 | 原本・公開本文の編集ではない。新しいRevisionの自動差替え・withdrawはしない |
 | W06-4/C01 | `?shelf_id=...`を読込開始時に保持。再読込・ログイン後に同じIDを再取得。再訪でも未保存draftは勝手にサーバー値へ差し替えない | 実Google redirectの受入は別。解除した自作Shelfの一覧管理導線はC02の残件 |
@@ -854,3 +856,222 @@ UI側は`tests/e2e/shelf-journey.spec.ts`と既存回帰を使用する。参加
 再現: 第16節のWeb/ADC/Authエミュレータ設定を使用し、Webディレクトリで`CUE_JOURNEY_CLOUD_FIRESTORE=true CUE_BIGQUERY_DATASET=cuckoo_cue_web_verification FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099 node scripts/verify-shelf-journey.mjs`。`FIRESTORE_EMULATOR_HOST`は設定しない。Android操作や前回の履歴fixtureは不要。
 
 画像: [関連グループ](review-screenshots/web/shelf-journey/01-related-group.png)、[参加後](review-screenshots/web/shelf-journey/02-joined.png)、[全件コピー確認](review-screenshots/web/shelf-journey/03-copy-confirmation.png)、[公開版を検索して追加](review-screenshots/web/shelf-journey/04-add-public-revision.png)、[未保存編集の復元](review-screenshots/web/shelf-journey/05-unsaved-restored.png)、[保存後に再訪PC](review-screenshots/web/shelf-journey/06-revisited-desktop.png)、[同mobile](review-screenshots/web/shelf-journey/07-revisited-mobile.png)。赤い帯は認証エミュレータの警告で、本番UIではない。
+
+## 19. Web残件の再監査（2026-09-12）
+
+第10節の指摘IDを維持し、第14〜18節の実装と当時のコードを照合した残件。過去の表、実装の取得方式、将来の改善案を、そのまま未実装要件として扱わない。監査自体ではアプリ本体・データモデル・クラウドデータを変更していない。修正後の現状は第20節。
+
+### 確認した実装上の残件
+
+「UI再現」は現行Webにfixture API応答を与えた操作確認。「コード確認」は当該分岐と既存要件の照合であり、クラウド故障注入や実Google認証の実行証拠とは分ける。
+
+| 既存ID | 状態 | 残件と利用者への影響 | 根拠・修正後の合格条件 |
+| --- | --- | --- | --- |
+| W15-3 / C08 | 不具合・UID切替で再現、最優先 | identity変更時に`preparedImport`等を初期化していない。前ユーザーの保存済み日程サマリーが残り、次UIDの一時保存にも入る | `cuckoo-cue-web-app.tsx`のidentity復元処理。Aの私的予定を表示後、開発用UIDをBへ変更して再現。実Google切替・遅延応答を含め、Aの個人状態をBに表示/保存しないことを確認する。サーバーのowner制御突破を確認したわけではない |
+| G06 / G14 / W20-2 | コード確認 | BQ書込Jobの失敗が確定しても、同じJob IDの結果を取得し続ける。成功応答を失った場合の再取得とは違い、同じ再試行では保存が進まない | `bq-store.ts:bqWrite`。成功済み・処理中・失敗確定を区別し、失敗確定後の再実行と重複防止を両立させる。実BQの故障注入は今回未実施 |
+| W20-3 / W13-2 | 不具合・UI再現 | 公開APIが原本競合409を返すと公開先が固定されたまま、古い確認版での「公開を再試行」しか残らない | `publish-cuebook.tsx`。409後の2要求が同じであることを記録。最新原本の確認/訂正から新しい要求へ進めるようにする。結果不明503の同一要求再送は維持する |
+| G14 / W19-2 / C01 | 不具合・UI再現 | 検索下の「新しい状況」からの単独Shelf作成は操作ID/入力がメモリだけ。応答不明後に再読込し同じ内容で作成すると別IDになり、先の保存が成功していた場合は重複しうる | `createShelfFromForm`と`shelfCreateOperation`。503→再読込→同じ内容の再入力で異なる操作IDを確認。公開画面内のShelf作成やforkの再送対応とは別経路。結果確認前の操作を復元して重複させない |
+| W02-3 / W03-3 / C01 | 不足・UI再現とコード確認 | グループから検索に戻ると全タスクの展開が閉じる。グループ移動は`replaceState`だけでブラウザ履歴を追加せず、公開版/原本の個別画面URLもない | 検索結果5件展開→関連Shelf→画面内「探す」で折畳みへ戻ること、履歴長が変わらないことを確認。検索条件/結果は保持済み。戻る/進む、展開・位置、対象IDでの再訪を接続する |
+| W14-1 / W11-4 | 不足・UI再現とコード確認 | 公開成功後は「公開しました。」だけで、返却された公開Revision/配置先へ直接開く操作がない。自分の原本から既存の公開版へたどる操作もない | `publish-cuebook.tsx`は成功payloadを保存せずbooleanだけを保持する。サイドバーから新グループへ行ける場合はあるが、公開した固定版そのものの確認先を保持する受入は未達 |
+| C02 | コード確認 | 自作グループの参加解除後、URLを覚えていないと自分の管理先から開けない | サイドバーはmembership限定。公開先selectには自作グループ名が出るが、その詳細を開く操作ではない。既存の本人向け導線で再訪できればよく、全公開グループ一覧や新Entityは不要 |
+| W16-1 / 第2・6節 | コード確認・接続先確認を伴う | 共通ナビに合意したタスクリスト管理へのリンクがない。Run保存後のAndroid受渡しは存在するが、普段の管理先への入口とは別 | 現行`product-rail`/`MobileHeader`/mobile navigation。実在・確認済みのAndroid接続先を使って接続する。配布URL/公式ロゴを推測作成しない。iOSを追加必須に戻さない |
+| W13-5 / C03 | 設計と物理定義の不整合・コード確認 | v2第4.3節が要求する`withdrawn_at`の保存境界がなく、読取は常にnull。停止済みの版を区別する契約を満たしていない | `create-bq-cuebooks.mjs`、`shelves.ts`、`cuebooks.ts:borrowRevision`。更新APIはMVP対象外のまま、schema/読取/借用時の契約をv2と揃える。停止画面の新設を自動的に必要としない |
+
+再現記録: [画面操作4ケースの入力・観測結果](review-screenshots/web/residual-audit/evidence.json)、[開発UID切替時の表示・一時保存](review-screenshots/web/residual-audit/account-switch.json)。画面: [検索に戻った状態](review-screenshots/web/residual-audit/navigation.png)、[公開競合後](review-screenshots/web/residual-audit/publication-conflict.png)、[公開成功後](review-screenshots/web/residual-audit/publication-success.png)、[単独グループ作成の再試行](review-screenshots/web/residual-audit/create-reload.png)。クラウドへは書き込んでいない。試験準備中のサーバー停止、fixtureの公開日時欠落、広すぎるalertセレクタは試験側を修正し、最終の4ケースを再実行した。上記は不具合の再現結果であり、修正完了を意味しない。
+
+### 実装不足と分けるもの
+
+| 分類 | 既存ID・対象 | 現在の扱い |
+| --- | --- | --- |
+| 未検証 | W15 / W16 / C06 / C08 | 全個人操作の実Google redirect/取消/アカウント切替、今回変更の本番配備後の受入、物理端末のIME/ソフトキーボード/画面読み上げ。前項の既知の不具合を直してから確認する。過去のaxe/ブラウザ操作試験を実端末の証拠にはしない |
+| 未評価 | G01 / C08 | 多様な入力の検索順位、Memory Bank profileによる影響、LLM生成情報の保持。第17節の一例は利用者がcontextを修正した試験であり、自動生成の十分性を保証しない。新しいランキング機能を追加する話ではない |
+| 未決・実装追加の承認ではない | W04-1 / W19-3 | 今回限定の本文/採用タスク/優先度等をWebで編集する範囲。現在確定している日程設定は実装済み。日常のタスク編集はAndroid側という責務を勝手に拡張しない |
+| 未決・範囲変更が必要 | W11-4 / W13-5 / C03 | 原本削除・Shelf削除とmembership整理、誤公開時の運用対応。公開停止APIはMVP対象外であり、実装残件と混ぜない |
+| Web外の残件 | G03 / G06 / G09 / G12 / G13 | Android原本同期・直接公開の新契約接続、既存Runの他端末更新/競合/アカウント別Room/削除伝播、Widgetの開始日による表示条件など。Web単体の未実装件数に含めず、モバイルとの接続・リリース条件として別管理する |
+
+### 撤回・完了・対象外
+
+- **撤回:** 全公開グループを閲覧する画面およびそのページング。合意した導線は関連Shelf、参加Shelf、自分の公開先。`listShelves`の全件取得は内部実装であり、性能等の問題を実測せず機能不足と判定しない。取得失敗時に表示できず再取得を提供すること自体も不具合とはしない。
+- **当該経路は完了:** 第16〜18節の3つの主要フロー。日程の個別修正/復元、実公開検索と結果ページング、完了履歴/原本のページング、配置の追加/除外/順序の一括保存、Shelf更新の応答消失後の再送は未実装へ戻さない。ただし上記の未検査だった分岐まで完了とはしない。
+- **追加機能は不要:** 新Revisionの明示追加と旧配置の除外は可能。専用の自動置換機能を未実装と数えない。非公開Shelf、iOS、Revision自動更新は現在のMVP対象外。
+- **それ自体は残件でない:** BQとFirestoreを跨ぐ操作が単一transactionではないこと。既存の段階別再試行で回復できるケースは対応済みとして扱う。
+- **文書整合:** 第10節は初回レビュー、第14〜18節は実装履歴。本節を現状の判定先とし、古い「未完」や提案を拾って再び必須機能を増やさない。
+
+## 20. Web残件への対応（2026-09-13）
+
+第19節の9件を、合意した4段階（保存回復、再訪導線、公開停止境界、回帰・実データ評価・配備）で対応する。新しいEntity、全公開グループの閲覧画面、公開停止の操作画面は追加しない。
+
+| 既存ID | 対応・現在の状態 | 検証境界 |
+| --- | --- | --- |
+| W15-3 / C08 | UID単位で画面状態を破棄・復元。API要求前後にも同じUIDか確認 | 開発UID切替・遅延応答のUI試験。実Google切替は配備後の本人確認待ち |
+| G06 / G14 / W20-2 | BQ Jobの失敗確定後だけ決定的な後続IDで再実行。処理中は再書込せず、COMMIT成功済みなら保存結果を読む | Job状態分岐はtransport代替による試験。実BQでは保存・公開・同一操作再送・1件のみの保存を確認。クラウド障害を実際に発生させた試験ではない |
+| W20-3 / W13-2 | 公開409等の確定拒否は原本/公開先の再確認へ。結果不明503は同一要求再送。作成成功した公開先IDを保持 | UI試験。原本の再読込では未保存draftを通常復元し、明示的な最新原本確認ではサーバー内容を読む |
+| G14 / W19-2 / C01 | 単独グループ作成の入力・操作ID・未確認状態をUID別sessionに保持 | 503→reload→同一要求再試行のUI試験 |
+| W02-3 / W03-3 / C01 | ブラウザ履歴、検索結果の展開・位置、Shelf/Revision/原本/完了履歴の対象ID URLを接続 | PC/mobileの戻る・進む・reload。原本の編集中内容も保持 |
+| W14-1 / W11-4 | 公開成功時に返されたRevision/Shelfへのリンク。本人の原本から公開版と実際の配置先を表示 | 公開成功/再訪UI試験。本人限定公開版一覧APIは実BQで取得成功、別UIDは404 |
+| C02 | 自分のリストに「自分のグループ」を表示。参加解除後も自作Shelfへ再訪可能 | 参加グループとは別に既存created_byで絞る。新Entity・全公開一覧なし |
+| W16-1 | **ユーザー判断で保留**。Androidの公開配布URLはまだない | 配布先/ロゴを捏造しない。既存のRun IDによる受渡しは維持。iOSは追加しない |
+| W13-5 / C03 | `withdrawn_at`をBQ物理定義と読取へ反映。検索・新規借用・import payloadから停止版を除外 | 本番/検証テーブルへ非破壊で列追加。実BQでGET/new reuse=410、検索除外。既存Run再送は同じRunを返す。既存Shelf配置は停止表示を保持したまま並替可能 |
+
+### 実データ評価
+
+`cuckoo_cue_web_verification`の専用ユーザー・6件で実施。認証だけ開発UID、BQ・Firestore・Vertex LLM・embedding・Memory Bank Profilesは実サービス。入力・全API応答・生成情報・順位・BQ保存行は[生データ](review-screenshots/web/residual-fixes/data-evidence.json)に保存。試験中のpage_size上限違反も記録し、20件ずつ全ページを取得して再開した。
+
+- 対象: 猫との東京→名古屋、同一区内、London→Brighton、東京旅行、住所変更のみ、子どもの転校を伴う引っ越し。
+- 手編集なしの生成で6件とも全タスクが重複なくgroupingされた。原文タスクはそのまま保存。制度名など指定語のcontext/domain内の文字一致は8/11。ホテル→宿泊先は意味の保持なので単純な欠落とは数えない。一方、Council Tax/Royal Mailは一般的な行政・郵便手続きに変わっており、制度固有性の評価課題が残る。
+- 6検索×profileなし/ありの12比較で、**今回の6件内の期待1位は10/12**。全corpusでのTop1精度ではない。profileなしは6/6、ありは4/6。近距離・子どもの転校の2検索で猫との長距離引っ越しが上位になった。混合contextソートが意図よりprofileに引かれる場合がある。
+- Memory Bankへの3操作eventから`猫2匹`、`新幹線移動`、`オンライン申請`、`ロンドン在住`が取得された。最後は元eventの「ロンドン在住時」という過去性を保持していない。属性抽出の時間的意味に課題がある。検索語をprofileへ保存した試験ではない。
+- **G01 / C08は評価実施済み、品質上の懸念は未解消**。この結果を成功一色にしない。合意済みの検索方式・profile schemaを重み調整や新フィールドで勝手に変更しない。上記の失敗例を次の品質判断の固定ケースにする。
+
+### 配備・本人確認
+
+- Webを既存App Hostingへローカルソースから配備済み。稼働Revisionは`cuckoocue-build-2026-09-12-019`、Cloud Runの配信比率100%。URLは`https://cuckoocue.hiyozoo.com`。`web/firebase.json`の`rootDir: "."`でローカルarchiveのルートを明示し、Git連携側の`web`設定は変更しない。初回のルート指定漏れによる配備失敗は旧稼働版を置き換えていない。
+- [本番疎通記録](review-screenshots/web/residual-fixes/production-evidence.json): 実Firebase匿名認証と検索200、未認証の原本/履歴/本人向け公開版一覧は401、ブラウザ例外0。検索は0件だったため、本番で結果の再利用まで試せたとは扱わない。検証に作成した匿名アカウント1件は削除済み。Googleログインは未実行。
+- 全画面回帰は[PC/mobile計92件成功](review-screenshots/web/residual-fixes/ui-results.json)。公開リンクの表示調整後も[該当24件成功](review-screenshots/web/residual-fixes/ui-final-links.json)、公開成功/個別版のaxe違反0、PC/mobileスクショ確認済み。途中終了した追加試験は並列数を落として完走し直した。build/lint/diff checkも成功。API fixtureを使うUI試験と、実BQ/Firestore/Vertex/Memory Bankの試験を区別する。
+- BQ Job回復はGoogle Cloudの[Jobエラー](https://docs.cloud.google.com/bigquery/docs/error-messages)、[transactionと子Job](https://docs.cloud.google.com/bigquery/docs/transactions)、[jobs.list](https://docs.cloud.google.com/bigquery/docs/reference/rest/v2/jobs/list)に基づく。自身が実行したJobを読むためにプロジェクト全Jobの閲覧権限を追加しない。
+- 実Googleログインの受入はユーザー回答「配備後に確認する」に従う。アカウント選択/同意、redirect、取消、A→B切替は開発UID試験で代替しない。
+- Android配布リンクは保留。実端末のIME/画面読み上げ、モバイル側の残件も、ブラウザ回帰の成功をもって完了にはしない。
+
+本人確認手順: 本番で「完了履歴」からGoogleログインし、元の画面へ戻れることを確認する。自分の履歴/原本を表示後、ログアウトして別アカウントでログインし、前の人の内容や編集中データが表示されないことを確認する。ログインを取り消した場合も、再度ログインを開始できることを確認する。
+
+画面証拠: [公開成功・PC](review-screenshots/web/residual-fixes/published-desktop.png)、[公開成功・mobile](review-screenshots/web/residual-fixes/published-mobile.png)、[公開版の個別画面](review-screenshots/web/residual-fixes/revision-desktop.png)、[自分のグループ](review-screenshots/web/residual-fixes/owned-groups-desktop.png)。これらはfixture内容のUI。実本番は[検索入口](review-screenshots/web/residual-fixes/production-home-desktop.png)、[mobile検索](review-screenshots/web/residual-fixes/production-search-mobile.png)。
+
+## 21. Webの文脈と由来導線の修正（2026-09-13）
+
+ユーザー指示により、今回のレビュー・実装はWebに限定する。Android/Widgetの未接続をWebの残件に含めない。設計どおりのD4（実配置のみの関連Shelf）、D5（参加は参照）、私的/公開の分離は変更しない。32項目の思想監査から新Entity・由来カラム・検索方式を追加しない。
+
+| 既存ID | レビューで確認した欠落と修正 | 受入条件 |
+| --- | --- | --- |
+| D4 / W03 / C04 | 個別公開版のGET/画面へ既存domain/context_text/task_groupingsと実配置Shelfを接続。検索モーダルだけにあった判断材料を個別URLでも表示 | 検索・直接URL・Shelf内のリンクから同じ文脈を確認できる。関連Shelfの先でだけ参加する。配置0件は導線なし |
+| D3 / W07 / C01 | forked_from_shelf_idからコピー元Shelfへ、Shelf内の公開リスト名から個別公開版へリンク | 閲覧で参加/コピー/保存しない。コピー元確認後に戻っても未保存の配置編集を保持 |
+| W11 / C01 | 原本編集画面の上部からorigin_revision_idの公開版へリンク | 私的原本を公開しない。借用元確認後に戻っても編集中の原本を保持。由来なしならリンクを推測しない |
+| W18 / C08 | 個別公開版の取得失敗・再取得・公開停止を含めて再レビュー | エラー中に利用成功を表示しない。停止版のGETは410、私的原本IDの公開取得は404。検索内部情報を返さない |
+
+`getPublicRevisionDetail`の応答は既存カラムとShelf.itemsの読取結果であり、保存モデルやprojectionテーブルの追加ではない。元Runから新Cuebookへの由来保存、Shelf文脈を検索に入れる案、検索品質G01/C08を、この修正で解消したことにはしない。
+
+検証はUIとデータ契約を分離する。`tests/e2e/public-context.spec.ts`は既存UI fixtureを使い、操作・非変更・復帰を検証する。`scripts/verify-public-context.mjs`は既存の検証用BQデータだけを読み、API応答と保存値を比較する。新しいクラウドfixtureや公開データを作成しない。実Googleログインの受入は前節の本人確認待ちを維持する。
+
+- 実API/BQ: [読取7件の入力・応答・保存値照合](review-screenshots/web/public-context/read-evidence.json)。通常公開版の文脈/分類/タスク/実配置、停止版410、私的原本ID404を確認。owner_user_id/search_text/context_embeddingを返さないことを確認。
+- UI/回帰: [PC・mobile幅の68件が全件成功](review-screenshots/web/public-context/ui-results.json)。新規導線14件に加え、既存の履歴/私的保存/公開/再利用/参加/全件コピー/配置編集/アカウント切替/復帰を実行した。初回の12件中3件は、Nextのroute announcerも拾うalert指定とページ再読込後の5秒待機で失敗。対象画面へセレクタを限定し、待機上限15秒に修正して同じ操作を再実行した。[初回記録](review-screenshots/web/public-context/ui-initial-results.json)。
+- 新しい公開版画面のaxe違反0、320/390/768/1024/1440pxの長文折返しを確認。コピー元/借用元へ進んで戻った際の未保存編集保持、閲覧による意図しない保存・参加・コピーがないこと、由来なしの原本に架空のリンクがないことを確認。production build、lint、diff whitespace検査も成功。
+- 画像: [実BQの公開版・PC](review-screenshots/web/public-context/real-revision-desktop.png)、[同mobile](review-screenshots/web/public-context/real-revision-mobile.png)。検証用の既存公開内容であり、本番配備の証拠ではない。
+- 由来導線の画像: [コピー元・PC](review-screenshots/web/public-context/source-group-desktop.png)、[同mobile](review-screenshots/web/public-context/source-group-mobile.png)、[借用元・PC](review-screenshots/web/public-context/borrowed-original-desktop.png)、[同mobile](review-screenshots/web/public-context/borrowed-original-mobile.png)。こちらはUI fixture。
+
+本節の表のWeb修正は上記範囲で受入確認済み。本番配備は今回行っていない。アプリ全体・32項目すべての完了ではない。
+
+以後のWeb完了判定は「既存要件ID → 画面/API → 操作前後の期待結果 → 実行証拠」を対応付ける。入口が複数ある詳細は直接URLも含める。レビューで既存契約内の欠落を見つけた場合は修正と回帰まで続け、設計変更が必要なものだけを分離する。API疎通・UIテストの成功を、未評価の利用価値の成功へ広げない。
+
+## 22. 検索フィルタの近接候補比較（2026-09-13）
+
+G01/C08の追加検証。ユーザーの「domainと検索文はどちらも検索対象を狭める機能」という意図に対し、現行条件が何を通すかを測定した。アプリの検索コードはこの検証では変更していない。
+
+修正前のprobeで近接候補9件・検索文3件をBigQuery SEARCHへ渡した。テーブルへのINSERTではなく、パラメータの候補データをquery内で展開する読取だけ。当時の実装ファイルのtokenize/buildSearchText関数をTypeScript ASTから読み出して実行し、別実装のトークナイザーに置き換えていない。当時のWHERE条件が一致することも確認した。候補の全入力、生成したsearch_text、一致語と一致したフィールド、SQL、Job IDは[修正前の生データ](review-screenshots/web/search-filter-probe/evidence.json)に保持する。再検証用スクリプトは第23節のものに更新した。
+
+比較は現行の `単語のいずれか一致 OR domain一致` と、domainのみ必須化した `domain一致 AND 単語のいずれか一致`。domainは全比較で「引っ越し」に固定し、LLMによる分類・enrichment・プロフィール・embedding・順位付けは使わない。空トークンの扱いは既存のバイパス条件をそのまま残した比較だが、今回の3文はいずれも空トークンではない。
+
+| 検索文 | 前処理後の語 | 現行条件で残る件数 | domain必須化だけで残る件数 |
+| --- | --- | --- | --- |
+| 子どもの転校を伴う東京から名古屋への引っ越し | 子ども、転校、伴う、東京、から、名古屋、引っ越し | 9/9 | 6/9（引っ越しdomainの全件） |
+| 子どもの転校 | 子ども、転校 | 8/9 | 3/9（転校あり、転校＋猫、別地域の転校） |
+| 猫の引っ越し | 引っ越し | 7/9 | 6/9（引っ越しdomainの全件） |
+
+判明した問題:
+
+- 現行OR条件は異domainを除外しない。旅行・教育・ペットの候補も、共通語で通る。
+- domainをANDにしても、search_textにdomain名が含まれ、検索語のいずれか1つで通す限り、検索文にdomain名があれば同domain全件が通る。札幌の単身赴任候補は、最初の検索でdomain欄の「引っ越し」だけが一致した。本文・タイトル・contextには他の検索語が一致していない。
+- `tokenize`の`part.length >= 2`で「猫」が落ちる。「猫の引っ越し」が猫を条件にできていない。profileの順位影響とは独立の問題。
+- 1つ目の猫のみ候補は「伴う」「東京」「から」「名古屋」「引っ越し」が一致し、「子ども」「転校」は一致していない。text_matched=trueを検索意図の充足と見なしてはいけない。
+
+これは候補採否の構造的な反例であり、合成データから実ユーザーの検索精度を算出したものではない。domain不明時の契約、自然文からの一致条件、否定・同義表現の解釈を今回の3文で検証済みとはしない。重み調整や単純な全語ANDを実装した記録でもない。
+
+## 23. 検索フィルタ修正（2026-09-13）
+
+本節の全語ANDは途中の実装記録であり、現行仕様ではない。地域違いの再利用可能な事例を落としすぎたため撤回した。現行の条件分離・データ準備・再評価は[検索再評価](search-relevance-evaluation.md)に集約する。以下の過去結果は成功範囲を後から広げず、そのまま残す。
+
+G01/C08。第22節の「引っ越し」だけで他の検索条件を迂回する問題を修正。データモデル、profile、embeddingの混合方法や重みは変更しない。
+
+| 対象 | 実装契約 |
+| --- | --- |
+| domain | 検索文から既存domainを1件選び、BQで一致を必須にする。nullなら0件。空応答・候補外の応答・分類エラーは失敗として返す |
+| 検索文 | NFKC・小文字化・単語分割後、domain語と助詞・依頼表現を除く。残った語をそれぞれquoteしてSEARCHに渡し、全語一致を要求する。ユーザー入力のOR等を演算子として解釈しない |
+| domainのみ | 追加の語がなければそのdomain内を対象とする。text_matchedはfalseであり、全文条件が一致したようには表示しない |
+| profile | domain選択・全文条件に混ぜない。全文条件を通った候補だけ、従来のquery+profile embedding類似度で並べ替える。条件外候補をスコアで復活させない |
+| 検索用テキスト | 公開時と既存行の再生成を同じbuildSearchTextへ統一。「猫」「犬」などの1文字語を落とさず、64語より後のタスクも索引へ入れる |
+| 既存データ | search_textだけを再生成する。公開本文・日程・ID・embeddingは変更しない。reindexスクリプトは明示dataset必須、標準は読取だけ。--apply時も読取時のsearch_textと一致する行だけを更新する |
+
+「全語」は文そのままの全形態素ではなく、現在のstopword処理後の語。これは字面による絞り込みであり、否定、同義語、活用形、地名の出発地/到着地の関係を理解した検索を保証しない。例えば東京と名古屋の方向逆転はこの条件だけでは区別しない。0件でも自動でOR検索に緩めない。自然文全般の適合率・再現率は別途評価が残る。
+
+### 条件分離の検証
+
+`scripts/verify-search-filter.mjs`は実装のsearchTaskListEntriesと生成SQLをそのまま実行し、参照テーブルだけを第22節と同じ9件のinline入力に置き換える。BQ SEARCH、類似度計算、2件ずつのJobページングは実サービス。domainを固定し、embeddingは意図的に不適合な候補Cを最も優遇できる2次元ベクトルにして、フィルタから漏れないことを検査する。LLMやMemory Bankの精度検証とは区別する。
+
+| 検索文（domainは引っ越し） | 残る候補 | 除外の確認 |
+| --- | --- | --- |
+| 子どもの転校を伴う東京から名古屋への引っ越し | A・B | 猫のみC、単身D、別地域E、domain語のみF、異domain G〜Iを除外 |
+| 子どもの転校 | A・B・E | 地域指定がなければEは残る |
+| 猫の引っ越し | B・C | 1文字の猫を必須とし、猫なしの同domain候補を除外 |
+| 東京から名古屋への引っ越し | A・B・C・D | 子ども/猫は指定していないため必須にしない |
+| 引っ越し | A〜F | 追加条件なし。異domainは除外 |
+| 引っ越し ピアノ | 0件 | domainだけの一致で救済しない |
+
+上記6件と対応domainなし・記号だけの2件を、profileなし/ありの計16条件で検証。profileで候補集合は変わらず、通過候補の順番だけ変わる。全入力、SQL、パラメータ、Job ID、全ページは[修正後の生データ](review-screenshots/web/search-filter-probe/after-evidence.json)。前処理・domain失敗契約は`node --experimental-strip-types --test scripts/test-search-filter.mjs`で確認する。
+
+### 保存済みデータとAPI
+
+既存の検証dataset `cuckoo_cue_web_verification` の23件はsearch_textだけ再生成した。[更新記録](review-screenshots/web/search-filter-probe/reindex-applied.json)。本番datasetへの更新や配備はこの作業では行わない。本番適用時は同じスクリプトで読取計画を確認後、--applyで再生成してから検索修正を配備する。
+
+`scripts/verify-search-api.mjs`で、既存の検証ユーザー・公開データに対して検索APIを呼ぶ。認証はローカルdev UID、domain分類・embedding・Memory Bank Profiles取得・BQは実サービス。新しいタスクやmemory eventは生成せず、プロフィールなし/ありで候補集合、公開停止の除外、ページングを確認する。[APIの全入出力](review-screenshots/web/search-filter-probe/api-evidence.json)。この疎通を、検索精度全体やAndroid/Widgetの受入完了とはしない。
+
+実行結果: 3検索文×2ユーザー、ページング込み40 API操作が成功。転校を含む東京→名古屋検索は両ユーザーとも既存の該当1件だけ、猫の引っ越しは18件、domainのみは20件。いずれもプロフィールの有無で候補集合は変わらない。profileあり側は猫2匹・新幹線移動・オンライン申請・ロンドン在住の既存属性を実際に取得し、通過候補の順位だけが変化した。合成9件の評価と保存済み23件の評価を混同しない。
+
+前処理・domain応答の単体10件、実BQの条件分離16件、desktop/mobileの検索表示・失敗復帰・ページング等のUI回帰10件が成功。UI回帰はAPI差し替えを含み、実サービスの証拠は上記40操作。[UIテスト結果](review-screenshots/web/search-filter-probe/ui-results.json)。lint/buildも成功。再indexの再実行は変更0件を確認した。ローカルAPI初回はAgent Engine環境変数不足で503となり、apphosting.yamlの既存IDを設定して再起動後に疎通を取り直した。
+
+## 24. Shelfの名前・文脈の生成（2026-09-13）
+
+D4/D5/D7、W02/W07/W08の表示・作成補助。ユーザー決定は「検索結果の関連Shelfは名前だけ。クリック後に文脈を表示。名前・文脈はLLMで用意し、手修正可能」。リスト自身のcontext_text表示や検索ロジックは変更しない。Shelf名を生成するために検索時のLLMを追加するわけではない。
+
+| 導線 | 現行契約 |
+| --- | --- |
+| 新しい公開先Shelf | 保存済みCuebookのタイトル・文脈・タスクから名前とcontextを自動生成。手修正後、既存の公開確認で保存する |
+| 既存Shelfへ公開 | 名前・contextを生成・上書きしない。生成中でも既存の公開先へ切り替え可能 |
+| 全件コピー | 元Shelfの名前・contextと固定配置を引き継ぐ。「名前・状況を生成」で明示的に整え直し、手修正可能。元Shelfや配置済みRevisionは書き換えない |
+| 自分のShelfを編集 | 現在の編集内容と配置内容から名前・contextを再生成できる。生成で配置を変更せず、変更の保存は別操作 |
+| 検索/詳細から利用 | 表示を「日程を決めて使う」に統一。「取り込む」は使わない |
+
+`POST /api/shelf-description`は登録済みユーザーのみ。編集画面の名前・文脈・リスト内容を一時的な入力として、既存のVertex Geminiを使い`{title, context}`のみ返す。BQ/Firestoreの保存、Memory Bank更新、参加、公開、配置操作はしない。DBカラム・Entity・新しい検索projectionは追加しない。公開停止版の本文は生成入力に含めず、Shelf上の配置自体は今回変更しない。
+
+出力をschemaと既存の個人情報チェックで検査。既存の意図を尊重し、国・制度の違いを消さず、異なるリストの属性を一人の属性へ合成しないよう指示する。12秒のHTTP timeout、最大2回の再試行。失敗は生成失敗として表示し、手入力または再生成が可能。生成中は対象の名前・文脈を編集不可とし、画面離脱/公開先切替時は応答を破棄する。入力済み下書きの再読込で自動生成・上書きしない。私的保存にLLM準備や公開を必須化しない。
+
+実モデル検証では、初回4入力のうち日本/英国の混在を「日本国内」と狭める出力があった。[初回全入力・出力](review-screenshots/web/shelf-description/real-generations.json)。全リストの地域を確認する指示を強化し、既存のタスク分類と同じthinking budgetで再評価。[再評価の全入力・出力](review-screenshots/web/shelf-description/real-generations-reviewed.json)。新規、複数活動、日本/英国、手入力した意図の保持を確認。自動schema検査だけで意味の正確さを保証しない。
+
+画面確認で見えた「公開停止」は別の問題。`refresh-search-evaluation.mjs`が旧合成公開版にwithdrawn_atを設定し、元のShelf配置を残した結果だった。検証Shelfは全52配置、利用可能25、停止27。新しいデータ種別やユーザー操作を今回追加したものではない。検索から停止版は除外されるが、Shelf上には停止表示が残る。今回その表示・配置・公開停止仕様は変更していない。
+
+検証記録:
+- 実Geminiの4入力と認証なし401・空入力400・不正JSON400を確認。生成所要時間は今回3.5〜4.4秒。初回に出た地域範囲の欠落を含めて上記JSONに保存。母集団での精度保証ではない。
+- [実APIによるPC/mobile生成画面](review-screenshots/web/shelf-description/real-ui.json)、[PC](review-screenshots/web/shelf-description/real-new-desktop.png)、[mobile](review-screenshots/web/shelf-description/real-new-mobile.png)。既存の隔離BQ原本を読み、応答差し替えなしで生成。保存・公開は実行していない。
+- 追加機能のschema/新規自動生成/手修正と再読込/失敗再試行/fork/所有者編集/公開先切替を含むPC・mobile計12件が成功。生成で保存・公開・配置変更しないことも確認。これらのUI試験はAPI応答差し替えを使う。
+- [広域回帰76件](review-screenshots/web/shelf-description/ui-results.json)は74成功、mobileの大規模リストと保存再開が60秒で時間切れ。[直列追試16件](review-screenshots/web/shelf-description/ui-followup.json)は15成功。上記mobileの2件は回復したが、desktopの200タスクに対するaxe検査が時間切れ。画面幅・入力・focus確認後の自動アクセシビリティ検査が未完であり、全回帰成功とは記録しない。実行中に共有WSL環境のメモリ/スワップ逼迫を確認したが、それだけで原因を断定しない。
+- 初回の公開回帰2件は生成API用fixtureがなかったため失敗。fixtureを追加後、同じ公開失敗・訂正・再試行経路は成功。production build、lint、diff whitespace検査は成功。本番配備は行っていない。
+
+## 25. Web残件の仕上げ（2026-09-13）
+
+第24節の作業時点で残った5件を対象とする。データモデル・保存先・検索条件・順位付けは変更しない。Android/Widget/iOS実装は範囲外。
+
+| 対象 / 既存ID | 今回の変更・確認 |
+| --- | --- |
+| 検索一覧 W02-3 / W03-1 / C04 | 名前・件数・リストの文脈・先頭3タスクの短いプレビューで比較する。全件展開すると同じ場所に日程・優先度・まとまり・公開版リンクを表示。別の検索詳細モーダルは廃止。展開状態と取得済み結果の復帰は維持する |
+| Shelfへの導線 D4 | 検索結果には実配置Shelfの名前だけを表示し、文脈はShelfを開いた先に置く。参加・公開グループ全件取得を検索結果へ追加しない |
+| 編集 W12-6 / W13-2 / C06 | 「タスク」「再利用情報」のタブで操作面を分ける。本文・日程・優先度・順序・取消は既存TaskEditorを維持。LLM準備後は再利用情報を確認する。タブ変更は保存ではなく、私的保存にLLM準備を必須化しない |
+| 公開 W19-2 / W20-2 | 保存済みリストのタイトル・件数と公開先だけを別ダイアログで確認。閉じても入力・操作IDを残し、元のボタンへfocusを戻す。公開成功後は結果へfocusを移す。失敗・再読込・再試行時の重複防止を維持する |
+| 200タスク C06 | 320/390/768/1024/1440pxの横幅・入力focusと、PC/mobileの全axe検査を実行。検査ルールを除外せず、大規模自動監査のみ上限180秒に分離。操作速度の目標とは扱わない |
+| 検証Shelfの整理 | 隔離dataset `cuckoo_cue_search_evaluation_v2` の評価者が所有する1Shelfのみ、停止した旧版27件への配置を除去。現行25件の順序は不変。旧Revisionそのもの、本番データ、一般の公開停止仕様は変更しない。再評価スクリプトも同じ限定処理を使う |
+| 本番配備 | App Hostingの既存backendを対象とし、開発用認証を無効、BQを本番`cuckoo_cue`に固定。事前読取で必要なschemaが存在し、公開Revisionが0件で再生成不要と確認。実Googleログインは本人操作による別の受入確認として残す |
+
+検証記録は [final-web-quality](review-screenshots/web/final-web-quality/) に保存する。UIのAPI応答差し替え、隔離BQ/Vertexを使う実API確認、本番の匿名疎通を区別する。検証用の公開リストを本番へ投入して空状態を隠さない。
+
+- [旧配置の変更前後](review-screenshots/web/final-web-quality/fixture-cleanup-applied.json): 52→25配置。既存updated_atによる競合検査付き。[再実行と本番拒否](review-screenshots/web/final-web-quality/fixture-cleanup-idempotency.json): 変更0件、本番dataset指定は実行前に拒否。
+- 初回UI回帰は92件中88件成功。公開確認を閉じた際のfocus復帰漏れ2件と、旧プレビューDOMへの期待2件を修正。200タスクのaxeはPC18.2秒/mobile21.1秒で完走、違反0件。[初回記録](review-screenshots/web/final-web-quality/ui-initial-results.json)。修正後の[広域回帰114件](review-screenshots/web/final-web-quality/ui-results.json)はPC/mobileとも全件成功。途中で検査サーバーを誤って停止した回の記録は別ファイルに残し、成功数へ算入しない。
+- 本番のGoogleログイン自体は利用者が成功を確認したが、完了履歴ではなく探す画面へ移ったため、復帰の受入は未完。ローカルソース配備後、main上の旧Webを含むAndroidコミットの自動配備が上書きしたことをCloud Buildのsource revisionで確認。旧Webは完了履歴への移動をURLに保存していなかった。
+- D8/W15/C01: 完了履歴・自分のリストへの移動を既存の`?view=history/library`へ反映し、認証後も消さない。アカウント切替では私的workspaceを破棄し、新しい所有者で取得し直す。画面の場所だけをURLから復元し、私的データを別アカウントにコピーしない。Google SDKの実同意とは分け、アカウント切替・再読込のUI回帰を追加した。
+- 配備元は利用者の承認によりmainへ統一する。検証したWebソース・関連仕様・証跡をコミットしてpushし、そのGitコミットをApp Hostingで配備する。ローカル未コミットソースによる本番上書きを常用しない。build成功だけでなくCloud Runの配信revisionと本番疎通を確認してから、実Google復帰の再確認を依頼する。
+- 最終コードのbuild/lint、検索条件・API境界・BQ再送の単体21件が成功。[追加UI回帰30件](review-screenshots/web/final-web-quality/ui-final-followup.json)も全件成功。履歴画面のアカウント切替/再読込、別ユーザーのデータ破棄、公開先の下書き復元/閉じた際のfocusをPC/mobileで確認した。実Google SDKのpopup/redirect完了はこの30件には含めない。

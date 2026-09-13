@@ -21,8 +21,10 @@ export async function cueApiFetch(
     if (!user) {
       throw new Error("Google アカウントでログインしてください。");
     }
+    if (user.uid !== devUserId) throw new Error("アカウントが変更されました。もう一度操作してください。");
     requestedUser = user.uid;
     headers.set("authorization", `Bearer ${await user.getIdToken()}`);
+    if (auth.currentUser?.uid !== requestedUser) throw new Error("アカウントが変更されました。もう一度操作してください。");
   } else {
     headers.set("x-dev-user-id", devUserId);
   }

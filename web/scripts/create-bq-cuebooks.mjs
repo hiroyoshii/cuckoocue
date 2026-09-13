@@ -18,9 +18,10 @@ await client.query({ location, query: `
     id STRING NOT NULL, owner_user_id STRING NOT NULL, source_cuebook_id STRING NOT NULL,
     title STRING NOT NULL, tasks ${tasks}, domain STRING,
     context_text STRING, task_groupings ${groups}, search_text STRING,
-    context_embedding ARRAY<FLOAT64>, created_at TIMESTAMP NOT NULL
+    context_embedding ARRAY<FLOAT64>, created_at TIMESTAMP NOT NULL, withdrawn_at TIMESTAMP
   ) CLUSTER BY domain, source_cuebook_id;
   ALTER TABLE \`${project}.${dataset}.cuebook_revisions\` DROP COLUMN IF EXISTS revision;
+  ALTER TABLE \`${project}.${dataset}.cuebook_revisions\` ADD COLUMN IF NOT EXISTS withdrawn_at TIMESTAMP;
   CREATE TABLE IF NOT EXISTS \`${project}.${dataset}.shelves\` (
     id STRING NOT NULL, title STRING NOT NULL, context STRING NOT NULL,
     forked_from_shelf_id STRING, created_by STRING NOT NULL,

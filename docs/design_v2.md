@@ -763,7 +763,7 @@ Checks:
 | Revision比較 | 同じCuebookの複数Revision参照が実際に発生する |
 | 別検索projection | BQ正本の検索で不足が実測された場合のみ再検討 |
 | Shelf family grouping | fork数の増加により個別Shelfの取得・検索が妨げられる |
-| AI Shelf assistance | 人手での検索・差分理解がボトルネックになる |
+| AI Shelf assistance（検索・差分理解） | 人手での検索・差分理解がボトルネックになる。名前・contextの生成補助は2026-09-13に採用し、第16節に記載 |
 | Observation | 実行結果を公開作品へ戻す価値が確認される |
 | iOS integration | Android/WebのE2Eが成立した後 |
 
@@ -806,11 +806,15 @@ Cut: generic sync expansion, diff application, revision comparison, search proje
 - 私的保存はLLM処理や公開を必須にしない。公開時は準備済み原本のupdated_at・タイトル・タスクと確認snapshotを照合する。明らかな個人情報を検出した場合は公開を拒否する。私的保存済み原本は失わない。
 - 完了履歴で選択した内容を編集し、私的原本として保存してから再訪・LLM準備・確認・再保存・公開できる。公開版と配置を作るまで私的原本は検索へ出さない。別ユーザーの借用は新しい私的原本/Task IDと実行Runを作り、借用元Revisionを固定する。公開後の原本編集は、公開版・借用先・実行履歴を変更しない。
 - 公開グループの名前・contextにも既存の明らかな個人情報チェックを適用する。作成前の400/422では公開先入力を訂正できる。書込結果不明の通信失敗では同じ操作ID・内容で再試行し、確認できない成功を表示しない。グループ作成、自動参加、Revision公開の全体は単一transactionではない。
+- Shelfの名前・contextはLLMで準備し、利用者が手修正できる。新規公開先では配置するCuebookから自動生成。forkでは元Shelfの名前・contextを引き継ぎ、配置編集時と同様に明示操作で再生成できる。既存の意図を尊重し、異なるリストの属性を一人の属性として合成しない。生成APIは下書きだけを返し、保存・公開・参加・配置変更やMemory Bank更新を行わない。検索結果の関連Shelfは名前だけを表示し、Shelf.contextはShelf詳細で表示する。既存title/contextを使い、新しい保存モデルは追加しない。
 - 公開Revision作成とShelf配置を1つのBQ transactionで確定する。Shelf全件forkは、利用者が確認したupdated_atに対応する配置一式を固定コピーする。以後は元の更新へ追従しない。
 - WebのShelf forkは操作IDと確認済みupdated_atを一緒に、利用者・元Shelf別に一時保存する。通信失敗・再読込後の再送で元Shelfの最新版へ差し替えない。公開と日程付き再利用の再送も利用者・原本の版別に保持する。
 - 私的原本/Shelfの更新はexpected_updated_atで競合を検出し、無条件上書きをしない。Webでは最新の保存内容を確認してから、明示的に自分の編集で更新できる。
 - BQのINSERTはtransactionだけでは重複を防げないため、owner・操作IDから固定Job IDを作る。同じ操作IDの異なる入力はJobのrequest hashで拒否する。Job metadataは運用上の再送照合であり、domainの版Entityにはしない。[BQ transactionの同時実行仕様](https://docs.cloud.google.com/bigquery/docs/transactions#transaction_concurrency)。
 - 検索は公開Revision IDごとに返す。本文が同じという理由で別の公開版を除去しない。関連Shelfは配置の逆引きのみ。検索cursorはJobの用途・利用者labelを照合し、私的なBQ queryのJob IDへ差し替えて読めないようにする。
+- 検索候補は、検索文だけから決めたdomain一致と作業目的のBQ `SEARCH`で絞る。タスク本文と有効なtask_groupings名を対象とし、同一目的の同義語はOR、独立した複数目的はAND。通常の地域/経路は順位に残し、明示限定だけをcontext側の全文条件にする。domainだけならそのdomain内、対応なしは0件、処理失敗は検索失敗。プロフィールは条件生成へ渡さず、今回の用事に直接関係し検索文と競合しない既存属性だけを選び、query+profileの一つのembeddingで通過候補をソートする。全語ANDによる過剰な絞り込みは撤回。新しいDBカラムや検索projectionは追加しない。現行契約・評価基準・証跡は[検索再評価](search-relevance-evaluation.md)。
+- 公開版の個別取得も、既存のdomain/context_text/task_groupingsと実配置Shelfのid/titleを返す。検索経由・個別URL経由で文脈と関連Shelfへの到達可能性を変えない。owner_user_id、search_text、context_embeddingは公開応答へ出さない。取得はRevisionテーブルに限定し、私的Cuebook IDを公開内容へ解決しない。
+- Webでは既存のorigin_revision_idとforked_from_shelf_idから、借用元の公開版・コピー元Shelfへ辿れる。元の私的原本は公開しない。この参照導線を、完了Runから新原本への由来保存や過去版の差分表示が実装済みという意味にはしない。
 - Run更新はsnapshotのETagをIf-Matchで照合。同一内容の再送は成功とし、古い版の異なる送信は409。再利用作成時の`creation_request_hash`は運用metadataとして保持し、後のタスク編集・削除後も同じ作成操作を再送できる。snapshot APIやAndroidのRunモデルには含めない。
 - 日程付き再利用は`POST /api/reuse`。公開版の場合は先に私的Cuebookを借用保存し、同じ操作IDでRun作成まで再試行する。私的原本から使う場合は原本を複製しない。暦日の演算にはTemporalを使い、timezoneと夏時間を考慮し、nullの開始/期限を補完しない。
 - Webの日程確定では、全タスクの`task_dates: [{task_id, available_from_day, due_day}]`を上のAPIへ渡す。task_idは画面で確認した原本/公開版の既存Task ID。日付はISO暦日またはnullで、サーバーがIDの全件一致と日程を検証し、Runの既存absolute fieldへ変換する。公開版借用時はそのTask IDから借用先Task IDへ対応付ける。BQに日程修正用の列やEntityは追加しない。APIでtask_datesを省略した場合は従来の自動生成のみ。

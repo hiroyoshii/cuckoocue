@@ -3,13 +3,14 @@ import { requireRegisteredUserId } from "@/lib/auth";
 import { enrichTaskList } from "@/lib/task-list-enrichment";
 import { assertPublicCorpusSafe, UnsafeCorpusContentError } from "@/lib/public-corpus-safety";
 import { taskListDraftSchema } from "@/lib/schema";
+import { listTaskListDomains } from "@/lib/bigquery";
 
 export async function POST(request: NextRequest) {
   try {
     await requireRegisteredUserId(request);
     const input = taskListDraftSchema.parse(await request.json());
     assertPublicCorpusSafe(input);
-    const enrichment = await enrichTaskList(input);
+    const enrichment = await enrichTaskList(input, await listTaskListDomains());
 
     return NextResponse.json({ enrichment });
   } catch (error) {

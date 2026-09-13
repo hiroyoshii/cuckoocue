@@ -1,5 +1,7 @@
 {
   "apphosting": {
-    "source": "."
+    "rootDir": ".",
+    "backendId": "cuckoocue",
+    "ignore": ["node_modules", ".git", ".next", "test-results", "playwright-report", "firebase-debug.log", "prototypes"]
   }
 }

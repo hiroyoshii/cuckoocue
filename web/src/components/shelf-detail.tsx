@@ -7,6 +7,7 @@ import type { ShelfDetail, PublicRevisionSummary } from "@/lib/shelves";
 import type { UpdateShelfInput } from "@/lib/schema";
 import { TaskList } from "./tasks/task-list";
 import { ScheduledReuse } from "./scheduled-reuse";
+import { ShelfDescriptionGenerator } from "./shelf-description-generator";
 
 type Draft = { title: string; context: string; items: ShelfDetail["items"] };
 type ForkRequest = { operation_id: string; expected_updated_at: string; title: string; context: string; items: ShelfDetail["items"] };
@@ -31,6 +32,7 @@ export function ShelfDetailView(props: Props) {
   const [undo, setUndo] = useState<Draft[]>([]);
   const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [generating, setGenerating] = useState(false);
   const [operation, setOperation] = useState<"save" | "copy" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -127,7 +129,7 @@ export function ShelfDetailView(props: Props) {
     catch (e) { setError(e instanceof Error ? e.message : "最新の内容を取得できませんでした。"); }
     finally { inFlight.current = false; setBusy(false); }
   }
-  const locked = busy || !!pending || !ready || props.busy;
+  const locked = busy || generating || !!pending || !ready || props.busy;
   return <div className="workspace shelf-detail-workspace" aria-busy={busy || props.busy}>
     <header className="workspace-heading shelf-heading">
       <div className="shelf-navigation">
@@ -136,6 +138,7 @@ export function ShelfDetailView(props: Props) {
       </div>
       <h1>{shelf.title}</h1>
       <p>{shelf.context}</p>
+      {shelf.forked_from_shelf_id ? <a className="text-action source-reference" href={`/?shelf_id=${encodeURIComponent(shelf.forked_from_shelf_id)}`}>コピー元のグループを見る</a> : null}
       <div className="shelf-edit-actions"><button className="secondary-action" disabled={locked} onClick={() => {
         if (!props.registered) { props.onSignIn(); return; }
         setFork((value) => value ?? { operation_id: crypto.randomUUID(), expected_updated_at: shelf.updated_at, title: shelf.title, context: shelf.context, items: shelf.items });
@@ -155,16 +158,22 @@ export function ShelfDetailView(props: Props) {
     </section> : null}
     {fork ? <section className="publication-panel" aria-label="全件コピーの確認">
       <h2>グループを全件コピー</h2><p>公開される新しいグループ</p>
-      <fieldset disabled={busy || forkSent}>
+      <ShelfDescriptionGenerator userId={userId} disabled={busy || forkSent || conflict} onBusy={setGenerating}
+        input={{ title: fork.title, context: fork.context, lists: fork.items.filter(item => !item.revision.withdrawn_at).map(item => ({ title: item.revision.title, tasks: item.revision.tasks.map(task => task.title) })) }}
+        onGenerated={value => setFork({ ...fork, ...value })} />
+      <fieldset disabled={busy || forkSent || generating}>
         <label>グループ名<input aria-label="コピー先のグループ名" value={fork.title} maxLength={120} onChange={(e) => setFork({ ...fork, title: e.target.value })} /></label>
         <label>対象となる状況<textarea aria-label="コピー先の状況" value={fork.context} maxLength={1200} onChange={(e) => setFork({ ...fork, context: e.target.value })} /></label>
       </fieldset>
       <p>{fork.items.length}件すべて・以下の公開版を固定</p>
       <ol>{fork.items.map((item) => <li key={item.revision_id}>{item.revision.title} <small>{item.revision.published_at.slice(0, 10)} 公開</small></li>)}</ol>
-      <div className="shelf-edit-actions"><button className="primary-action" disabled={busy || conflict || !fork.title.trim() || !fork.context.trim()} onClick={() => void copy()}><Copy size={16} />{operation === "copy" ? "コピーしています" : forkSent ? "コピーを再試行" : "公開グループとしてコピー"}</button>
-        {!forkSent ? <button className="text-action" onClick={() => setFork(null)}>キャンセル</button> : null}</div>
+      <div className="shelf-edit-actions"><button className="primary-action" disabled={busy || generating || conflict || !fork.title.trim() || !fork.context.trim()} onClick={() => void copy()}><Copy size={16} />{operation === "copy" ? "コピーしています" : forkSent ? "コピーを再試行" : "公開グループとしてコピー"}</button>
+        {!forkSent ? <button className="text-action" disabled={generating} onClick={() => setFork(null)}>キャンセル</button> : null}</div>
     </section> : null}
     {owner ? <section className="shelf-editor" aria-label="グループを編集">
+      <ShelfDescriptionGenerator userId={userId} disabled={busy || !!pending || !ready || props.busy || conflict || !!fork} onBusy={setGenerating}
+        input={{ title: draft.title, context: draft.context, lists: draft.items.filter(item => !item.revision.withdrawn_at).map(item => ({ title: item.revision.title, tasks: item.revision.tasks.map(task => task.title) })) }}
+        onGenerated={value => edit({ ...draft, ...value })} />
       <fieldset className="shelf-detail-fields" disabled={locked || conflict}>
         <label>グループ名<input aria-label="グループ名" value={draft.title} maxLength={120} onChange={(e) => edit({ ...draft, title: e.target.value })} /></label>
         <label>対象となる状況<textarea aria-label="グループの状況" value={draft.context} maxLength={1200} onChange={(e) => edit({ ...draft, context: e.target.value })} /></label>
@@ -185,18 +194,19 @@ export function ShelfDetailView(props: Props) {
         </div>
       </div>)}</div>
       {!draft.items.length ? <p>リストはまだありません。</p> : null}
-      <div className="shelf-edit-actions"><button className="primary-action" disabled={busy || !ready || conflict || (!dirty && !pending) || !draft.title.trim() || !draft.context.trim()} onClick={() => void save()}><Check size={16} />{operation === "save" ? "保存しています" : pending ? "保存を再試行" : "変更を保存"}</button>
+      <div className="shelf-edit-actions"><button className="primary-action" disabled={busy || generating || !ready || conflict || (!dirty && !pending) || !draft.title.trim() || !draft.context.trim()} onClick={() => void save()}><Check size={16} />{operation === "save" ? "保存しています" : pending ? "保存を再試行" : "変更を保存"}</button>
         <span role="status">{operation === "save" ? "保存中" : pending ? "保存結果を未確認" : dirty ? "未保存" : "保存済み"}</span>
-        {dirty && !pending ? <button className="text-action" disabled={busy} onClick={() => { setDraft(draftOf(shelf)); setBase(shelf.updated_at); setUndo([]); setConflict(false); setError(null); }}>変更を破棄</button> : null}
+        {dirty && !pending ? <button className="text-action" disabled={busy || generating} onClick={() => { setDraft(draftOf(shelf)); setBase(shelf.updated_at); setUndo([]); setConflict(false); setError(null); }}>変更を破棄</button> : null}
       </div>
     </section> : <section aria-label="グループのリスト"><p>{shelf.items.length}件</p>{shelf.items.map((item) => <RevisionCard key={item.revision_id} revision={item.revision} userId={userId} onSignIn={props.onSignIn} />)}{!shelf.items.length ? <p>リストはまだありません。</p> : null}</section>}
   </div>;
 }
 
 function RevisionCard({ revision, userId, onSignIn }: { revision: PublicRevisionSummary; userId: string; onSignIn: () => void }) {
+  if (revision.withdrawn_at) return <article className="cue-result shelf-revision"><h2>{revision.title}</h2><p>公開停止</p></article>;
   const tasks = revision.tasks.map((task) => ({ ...task, text: task.title }));
   return <article className="cue-result shelf-revision">
-    <header className="result-title-row"><div><small>{revision.published_at.slice(0, 10)} 公開</small><h2>{revision.title}</h2></div>
+    <header className="result-title-row"><div><small>{revision.published_at.slice(0, 10)} 公開</small><h2><a href={`/?revision_id=${encodeURIComponent(revision.id)}`}>{revision.title}</a></h2></div>
       <ScheduledReuse source={{ type: "revision", id: revision.id }} title={revision.title} tasks={tasks} devUserId={userId} onSignIn={onSignIn} />
     </header>
     <TaskList tasks={tasks.slice(0, 3)} metadata />

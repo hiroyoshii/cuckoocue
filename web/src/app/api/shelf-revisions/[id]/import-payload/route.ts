@@ -22,6 +22,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     if (!revision) {
       return NextResponse.json({ error: "Revision not found" }, { status: 404 });
     }
+    if (revision.withdrawn_at) return NextResponse.json({ error: "この公開版は公開を停止しています。" }, { status: 410 });
 
     return NextResponse.json({
       importPayload: {

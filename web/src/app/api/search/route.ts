@@ -6,13 +6,15 @@ import {
   listTaskListDomains,
   searchTaskListEntries,
 } from "@/lib/bigquery";
-import { mapQueryToSearchDomain } from "@/lib/search-domain";
+import { interpretSearchQuery, selectSearchProfileAttributes } from "@/lib/search-domain";
 import { searchTaskListsSchema } from "@/lib/schema";
 
 export async function POST(request: NextRequest) {
   try {
     const user = await requireRequestUser(request);
-    const input = searchTaskListsSchema.parse(await request.json());
+    const parsed = searchTaskListsSchema.safeParse(await request.json());
+    if (!parsed.success) return NextResponse.json({ error: "検索条件を確認してください。" }, { status: 400 });
+    const input = parsed.data;
     const pageSize = input.page_size ?? 20;
 
     if (input.cursor) {
@@ -35,16 +37,17 @@ export async function POST(request: NextRequest) {
       ? Promise.resolve([])
       : retrieveUserProfileAttributes(user.id);
     const searchDomainPromise = listTaskListDomains().then((domains) =>
-      mapQueryToSearchDomain(message, domains),
+      interpretSearchQuery(message, domains),
     );
-    const [userProfileAttributes, searchDomain] = await Promise.all([
+    const [userProfileAttributes, searchPlan] = await Promise.all([
       userProfileAttributesPromise,
       searchDomainPromise,
     ]);
+    const rankingAttributes = await selectSearchProfileAttributes(message, userProfileAttributes, searchPlan);
     const results = await searchTaskListEntries(
       message,
-      userProfileAttributes,
-      searchDomain,
+      rankingAttributes,
+      searchPlan,
       pageSize,
       user.id,
     );
@@ -52,7 +55,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       memoryFacts: userProfileAttributes,
       userProfileAttributes,
-      searchDomain,
+      searchDomain: searchPlan.domain,
       results: results.results,
       nextCursor: results.nextCursor,
     });
@@ -65,7 +68,6 @@ function errorResponse(error: unknown) {
   if (error instanceof Response) {
     return error;
   }
-
-  const message = error instanceof Error ? error.message : "Unknown error";
-  return NextResponse.json({ error: message }, { status: 503 });
+  console.error("Search processing failed", error);
+  return NextResponse.json({ error: "検索処理に失敗しました。時間をおいて再検索してください。" }, { status: 503 });
 }

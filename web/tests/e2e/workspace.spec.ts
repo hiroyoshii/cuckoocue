@@ -77,11 +77,11 @@ test("search is scannable, accessible, and restored after reload", async ({ page
 
   await expect(page.getByRole("heading", { name: searchResults[0].title })).toBeVisible();
   await expect(page.locator(".cue-result")).toHaveCount(2);
-  await expect(page.locator(".task-preview input, .task-preview button")).toHaveCount(0);
+  await expect(page.locator(".result-task-preview input, .result-task-preview button")).toHaveCount(0);
   await expect(page.locator(".cue-result").first()).toContainText(searchResults[0].context_text);
-  await expect(page.locator(".cue-result").first().locator(".task-preview li")).toHaveCount(3);
+  await expect(page.locator(".cue-result").first().locator(".result-task-preview")).toHaveText(searchResults[0].tasks.slice(0, 3).map(task => task.text).join(" / "));
 
-  await page.getByRole("button", { name: `${searchResults[0].title}をAndroidに取り込む` }).click();
+  await page.getByRole("button", { name: `${searchResults[0].title}の日程を決めて使う` }).click();
   await expect(page.getByRole("heading", { name: "最終日を選ぶ" })).toBeVisible();
   await page.locator("#target-anchor-day").fill("2026-10-01");
   const pastConfirmation = page.getByRole("checkbox", { name: "過去の日付を含む日程で保存する" });
