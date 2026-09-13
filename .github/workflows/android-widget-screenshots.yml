@@ -85,6 +85,7 @@ jobs:
             build/android-widget-screenshots/**/*.png
             build/android-widget-screenshots/*.png
             build/android-widget-screenshots/verification.log
+            build/android-widget-screenshots/verification-failure.xml
             android/app/build/reports/androidTests/**
           if-no-files-found: warn
           retention-days: 14

@@ -531,6 +531,8 @@ capture_verification_failure() {
   trap - EXIT
   set +e
   echo "Verification failed: exit=$status line=$line command=$command" >&2
+  # Keep this separate from the wrapper's long log annotation (GitHub truncates it).
+  echo "::error title=Widget verification stopped::exit=$status line=$line command=$command"
   screenshot "verification-failure-line-$line"
   timeout 15s "$ADB" shell uiautomator dump /sdcard/verification-failure.xml
   timeout 10s "$ADB" pull /sdcard/verification-failure.xml "$OUT_DIR/verification-failure.xml"
