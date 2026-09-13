@@ -13,7 +13,7 @@ on:
       - ".github/workflows/ios-widget-screenshots.yml"
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -142,34 +142,6 @@ jobs:
           xcrun simctl io "$simulator_id" screenshot \
             build/ios-widget-screenshots/widget-states/widget-actual-home-screen.png
 
-      - name: Persist screenshots on branch
-        if: always() && github.event_name == 'push'
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p docs/review-screenshots/ios/widget-states docs/review-screenshots/ios/app
-          if [ ! -d build/ios-widget-screenshots ]; then
-            echo "No iOS screenshots were produced; skipping persistence."
-            exit 0
-          fi
-          if compgen -G "build/ios-widget-screenshots/*.png" >/dev/null; then
-            cp build/ios-widget-screenshots/*.png docs/review-screenshots/ios/
-          fi
-          if compgen -G "build/ios-widget-screenshots/widget-states/*.png" >/dev/null; then
-            cp build/ios-widget-screenshots/widget-states/*.png docs/review-screenshots/ios/widget-states/
-          fi
-          if compgen -G "build/ios-widget-screenshots/app/*.png" >/dev/null; then
-            cp build/ios-widget-screenshots/app/*.png docs/review-screenshots/ios/app/
-          fi
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add docs/review-screenshots/ios
-          if ! git diff --cached --quiet; then
-            git commit -m "Update iOS widget screenshots"
-            git pull --rebase origin "$GITHUB_REF_NAME"
-            git push
-          fi
-
       - name: Require actual Home Screen screenshot
         if: steps.home-screen.outcome == 'failure'
         run: exit 1
@@ -182,8 +154,5 @@ jobs:
           path: |
             build/ios-widget-screenshots/**/*.png
             build/ios-widget-screenshots/*.png
-            build/CuckooCueBuild.log
-            build/CuckooCueHomeScreenTests.xcresult
-            build/CuckooCueHomeScreenTests.log
           if-no-files-found: warn
           retention-days: 14

@@ -13,7 +13,7 @@ on:
       - ".github/workflows/android-widget-screenshots.yml"
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -51,51 +51,6 @@ jobs:
           script: |
             bash ./android/scripts/ci-widget-screenshots.sh
 
-      - name: Persist failure evidence on branch
-        if: failure() && github.event_name == 'push'
-        shell: bash
-        run: |
-          set -euo pipefail
-          evidence="docs/review-screenshots/android/failures/$GITHUB_RUN_ID"
-          mkdir -p "$evidence"
-          for file in build/android-widget-screenshots/verification.log build/android-widget-screenshots/verification-failure*.png build/android-widget-screenshots/verification-failure.xml build/android-widget-screenshots/verification-appwidget.txt; do
-            if [ -f "$file" ]; then cp "$file" "$evidence/"; fi
-          done
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add "$evidence"
-          if [ -f "$evidence/verification.log" ]; then git add -f "$evidence/verification.log"; fi
-          if ! git diff --cached --quiet; then
-            git commit -m "Record Android widget CI failure evidence"
-            git pull --rebase origin "$GITHUB_REF_NAME"
-            git push
-          fi
-
-      - name: Persist screenshots on branch
-        if: github.event_name == 'push'
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p docs/review-screenshots/android
-          if [ ! -d build/android-widget-screenshots ]; then
-            echo "No Android screenshots were produced; skipping persistence."
-            exit 0
-          fi
-          find build/android-widget-screenshots -type f -name '*.png' -print0 |
-            while IFS= read -r -d '' screenshot; do
-              relative="${screenshot#build/android-widget-screenshots/}"
-              mkdir -p "docs/review-screenshots/android/$(dirname "$relative")"
-              cp "$screenshot" "docs/review-screenshots/android/$relative"
-            done
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add docs/review-screenshots/android
-          if ! git diff --cached --quiet; then
-            git commit -m "Update Android widget screenshots"
-            git pull --rebase origin "$GITHUB_REF_NAME"
-            git push
-          fi
-
       - name: Upload widget screenshots
         if: always()
         uses: actions/upload-artifact@v4
@@ -104,9 +59,5 @@ jobs:
           path: |
             build/android-widget-screenshots/**/*.png
             build/android-widget-screenshots/*.png
-            build/android-widget-screenshots/verification.log
-            build/android-widget-screenshots/verification-failure.xml
-            build/android-widget-screenshots/verification-appwidget.txt
-            android/app/build/reports/androidTests/**
           if-no-files-found: warn
           retention-days: 14

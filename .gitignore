@@ -3,3 +3,7 @@ android/.kotlin/
 web/firebase-debug.log
 *.log
 *.zip
+
+# Local review evidence may contain production configuration and personal data.
+/docs/review-screenshots/
+/output/
