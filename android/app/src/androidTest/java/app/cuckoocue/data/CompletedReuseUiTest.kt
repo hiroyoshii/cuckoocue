@@ -20,7 +20,7 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class CompletedReuseUiTest {
     @Test
-    fun selectCompletedTasksAndReuseWithoutLoginOrDateDialog(): Unit = runBlocking {
+    fun reuseAllCompletedTasksWithoutSelectionLoginOrDateDialog(): Unit = runBlocking {
         // Never upload test content into a signed-in user's account.
         assumeTrue("Local UI fixture requires signed-out app", FirebaseAuth.getInstance().currentUser == null)
         val context = InstrumentationRegistry.getInstrumentation().targetContext
@@ -44,12 +44,8 @@ class CompletedReuseUiTest {
             assertTrue(device.wait(Until.hasObject(By.text("このリストは完了しました")), 20_000))
             device.waitForIdle()
             device.takeScreenshot(File(out, "completed-actions.png"))
-            device.findObject(By.text("内容を選んで使う")).click()
-            assertTrue(device.wait(Until.hasObject(By.text("3件選択")), 10_000))
-            device.findObject(By.text("予約番号を控える")).click()
-            assertTrue(device.wait(Until.hasObject(By.text("2件選択")), 10_000))
-            device.takeScreenshot(File(out, "completed-selection.png"))
-            // Dialog is the topmost window; only its enabled button should be reachable.
+            assertFalse(device.hasObject(By.text("内容を選んで使う")))
+            assertTrue(device.hasObject(By.text("再利用用に整える ↗")))
             device.findObject(By.text("もう一度使う")).click()
             var copyId: String? = null
             repeat(100) {
@@ -60,7 +56,7 @@ class CompletedReuseUiTest {
             val copy = requireNotNull(dao.runById(requireNotNull(copyId)))
             createdCopyId = copy.id
             val copied = dao.tasksForRun(copy.id)
-            assertEquals(listOf("充電器を入れる", "家の鍵を確認する"), copied.map { it.title })
+            assertEquals(tasks.map { it.title }, copied.map { it.title })
             assertTrue(copied.all { it.completedAt == null && it.dueAt == null && it.userPriority == null })
             assertNull(copy.targetAnchorDay)
             assertEquals(tasks, dao.tasksForRun(sourceId))
