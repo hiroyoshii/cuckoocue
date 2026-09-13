@@ -1,0 +1,4 @@
+
+# Generated verification material must not return to Git history.
+/docs/review-screenshots/
+/output/
