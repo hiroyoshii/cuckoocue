@@ -7,6 +7,7 @@ import androidx.test.uiautomator.By
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.Until
 import app.cuckoocue.MainActivity
+import app.cuckoocue.appearance.AppearanceRepository
 import com.google.firebase.auth.FirebaseAuth
 import java.io.File
 import java.util.UUID
@@ -26,6 +27,8 @@ class CompletedReuseUiTest {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val database = CuckooDatabase.getInstance(context)
         val dao = database.dao()
+        val appearance = AppearanceRepository.getInstance(context)
+        val beforeAppearance = appearance.getSettings()
         val sourceId = "reuse-ui-${UUID.randomUUID()}"
         val beforeIds = dao.allRunIds().toSet()
         val now = System.currentTimeMillis()
@@ -65,6 +68,12 @@ class CompletedReuseUiTest {
             assertTrue(device.wait(Until.hasObject(By.text("家の鍵を確認する")), 10_000))
             device.waitForIdle()
             device.takeScreenshot(File(out, "reused-run.png"))
+            // Reuse deliberately clears priority/date. Explicitly configure these local tasks as Cues.
+            for (task in copied) {
+                dao.updateTaskDetails(task.id, task.title, null, now - 86_400_000L, 0, now)
+                dao.refreshWidgetCueForTask(task.id, now)
+            }
+            val previewTasks = dao.tasksForRun(copy.id)
             context.startActivity(Intent(context, MainActivity::class.java).setAction("app.cuckoocue.OPEN_WIDGET")
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             assertTrue(device.wait(Until.hasObject(By.text("新しいリスト")), 10_000))
@@ -72,8 +81,39 @@ class CompletedReuseUiTest {
             device.findObject(By.text("表示")).click()
             assertTrue(device.wait(Until.hasObject(By.text("Widget text")), 10_000))
             device.waitForIdle()
+            assertTrue(device.wait(Until.hasObject(By.descContains("操作できないWidgetプレビュー")), 20_000))
+            assertTrue(device.wait(Until.hasObject(By.descContains("充電器を入れる")), 20_000))
+            device.findObjects(By.text("Light")).first().click()
+            assertTrue(device.wait(Until.hasObject(By.descContains("、Light。")), 20_000))
             device.takeScreenshot(File(out, "widget-settings.png"))
+            device.findObject(By.text("Compact")).click()
+            assertTrue(device.wait(Until.hasObject(By.descContains("Compact、")), 20_000))
+            device.takeScreenshot(File(out, "widget-preview-compact.png"))
+            device.findObject(By.text("Large")).click()
+            assertTrue(device.wait(Until.hasObject(By.descContains("Large、")), 20_000))
+            device.takeScreenshot(File(out, "widget-preview-large.png"))
+            device.findObjects(By.text("Dark")).first().click()
+            assertTrue(device.wait(Until.hasObject(By.descContains("Large、Dark")), 20_000))
+            device.takeScreenshot(File(out, "widget-preview-dark.png"))
+            device.findObject(By.descContains("操作できないWidgetプレビュー")).click()
+            assertEquals(previewTasks, dao.tasksForRun(copy.id))
+            dao.completeTaskAndRemoveWidgetCue(copied.first().id, System.currentTimeMillis())
+            assertTrue(device.wait(Until.gone(By.descContains("充電器を入れる")), 20_000))
+            device.takeScreenshot(File(out, "widget-preview-data-updated.png"))
+            repeat(3) {
+                device.findObject(By.text("Compact")).click()
+                device.findObject(By.text("Large")).click()
+                assertTrue(device.wait(Until.hasObject(By.descContains("Large、Dark")), 20_000))
+            }
+            device.pressBack()
+            assertTrue(device.wait(Until.hasObject(By.text("新しいリスト")), 10_000))
+            device.findObject(By.text("表示")).click()
+            assertTrue(device.wait(Until.hasObject(By.descContains("Large、Dark")), 20_000))
+            device.takeScreenshot(File(out, "widget-preview-reopened.png"))
         } finally {
+            appearance.setAppTheme(beforeAppearance.appTheme)
+            appearance.setWidgetTheme(beforeAppearance.widgetTheme)
+            appearance.setWidgetTextScale(beforeAppearance.widgetTextScale)
             // Remove only this test's newly created Runs; retain all pre-existing data and widget placement.
             for (id in listOfNotNull(sourceId, createdCopyId)) {
                 database.openHelper.writableDatabase.execSQL("DELETE FROM runs WHERE id = ?", arrayOf(id))

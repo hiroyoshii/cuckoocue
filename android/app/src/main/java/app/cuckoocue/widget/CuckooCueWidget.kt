@@ -195,6 +195,13 @@ object CuckooCueWidgetUpdater {
     }
 }
 
+/** The settings preview uses the production renderer and aggregate Cue projection. */
+@Composable
+internal fun WidgetSettingsPreviewContent(cues: List<WidgetCue>, settings: AppearanceSettings, systemDark: Boolean) {
+    CuckooCueWidgetContent(cues, cues, 0, null, null,
+        widgetColors(settings.resolveWidgetDark(systemDark)), widgetMetrics(settings.widgetTextScale))
+}
+
 @Composable
 private fun CuckooCueWidgetContent(
     cues: List<WidgetCue>,

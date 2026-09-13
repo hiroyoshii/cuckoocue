@@ -445,7 +445,7 @@ request_pin_widget() {
     assert_text_absent "表示例" || return 1
     tap_text "表示" 2 || return 1
     wait_for_text "ホーム画面にWidgetを追加" 10 1 || return 1
-    wait_for_text "表示例" 10 1 || return 1
+    wait_for_text "Widgetプレビュー" 10 1 || return 1
     screenshot "app-widget-install-entry" || return 1
     tap_text "ホーム画面にWidgetを追加" 2 || return 1
     screenshot "app-widget-install-confirmation" || return 1

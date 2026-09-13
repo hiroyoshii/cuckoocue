@@ -2354,16 +2354,7 @@ private fun AppearanceSettingsPanel(
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Text("表示", color = colors.muted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-            ChoiceRow(
-                label = "本体",
-                options = listOf(
-                    "System" to AppThemeMode.System,
-                    "Light" to AppThemeMode.Light,
-                    "Dark" to AppThemeMode.Dark,
-                ),
-                selected = settings.appTheme,
-                onSelect = onAppThemeChange,
-            )
+            WidgetSettingsPreview(settings)
             ChoiceRow(
                 label = "Widget",
                 options = listOf(
@@ -2385,6 +2376,12 @@ private fun AppearanceSettingsPanel(
                 onSelect = onWidgetTextScaleChange,
             )
             WidgetInstallAction()
+            ChoiceRow(
+                label = "本体",
+                options = listOf("System" to AppThemeMode.System, "Light" to AppThemeMode.Light, "Dark" to AppThemeMode.Dark),
+                selected = settings.appTheme,
+                onSelect = onAppThemeChange,
+            )
         }
     }
 }
