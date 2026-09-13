@@ -117,3 +117,5 @@ Androidの計装試験と撮影は`CompletedReuseUiTest`、DAO/転送/認証順�
 ローカルAndroid 14で計装31件が成功（UI 1、DAO 20、転送6、認証順序4）。全件完了の操作表示、3件から2件の選択、新Runへの2件コピーと元データの非変更を実行確認した。最初の撮影試験はJUnitメソッドの戻り型をUnitへ訂正して再実行。実行環境のOOMによるEmulator停止とPixel LauncherのANRも発生したが、Launcher復旧後の同じアプリで31件が成功した。アプリのクラッシュや製品修正の根拠とは扱わない。
 
 画面確認では既存の色・部品を維持し、即時再利用を主操作、Web編集と項目選択を副操作とした。選択画面に2件の選択状態と両操作を表示でき、コピー後は選択した本文だけが未完了で並ぶことを確認。今回の実Google認証往復・物理端末の受入は未実施。
+
+CI最終受入: [34743616574](https://github.com/hiroyoshii/cuckoocue/actions/runs/34743616574)が成功（検証対象fdbbd09、CI画像保存f3e82a0）。Android 15上の計装試験・既存Widget操作回帰・撮影・artifact uploadまで完了。[完了画面](review-screenshots/android/completed-reuse/completed-actions.png)、[項目選択](review-screenshots/android/completed-reuse/completed-selection.png)、[コピー後](review-screenshots/android/completed-reuse/reused-run.png)はこのCIの画像であり、ローカルAndroid 14の撮影とは区別する。3枚を目視確認し、操作ラベルの欠落がなく、選択した2件だけが新しい未完了リストへ移ることを確認した。
