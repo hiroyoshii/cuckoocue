@@ -212,21 +212,6 @@ private fun CuckooCueWidgetContent(
             .clickable(actionStartActivity(widgetOpenIntent(context)))
             .padding(start = 8.dp, top = 8.dp, end = 8.dp, bottom = 10.dp),
     ) {
-        if (selectedRun != null) {
-            Box(
-                modifier = GlanceModifier.fillMaxWidth().height(48.dp)
-                    .semantics { contentDescription = "${selectedRun.runTitle}をアプリで開く" }
-                    .clickable(actionStartActivity(widgetOpenIntent(context, selectedRun.runId)))
-                    .padding(horizontal = 8.dp),
-                contentAlignment = Alignment.CenterStart,
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(selectedRun.runTitle, modifier = GlanceModifier.defaultWeight(), maxLines = 1,
-                        style = TextStyle(color = colors.teal, fontSize = 13.sp, fontWeight = FontWeight.Bold))
-                    Text("↗", style = TextStyle(color = colors.teal, fontSize = 18.sp))
-                }
-            }
-        }
         if (cues.isEmpty()) {
             EmptyState(
                 colors = colors,
@@ -234,6 +219,23 @@ private fun CuckooCueWidgetContent(
             )
         } else {
             LazyColumn(modifier = GlanceModifier.defaultWeight()) {
+                if (selectedRun != null) {
+                    item {
+                        Box(
+                            modifier = GlanceModifier.fillMaxWidth().height(48.dp)
+                                .semantics { contentDescription = "${selectedRun.runTitle}をアプリで開く" }
+                                .clickable(actionStartActivity(widgetOpenIntent(context, selectedRun.runId)))
+                                .padding(horizontal = 8.dp),
+                            contentAlignment = Alignment.CenterStart,
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(selectedRun.runTitle, modifier = GlanceModifier.defaultWeight(), maxLines = 1,
+                                    style = TextStyle(color = colors.teal, fontSize = 13.sp, fontWeight = FontWeight.Bold))
+                                Text("↗", style = TextStyle(color = colors.teal, fontSize = 18.sp))
+                            }
+                        }
+                    }
+                }
                 items(cues) { cue ->
                     CueRow(
                         cue = cue,

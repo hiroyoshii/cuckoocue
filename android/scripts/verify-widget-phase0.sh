@@ -533,9 +533,9 @@ restart_app_fresh 4
 wait_for_text "朝の支度" 20 1 || true
 screenshot "app-list-many-runs"
 tap_text "朝の支度" 2 || true
-wait_for_text "このリスト" 10 1 || true
+wait_for_text "新しい項目" 10 1
 tap_text "⋯" 2 || true
-wait_for_text "ホーム画面" 10 1 || true
+wait_for_text "このCueはホーム画面に出ます。" 10 1
 screenshot "app-run-detail-cue-settings"
 home
 show_widget_page || true
@@ -545,6 +545,19 @@ echo "== Widget navigation preserves footer filtering and opens local Run withou
 tap_text "朝の支度" 2
 wait_for_text "↗" 10 1
 screenshot "navigation-filtered-run"
+run_screen_profile "filtered-narrow" "900x2424" "440"
+run_screen_profile "filtered-short" "1080x1800" "420"
+reset_screen_profile
+home
+show_widget_page
+# Return the list to its first item after the profile scroll checks.
+adb_shell input swipe 300 250 300 500 450
+sleep 2
+debug_broadcast "$SET_APPEARANCE_ACTION" --es widget_theme Dark --es widget_text_scale Large
+sleep 2
+screenshot "navigation-filtered-dark-large"
+debug_broadcast "$SET_APPEARANCE_ACTION" --es widget_theme FollowApp --es widget_text_scale Standard
+sleep 2
 tap_text "↗" 2
 wait_for_text "新しい項目" 10 1
 wait_for_text "朝の支度" 10 1
