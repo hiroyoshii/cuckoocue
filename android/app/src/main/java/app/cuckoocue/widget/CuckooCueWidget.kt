@@ -19,10 +19,12 @@ import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
+import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.LocalContext
+import androidx.glance.LocalSize
 import androidx.glance.semantics.semantics
 import androidx.glance.semantics.contentDescription
 import androidx.glance.appwidget.cornerRadius
@@ -123,6 +125,7 @@ class CuckooCueWidgetReceiver : GlanceAppWidgetReceiver() {
 }
 
 class CuckooCueWidget : GlanceAppWidget() {
+    override val sizeMode = SizeMode.Exact
     override val stateDefinition: GlanceStateDefinition<*> = PreferencesGlanceStateDefinition
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
@@ -204,6 +207,10 @@ private fun CuckooCueWidgetContent(
 ) {
     val context = LocalContext.current
     val selectedRun = allCues.firstOrNull { it.runId == selectedFooterTipKey }
+    val contentHeight = cues.fold(if (selectedRun != null) 48.dp else 0.dp) { height, cue ->
+        height + cue.rowHeight(metrics)
+    }
+    val listHeight = contentHeight.coerceAtMost((LocalSize.current.height - 50.dp).coerceAtLeast(1.dp))
     Column(
         modifier = GlanceModifier
             .fillMaxSize()
@@ -218,35 +225,36 @@ private fun CuckooCueWidgetContent(
                 modifier = GlanceModifier.defaultWeight(),
             )
         } else {
-            LazyColumn(modifier = GlanceModifier.defaultWeight()) {
-                if (selectedRun != null) {
-                    item {
-                        Box(
-                            modifier = GlanceModifier.fillMaxWidth().height(48.dp)
-                                .semantics { contentDescription = "${selectedRun.runTitle}をアプリで開く" }
-                                .clickable(actionStartActivity(widgetOpenIntent(context, selectedRun.runId)))
-                                .padding(horizontal = 8.dp),
-                            contentAlignment = Alignment.CenterStart,
-                        ) {
-                            Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                Text(selectedRun.runTitle, modifier = GlanceModifier.defaultWeight(), maxLines = 1,
-                                    style = TextStyle(color = colors.teal, fontSize = 13.sp, fontWeight = FontWeight.Bold))
-                                Text("↗", style = TextStyle(color = colors.teal, fontSize = 18.sp))
+                LazyColumn(modifier = GlanceModifier.fillMaxWidth().height(listHeight)) {
+                    if (selectedRun != null) {
+                        item {
+                            Box(
+                                modifier = GlanceModifier.fillMaxWidth().height(48.dp)
+                                    .semantics { contentDescription = "${selectedRun.runTitle}をアプリで開く" }
+                                    .clickable(actionStartActivity(widgetOpenIntent(context, selectedRun.runId)))
+                                    .padding(horizontal = 8.dp),
+                                contentAlignment = Alignment.CenterStart,
+                            ) {
+                                Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                    Text(selectedRun.runTitle, modifier = GlanceModifier.defaultWeight(), maxLines = 1,
+                                        style = TextStyle(color = colors.teal, fontSize = 13.sp, fontWeight = FontWeight.Bold))
+                                    Text("↗", style = TextStyle(color = colors.teal, fontSize = 18.sp))
+                                }
                             }
                         }
                     }
+                    items(cues) { cue ->
+                        CueRow(
+                            cue = cue,
+                            colors = colors,
+                            metrics = metrics,
+                            modifier = GlanceModifier
+                                .fillMaxWidth()
+                                .height(cue.rowHeight(metrics)),
+                        )
+                    }
                 }
-                items(cues) { cue ->
-                    CueRow(
-                        cue = cue,
-                        colors = colors,
-                        metrics = metrics,
-                        modifier = GlanceModifier
-                            .fillMaxWidth()
-                            .height(cue.rowHeight(metrics)),
-                    )
-                }
-            }
+            Spacer(GlanceModifier.defaultWeight().fillMaxWidth())
         }
 
         Footer(
