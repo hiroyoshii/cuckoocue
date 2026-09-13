@@ -598,6 +598,13 @@ screenshot "app-run-detail-cue-settings"
 home
 show_widget_page || true
 wait_for_text "水筒に水を入れる" 20 1 || true
+# Footer paging is intentionally persistent, including across fixture resets.
+# Find the target Run rather than assuming the strip is still on its first page.
+for _ in $(seq 1 20); do
+  if [ -n "$(ui_text_bounds "朝の支度" || true)" ]; then break; fi
+  tap_text "›" 2
+done
+wait_for_text "朝の支度" 10 1
 screenshot "multi-run-footer-context"
 echo "== Widget navigation preserves footer filtering and opens local Run without login =="
 tap_text "朝の支度" 2
