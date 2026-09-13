@@ -67,6 +67,26 @@ class CuckooDaoInstrumentedTest {
     }
 
     @Test
+    fun archiveAndRestorePreserveTasksAndRestoreOnlyEligibleWidgetCues() = runTest {
+        seedRun()
+        val repository = repository()
+        val pending = requireNotNull(repository.addTask("run-1", "戻すCue", priority = PriorityExposure.Strong, clock = { 100 }))
+        val done = requireNotNull(repository.addTask("run-1", "完了済み", priority = PriorityExposure.Strong, clock = { 101 }))
+        repository.addTask("run-1", "静かな項目", priority = PriorityExposure.Quiet, clock = { 102 })
+        repository.completeTask(done)
+        val originalTasks = dao.tasksForRun("run-1")
+        assertEquals(true, repository.archiveRun("run-1", clock = { 200 }))
+        assertEquals(emptyList<RunEntity>(), repository.runs.first())
+        assertEquals("run-1", repository.archivedRuns.first().single().id)
+        assertEquals(0, dao.getWidgetCues().size)
+        assertEquals(true, repository.restoreRun("run-1", clock = { 300 }))
+        assertEquals(originalTasks, dao.tasksForRun("run-1"))
+        assertEquals(listOf(pending), dao.getWidgetCues().map { it.taskId })
+        assertEquals(0, repository.archivedRuns.first().size)
+        assertEquals(false, repository.restoreRun("run-1", clock = { 400 }))
+    }
+
+    @Test
     fun repositoryUpdatesWidgetCueCacheWhenTaskTitleOrPriorityChanges() = runTest {
         seedRun()
         val repository = repository()

@@ -423,7 +423,11 @@ request_pin_widget() {
   for attempt in 1 2; do
     echo "Trying widget pin request through Pixel Launcher API, attempt $attempt..."
     home
-    adb_shell am start -n "$PIN_ACTIVITY" >/dev/null || true
+    start_app
+    wait_for_text "ホーム画面にWidgetを追加" 10 1
+    screenshot "app-widget-install-entry"
+    tap_text "ホーム画面にWidgetを追加" 2
+    screenshot "app-widget-install-confirmation"
     if wait_tap_text "Add to home screen" 15 1; then
       sleep 4
       if assert_widget_placed; then
@@ -590,6 +594,30 @@ sleep 2
 restart_app_fresh 4
 wait_for_text "朝の支度" 20 1 || true
 screenshot "app-list-many-runs"
+echo "== Display sheet and recoverable archive =="
+tap_text "表示" 2
+wait_for_text "Widget text" 10 1
+screenshot "app-display-sheet"
+adb_shell input keyevent KEYCODE_BACK
+sleep 2
+tap_text "朝の支度" 2
+tap_text "アーカイブ" 2
+wait_for_text "リストをアーカイブしますか？" 10 1
+screenshot "app-archive-confirmation"
+tap_text "キャンセル" 2
+wait_for_text "新しい項目" 10 1
+tap_text "アーカイブ" 2
+tap_text "アーカイブする" 2
+wait_for_text "新しいリスト" 10 1
+tap_text "アーカイブ" 2
+wait_for_text "復元" 10 1
+screenshot "app-archive-list"
+tap_text "復元" 2
+wait_for_text "新しい項目" 10 1
+wait_for_text "朝の支度" 10 1
+screenshot "app-archive-restored"
+adb_shell input keyevent KEYCODE_BACK
+sleep 2
 tap_text "朝の支度" 2 || true
 wait_for_text "新しい項目" 10 1
 tap_text "⋯" 2 || true

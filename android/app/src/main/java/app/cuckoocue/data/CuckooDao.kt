@@ -83,6 +83,12 @@ interface CuckooDao {
     @Query("select * from runs where archived_at is null order by sort_order, created_at")
     fun observeRuns(): Flow<List<RunEntity>>
 
+    @Query("select * from runs where archived_at is not null order by archived_at desc")
+    fun observeArchivedRuns(): Flow<List<RunEntity>>
+
+    @Query("update runs set archived_at = null, updated_at = :now where id = :runId and archived_at is not null")
+    suspend fun restoreRun(runId: String, now: Long): Int
+
     @Query("select * from cuebooks order by updated_at desc, created_at desc")
     fun observeCuebooks(): Flow<List<CuebookEntity>>
 
@@ -569,6 +575,13 @@ interface CuckooDao {
         if (changed == 1) {
             removeWidgetCuesForRun(runId)
         }
+        return changed
+    }
+
+    @Transaction
+    suspend fun restoreRunAndRefreshWidgetCues(runId: String, now: Long): Int {
+        val changed = restoreRun(runId, now)
+        if (changed == 1) tasksForRun(runId).forEach { refreshWidgetCueForTask(it.id, now) }
         return changed
     }
 

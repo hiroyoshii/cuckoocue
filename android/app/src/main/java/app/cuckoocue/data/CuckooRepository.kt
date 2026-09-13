@@ -22,6 +22,8 @@ class CuckooRepository internal constructor(
         get() = dao.observeFirstRun()
     val runs: Flow<List<RunEntity>>
         get() = dao.observeRuns()
+    val archivedRuns: Flow<List<RunEntity>>
+        get() = dao.observeArchivedRuns()
     val cuebooks: Flow<List<CuebookEntity>>
         get() = dao.observeCuebooks()
 
@@ -458,6 +460,12 @@ class CuckooRepository internal constructor(
     suspend fun archiveRun(runId: String, clock: () -> Long = { System.currentTimeMillis() }): Boolean {
         val now = clock()
         val changed = dao.archiveRunAndRemoveWidgetCues(runId, now) == 1
+        if (changed) runSyncClient?.enqueue(runId)
+        return changed
+    }
+
+    suspend fun restoreRun(runId: String, clock: () -> Long = { System.currentTimeMillis() }): Boolean {
+        val changed = dao.restoreRunAndRefreshWidgetCues(runId, clock()) == 1
         if (changed) runSyncClient?.enqueue(runId)
         return changed
     }

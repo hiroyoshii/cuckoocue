@@ -40,6 +40,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -88,6 +89,7 @@ import app.cuckoocue.appearance.AppThemeMode
 import app.cuckoocue.appearance.WidgetTextScale
 import app.cuckoocue.appearance.WidgetThemeMode
 import app.cuckoocue.auth.CuckooAuth
+import app.cuckoocue.auth.openHistoryAfterSignIn
 import app.cuckoocue.data.CuebookEntity
 import app.cuckoocue.data.CuebookTaskDraft
 import app.cuckoocue.data.CuebookTaskEntity
@@ -154,6 +156,7 @@ class MainActivity : ComponentActivity() {
     private var pendingImportReference: ImportReference? = null
     private var importJob: Job? = null
     private var receiveJob: Job? = null
+    private var historyJob: Job? = null
     private val authUser = MutableStateFlow<FirebaseUser?>(null)
     private val authError = MutableStateFlow<String?>(null)
     private val transferError = MutableStateFlow<String?>(null)
@@ -225,6 +228,25 @@ class MainActivity : ComponentActivity() {
                         onReceivedRunConsumed = { receivedRunId.value = null },
                         signedInUser = signedInUser,
                         signInError = signInError,
+                        onOpenHistory = { runId ->
+                            if (historyJob?.isActive != true) historyJob = lifecycleScope.launch {
+                                try {
+                                    openHistoryAfterSignIn(
+                                        runId = runId,
+                                        isSignedIn = { cuckooAuth.currentUser != null },
+                                        signIn = { cuckooAuth.signIn(this@MainActivity) },
+                                        sync = { repository.syncRunNow(it) },
+                                        open = { id -> startActivity(Intent(Intent.ACTION_VIEW, RunTransferContract.buildSaveReviewUri(
+                                            getString(R.string.cuckoo_cue_web_url), id,
+                                        ))) },
+                                    )
+                                } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                                    throw cancelled
+                                } catch (error: Exception) {
+                                    Toast.makeText(this@MainActivity, error.localizedMessage ?: "履歴を開けませんでした", Toast.LENGTH_LONG).show()
+                                }
+                            }
+                        },
                         onSignIn = {
                             lifecycleScope.launch {
                                 authError.value = null
@@ -424,6 +446,7 @@ private fun CuckooCueScreen(
     onReceivedRunConsumed: () -> Unit,
     signedInUser: FirebaseUser?,
     signInError: String?,
+    onOpenHistory: (String) -> Unit,
     onSignIn: () -> Unit,
     onSignOut: () -> Unit,
 ) {
@@ -433,6 +456,7 @@ private fun CuckooCueScreen(
     val widgetRedrawScheduler = remember(scope, context) { WidgetRedrawScheduler(scope, context) }
     val memoryEventClient = remember { MemoryEventClient() }
     val runs by repository.runs.collectAsStateWithLifecycle(initialValue = emptyList())
+    val archivedRuns by repository.archivedRuns.collectAsStateWithLifecycle(initialValue = emptyList())
     val cuebooks by repository.cuebooks.collectAsStateWithLifecycle(initialValue = emptyList())
     var selectedRunId by remember { mutableStateOf<String?>(null) }
     var selectedCuebookId by remember { mutableStateOf<String?>(null) }
@@ -574,24 +598,7 @@ private fun CuckooCueScreen(
                     Toast.makeText(context, "新しい日程で作成しました", Toast.LENGTH_SHORT).show()
                 }
             },
-            onShareRun = {
-                scope.launch {
-                    if (signedInUser == null) {
-                        Toast.makeText(context, "先にGoogleアカウントでログインしてください", Toast.LENGTH_SHORT).show()
-                        onSignIn()
-                        return@launch
-                    }
-                    if (!repository.syncRunNow(selectedRun.id)) {
-                        Toast.makeText(context, "同期できませんでした。通信を確認して再試行してください", Toast.LENGTH_LONG).show()
-                        return@launch
-                    }
-                    val uri = RunTransferContract.buildSaveReviewUri(
-                        webAppUrl = webAppUrl,
-                        runId = selectedRun.id,
-                    )
-                    context.startActivity(Intent(Intent.ACTION_VIEW, uri))
-                }
-            },
+            onShareRun = { onOpenHistory(selectedRun.id) },
             onAddTask = { title, dueAt, priority ->
                 scope.launch {
                     val added = repository.addTask(selectedRun.id, title, dueAt, priority)
@@ -719,6 +726,15 @@ private fun CuckooCueScreen(
         RunListScreen(
             repository = repository,
             runs = runs,
+            archivedRuns = archivedRuns,
+            onRestoreRun = { run ->
+                scope.launch {
+                    if (repository.restoreRun(run.id)) {
+                        pendingOpenRunId = run.id
+                        widgetRedrawScheduler.request()
+                    } else Toast.makeText(context, "復元できませんでした", Toast.LENGTH_LONG).show()
+                }
+            },
             cuebooks = cuebooks,
             appearanceSettings = appearanceSettings,
             signedInUser = signedInUser,
@@ -770,6 +786,8 @@ private fun CuckooCueScreen(
 private fun RunListScreen(
     repository: CuckooRepository,
     runs: List<RunEntity>,
+    archivedRuns: List<RunEntity>,
+    onRestoreRun: (RunEntity) -> Unit,
     cuebooks: List<CuebookEntity>,
     appearanceSettings: AppearanceSettings,
     signedInUser: FirebaseUser?,
@@ -790,6 +808,19 @@ private fun RunListScreen(
     var runDraft by remember { mutableStateOf("") }
     var cuebookDraft by remember { mutableStateOf("") }
     var mode by remember { mutableStateOf("runs") }
+
+    if (showAppearance) {
+        ModalBottomSheet(onDismissRequest = onToggleAppearance, containerColor = colors.surfaceBase) {
+            AppearanceSettingsPanel(
+                settings = appearanceSettings,
+                onAppThemeChange = onAppThemeChange,
+                onWidgetThemeChange = onWidgetThemeChange,
+                onWidgetTextScaleChange = onWidgetTextScaleChange,
+                modifier = Modifier.padding(18.dp),
+            )
+            Spacer(Modifier.height(24.dp))
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -845,6 +876,7 @@ private fun RunListScreen(
                 )
             }
             if (mode == "runs") {
+                item { WidgetInstallAction() }
                 item {
                     NewRunComposer(
                         value = runDraft,
@@ -861,7 +893,7 @@ private fun RunListScreen(
                 items(runs, key = { it.id }) { run ->
                     RunCard(repository = repository, run = run, onOpen = { onOpenRun(run) })
                 }
-            } else {
+            } else if (mode == "cuebooks") {
                 item {
                     NewRunComposer(
                         value = cuebookDraft,
@@ -880,15 +912,17 @@ private fun RunListScreen(
                 items(cuebooks, key = { it.id }) { cuebook ->
                     CuebookCard(repository = repository, cuebook = cuebook, onOpen = { onOpenCuebook(cuebook) })
                 }
-            }
-            if (showAppearance) {
-                item {
-                    AppearanceSettingsPanel(
-                        settings = appearanceSettings,
-                        onAppThemeChange = onAppThemeChange,
-                        onWidgetThemeChange = onWidgetThemeChange,
-                        onWidgetTextScaleChange = onWidgetTextScaleChange,
-                    )
+            } else {
+                if (archivedRuns.isEmpty()) {
+                    item { EmptyListCard(title = "アーカイブはありません", body = "一覧から外したリストはここから復元できます。") }
+                }
+                items(archivedRuns, key = { it.id }) { run ->
+                    Surface(shape = RoundedCornerShape(8.dp), color = colors.panel) {
+                        Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text(run.title, Modifier.weight(1f), color = colors.ink)
+                            TextButton(onClick = { onRestoreRun(run) }) { Text("復元") }
+                        }
+                    }
                 }
             }
             item { Spacer(Modifier.height(20.dp)) }
@@ -953,6 +987,12 @@ private fun ListModeTabs(
             label = "再利用",
             selected = mode == "cuebooks",
             onClick = { onModeChange("cuebooks") },
+            modifier = Modifier.weight(1f),
+        )
+        ModeTab(
+            label = "アーカイブ",
+            selected = mode == "archived",
+            onClick = { onModeChange("archived") },
             modifier = Modifier.weight(1f),
         )
     }
@@ -1218,6 +1258,17 @@ private fun RunDetailScreen(
         )
     }
 
+    var confirmArchive by remember(run.id) { mutableStateOf(false) }
+    if (confirmArchive) {
+        AlertDialog(
+            onDismissRequest = { confirmArchive = false },
+            title = { Text("リストをアーカイブしますか？") },
+            text = { Text("「${run.title}」を一覧とWidgetから外します。内容は削除せず、アーカイブから復元できます。") },
+            confirmButton = { TextButton(onClick = { confirmArchive = false; onArchiveRun() }) { Text("アーカイブする") } },
+            dismissButton = { TextButton(onClick = { confirmArchive = false }) { Text("キャンセル") } },
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -1228,7 +1279,7 @@ private fun RunDetailScreen(
                     TextButton(onClick = onBack) { Text("‹", color = colors.ink, fontSize = 28.sp) }
                 },
                 actions = {
-                    TextButton(onClick = onArchiveRun) { Text("閉じる", color = colors.muted) }
+                    TextButton(onClick = { confirmArchive = true }) { Text("アーカイブ", color = colors.muted) }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = colors.surfaceBase),
             )
@@ -1262,6 +1313,7 @@ private fun RunDetailScreen(
                     ImportedNotice(modifier = Modifier.padding(bottom = 8.dp))
                 }
             }
+            item { WidgetInstallAction() }
             item {
                 AddTaskComposer(
                     onAdd = onAddTask,
