@@ -55,3 +55,23 @@ Run詳細の「閉じる」は「アーカイブ」に変更する。確認で�
 「完了履歴をWebで見る」は、未ログインなら認証→同じRunを同期→元のRunのWeb履歴を開く、を一つの要求として処理する。取消・認証失敗・同期失敗ではWebを開かず、再操作可能とする。連打で認証を重複起動しない。端末でのプロセス終了をまたぐ要求の自動再開は行わない。
 
 撮影追加: app-widget-install-entry / app-widget-install-confirmation / app-display-sheet / app-archive-confirmation / app-archive-list / app-archive-restored。認証継続は依存処理を差し替えた計装テストで順序と失敗時の停止を検証し、実Googleアカウントの認証成功を模擬テストの成功と混同しない。
+
+## Webとの責務・接続残件（2026-09-13再照合）
+
+現行の[Web仕様](web-experience-spec.md)第1・16・17節を基準にする。「Androidで再利用リストを整え、直接公開APIを新契約へ接続することが次の主タスク」という整理は撤回する。
+
+- Android/Widget: 一からのタスク作成、今回のRunの日常管理・実行・完了。完了結果を同期し、同じRun IDのWeb履歴へ渡す。
+- Web: 完了履歴のタスクを選び、再利用用の内容を整え、私的原本を保存し、必要な場合だけ公開内容を確認してShelfへ置く。検索・借用時の日程設定もWebで行う。
+- WebからAndroid: 保存済みRun IDを渡し、本人の同じRunを受信する。原本の編集や日程再入力をAndroidでやり直させない。
+- Web履歴の「そのまま再利用」は、日付・優先度をクリアした新Runを作る別経路。「再利用用に整える」を必須にしない。
+
+Web仕様には原本をモバイルでも取得・編集する将来契約もある。「再利用用編集はWebが主導線」と「Androidの原本編集をすべて廃止する」は同義ではない。
+
+| 残件 | 根拠と対応範囲 |
+| --- | --- |
+| Android旧直接公開UIの扱い | `MainActivity.PublishCuebookDialog`と`PublicShelfClient.publishCuebook`はローカルsnapshotを直接送信する。Webの`publish-cuebook.tsx`は保存済み原本と`expected_source_updated_at`等を使う。旧ボタンをそのまま新APIへ適合させるのではなく、Webの編集・保存・公開確認を主導線として、旧導線を退避/置換する範囲を決める。未同期ローカル原本をWebで開けるとは扱わない |
+| 実認証・配備後の一周 | 検証環境ではWeb日程設定→同じRun受信→Android完了→同期→Web履歴を確認済み（Web仕様第16節）。本番配備、実Googleアカウント、物理端末、取消・再試行の受入は別途必要 |
+| 原本共有とRun同期の区別 | AndroidのPrivate CuebookとWeb原本の共有は未完。既存Runの他端末更新・競合・アカウント別ローカル表示・削除伝播も別残件。新規Run受信の成功を完全同期の成功と呼ばない |
+| アプリ未設置時の配布入口 | Web仕様第21節で配布URL未確定のため保留。URLを推測して追加しない |
+
+この再照合では製品UI・公開API・同期モデルは変更していない。Web仕様は作業中の変更を含むため、配備済みの仕様と混同しない。

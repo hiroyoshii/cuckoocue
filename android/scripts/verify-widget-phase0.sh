@@ -525,6 +525,19 @@ run_screen_profile() {
   screenshot "resize-$label-after-scroll"
 }
 
+capture_verification_failure() {
+  local status="$1" line="$2" command="$3"
+  trap - EXIT
+  set +e
+  echo "Verification failed: exit=$status line=$line command=$command" >&2
+  screenshot "verification-failure-line-$line"
+  timeout 15s "$ADB" shell uiautomator dump /sdcard/verification-failure.xml
+  timeout 10s "$ADB" pull /sdcard/verification-failure.xml "$OUT_DIR/verification-failure.xml"
+  exit "$status"
+}
+# Preserve the failing step and visible fixture UI, rather than only exit code 1.
+trap 'failure_status=$?; if [ "$failure_status" -ne 0 ]; then capture_verification_failure "$failure_status" "$LINENO" "$BASH_COMMAND"; fi' EXIT
+
 echo "== Build, install, and run instrumentation checks =="
 (
   cd "$ROOT_DIR"
