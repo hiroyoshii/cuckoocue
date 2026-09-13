@@ -1096,3 +1096,5 @@ D8/W01/W15/C01の表示・認証待機を変更する。データモデル、検
 - 共有WSLでメモリ/スワップが逼迫し、ローカルの表示所要時間は大きく変動した。記録したvisibleMsを本番の速度や改善率として採用しない。今回保証するのは、初期検索画面の表示が認証/APIの完了を待たないこと。
 - [初回の広域回帰](review-screenshots/web/initial-display-account/ui-initial.json)は53成功、共用test-resultsの競合によるartifact書込失敗2、メモリ逼迫を避けて中断した大規模axe1、未実行8。未完分は別の出力ディレクトリで再実行する。
 - 最終Webソースのproduction buildとlintは成功。[PCのartifact失敗2件の追試](review-screenshots/web/initial-display-account/ui-desktop-followup.json)も成功。認証試験用のビルドは通常`.next`と分離して、別タスクのビルドを上書きしない。
+- [mobileの未完9件の追試](review-screenshots/web/initial-display-account/ui-mobile-followup.json)も全件成功。初回53件とPC追試2件を合わせ、対象64件を確認済み。200タスクのaxe、日程編集、履歴からの整形、Shelfの参加/コピーも含む。API応答差し替えによるWeb回帰であり、認証試験と本番疎通は別記録にする。
+- 16:00 JST、mainの`ed5a0c8`をソースとするbuild-2026-09-13-041への本番トラフィック100%を[照合](review-screenshots/web/initial-display-account/production-rollout.json)。[本番疎通](review-screenshots/web/initial-display-account/production/production-evidence.json)は成功。初期表示時の匿名作成/API呼出し0件、操作後の匿名検索200、未ログインの履歴URL維持、私的読取と開発用IDによる認証回避の401、ブラウザーエラー0を確認。検査で作った匿名アカウント1件のみ削除した。実Google同意操作そのものは未実施で、本人受入の代用とはしない。

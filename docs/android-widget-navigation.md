@@ -113,3 +113,7 @@ Androidの直接公開UIは削除。既存のローカルCuebook編集・日程�
 Webはbuild/lintと関連PC/mobile回帰50件が成功。選択2件の直接編集、503後の再読込、編集後のreload、無効/取り消された選択の拒否、保存/公開を自動実行しないことを確認。画像は[PC](review-screenshots/web/android-reuse/android-editor-desktop.png)・[スマホ](review-screenshots/web/android-reuse/android-editor-mobile.png)。API応答を制御したUI試験であり、今回の実Google認証・Android Chrome往復の証拠ではない。
 
 Androidの計装試験と撮影は`CompletedReuseUiTest`、DAO/転送/認証順序の既存試験に追加。CIでも計装試験を実行し、`completed-reuse/`の画面をWidget画像とともに保存する。撮影用Runとそのコピーだけを試験後に除去し、既存データやWidget配置は削除しない。
+
+ローカルAndroid 14で計装31件が成功（UI 1、DAO 20、転送6、認証順序4）。全件完了の操作表示、3件から2件の選択、新Runへの2件コピーと元データの非変更を実行確認した。最初の撮影試験はJUnitメソッドの戻り型をUnitへ訂正して再実行。実行環境のOOMによるEmulator停止とPixel LauncherのANRも発生したが、Launcher復旧後の同じアプリで31件が成功した。アプリのクラッシュや製品修正の根拠とは扱わない。
+
+画面確認では既存の色・部品を維持し、即時再利用を主操作、Web編集と項目選択を副操作とした。選択画面に2件の選択状態と両操作を表示でき、コピー後は選択した本文だけが未完了で並ぶことを確認。今回の実Google認証往復・物理端末の受入は未実施。
