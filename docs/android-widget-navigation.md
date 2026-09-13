@@ -87,3 +87,5 @@ Web仕様には原本をモバイルでも取得・編集する将来契約も�
 追試34740349950ではページ探索対策だけでは不十分だった。[完全ログ](review-screenshots/android/failures/34740349950/verification.log)で`filtered-narrow`成功後の`filtered-short`への切替に限定できた。[失敗画面](review-screenshots/android/failures/34740349950/verification-failure-line-1.png)はLauncher上だがWidgetは見えていない。Discoverは探索失敗後の到達先であり、それだけを根本原因とはしない。
 
 サイズと密度の連続変更による途中のLauncher配置再構築を検証から切り離すため、各display profileはアプリを前面にしてLauncherを停止し、サイズ・密度の両方を設定後にLauncherへ戻す方式に変更した。Launcherのデータ削除・Widget再設置・検証対象のスキップはしない。ローカルAndroid 14で狭幅→低高さ→resetの表示と同じWidget IDの維持を確認した。これは端末profileごとの描画検証であり、Launcher起動中の連続grid migrationや実際のリサイズハンドル操作の合格を意味しない。CIでの最終受入は別途確認する。
+
+最終受入: [CI 34741030503](https://github.com/hiroyoshii/cuckoocue/actions/runs/34741030503)が成功（製品・検証コードb4efea2、画像保存b80821e）。回帰テスト4ケース、画面検証、スクリーンショットのbranch保存・artifact uploadを完了。失敗していた[低高さのWidget](review-screenshots/android/resize-filtered-short-before-scroll.png)でRun名・Cue・footerの表示を確認した。`final-reset-profile.png`は最後にHomeキーで戻った既定ページの撮影で、Widget配置ページの画像とは限らない。reset後のWidget再発見とRunを開く操作は途中のfiltered profile検証に含まれる。
