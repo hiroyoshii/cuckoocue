@@ -114,6 +114,28 @@ ui_resource_bounds() {
     sed -n 's/.*bounds="\[\([0-9]*\),\([0-9]*\)\]\[\([0-9]*\),\([0-9]*\)\]".*/\1 \2 \3 \4/p'
 }
 
+run_open_bounds() {
+  adb_shell uiautomator dump /sdcard/window.xml >/dev/null 2>&1 || return 1
+  "$ADB" exec-out cat /sdcard/window.xml | tr '>' '\n' |
+    grep -F 'content-desc="朝の支度をアプリで開く"' | head -n 1 |
+    sed -n 's/.*bounds="\[\([0-9]*\),\([0-9]*\)\]\[\([0-9]*\),\([0-9]*\)\]".*/\1 \2 \3 \4/p'
+}
+
+wait_run_open() {
+  for _ in $(seq 1 10); do
+    if [ -n "$(run_open_bounds)" ]; then return 0; fi
+    sleep 1
+  done
+  return 1
+}
+
+tap_run_open() {
+  local left top right bottom
+  wait_run_open
+  read -r left top right bottom <<<"$(run_open_bounds)"
+  tap "$(((left + right) / 2))" "$(((top + bottom) / 2))" 2
+}
+
 ui_launcher_widget_bounds() {
   adb_shell uiautomator dump /sdcard/window.xml >/dev/null 2>&1 || return 1
   "$ADB" exec-out cat /sdcard/window.xml |
@@ -551,7 +573,7 @@ wait_for_text "水筒に水を入れる" 20 1 || true
 screenshot "multi-run-footer-context"
 echo "== Widget navigation preserves footer filtering and opens local Run without login =="
 tap_text "朝の支度" 2
-wait_for_text "↗" 10 1
+wait_run_open
 screenshot "navigation-filtered-run"
 run_screen_profile "filtered-narrow" "900x2424" "440"
 run_screen_profile "filtered-short" "1080x1800" "420"
@@ -566,13 +588,13 @@ sleep 2
 screenshot "navigation-filtered-dark-large"
 debug_broadcast "$SET_APPEARANCE_ACTION" --es widget_theme FollowApp --es widget_text_scale Standard
 sleep 2
-tap_text "↗" 2
+tap_run_open
 wait_for_text "新しい項目" 10 1
 wait_for_text "朝の支度" 10 1
 screenshot "navigation-open-run"
 home
 show_widget_page
-wait_for_text "↗" 10 1
+wait_run_open
 # Tap below the footer text, inside the widget rather than the launcher's outer padding.
 adb_shell uiautomator dump /sdcard/window.xml >/dev/null 2>&1
 nav_footer_bounds="$("$ADB" exec-out cat /sdcard/window.xml | tr '>' '\n' | grep -F 'text="朝の支度"' | tail -n 1 | sed -n 's/.*bounds="\[\([0-9]*\),\([0-9]*\)\]\[\([0-9]*\),\([0-9]*\)\]".*/\1 \2 \3 \4/p')"

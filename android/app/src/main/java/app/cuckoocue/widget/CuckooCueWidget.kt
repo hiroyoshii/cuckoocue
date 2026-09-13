@@ -130,14 +130,14 @@ class CuckooCueWidget : GlanceAppWidget() {
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val repository = CuckooRepository.getInstance(context)
-        val appearanceSettings = AppearanceRepository.getInstance(context).getSettings()
+        val appearanceRepository = AppearanceRepository.getInstance(context)
+        val initialAppearance = appearanceRepository.getSettings()
         val systemDark = context.resources.configuration.uiMode and
             Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
-        val widgetDark = appearanceSettings.resolveWidgetDark(systemDark)
-        val colors = widgetColors(widgetDark)
-        val metrics = widgetMetrics(appearanceSettings.widgetTextScale)
-
         provideContent {
+            val appearanceSettings by appearanceRepository.settings.collectAsState(initial = initialAppearance)
+            val colors = widgetColors(appearanceSettings.resolveWidgetDark(systemDark))
+            val metrics = widgetMetrics(appearanceSettings.widgetTextScale)
             val cues by repository.widgetCues.collectAsState(initial = emptyList())
             val footerTipStripOffset = currentState(FooterTipStripOffsetPreferenceKey) ?: 0
             val selectedFooterTipKey = currentState(SelectedFooterTipKeyPreferenceKey)
