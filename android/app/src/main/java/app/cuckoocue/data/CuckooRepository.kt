@@ -316,6 +316,12 @@ class CuckooRepository internal constructor(
         return runId
     }
 
+    suspend fun reuseCompletedTasks(sourceRunId: String, taskIds: List<String>): String? {
+        val id = dao.reuseCompletedTasks(sourceRunId, taskIds, UUID.randomUUID().toString(), System.currentTimeMillis())
+        if (id != null) runSyncClient?.enqueue(id)
+        return id
+    }
+
     suspend fun reuseCompletedRun(
         sourceRunId: String,
         targetAnchorDay: LocalDate,

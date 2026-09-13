@@ -11,7 +11,7 @@ bash "$workspace/android/scripts/test-widget-page-discovery.sh" || exit "$?"
 ADB="${ANDROID_HOME:-/home/hiroyoshii/Android/Sdk}/platform-tools/adb" \
 OUT_DIR="$out_dir" \
 RUN_LAUNCHER_RESIZE="${RUN_LAUNCHER_RESIZE:-0}" \
-RUN_INSTRUMENTATION="${RUN_INSTRUMENTATION:-0}" \
+RUN_INSTRUMENTATION="${RUN_INSTRUMENTATION:-1}" \
 "$workspace/android/scripts/verify-widget-phase0.sh" \
   2>&1 | tee "$out_dir/verification.log"
 status=$?

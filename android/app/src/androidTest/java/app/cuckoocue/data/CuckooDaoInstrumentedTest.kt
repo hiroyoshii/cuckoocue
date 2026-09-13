@@ -24,6 +24,31 @@ class CuckooDaoInstrumentedTest {
     private lateinit var dao: CuckooDao
 
     @Test
+    fun selectedCompletedTasksReuseLocallyWithoutDatesOrOriginalMutation() = runTest {
+        val run = RunEntity(id = "partial", title = "旅行の準備", sourceCuebookId = "original", targetAnchorDay = 5000L, createdAt = 1L, updatedAt = 2L)
+        val tasks = (0..2).map { i -> RunTaskEntity(id = "old-$i", runId = run.id, sourceTaskId = "cue-$i", title = "準備$i",
+            userPriority = 2, availableFromAt = 3000L, dueAt = 5000L, completedAt = if (i == 2) null else 6000L,
+            sortOrder = i, createdAt = 1L, updatedAt = 2L) }
+        dao.insertRunAndTasks(run, tasks, 3L)
+        assertEquals("new", dao.reuseCompletedTasks(run.id, listOf("old-1", "old-0"), "new", 7000L))
+        val copy = requireNotNull(dao.runById("new"))
+        assertEquals(null, copy.targetAnchorDay)
+        assertEquals(null, copy.sourceCuebookId)
+        assertEquals(null, copy.completedAnchorAt)
+        assertEquals(null, copy.archivedAt)
+        val copied = dao.tasksForRun("new")
+        assertEquals(listOf("準備0", "準備1"), copied.map { it.title })
+        assertEquals(true, copied.all { task -> task.id !in tasks.map { it.id } && task.completedAt == null && task.userPriority == null && task.dueAt == null && task.availableFromAt == null && task.sourceTaskId == null })
+        assertEquals(run, dao.runById(run.id))
+        assertEquals(tasks, dao.tasksForRun(run.id))
+        assertEquals(0, dao.cuebookCount())
+        for (ids in listOf(emptyList(), listOf("old-2"), listOf("unknown"), listOf("old-0", "old-0"))) {
+            assertEquals(null, dao.reuseCompletedTasks(run.id, ids, "invalid", 8000L))
+        }
+        assertEquals(2, dao.runCount())
+    }
+
+    @Test
     fun receivingSameRunPreservesIdsDatesAndExistingLocalEdits() = runTest {
         val run = RunEntity(id = "shared-run", title = "Webのリスト", sourceCuebookId = "source-cuebook", targetAnchorDay = 5000L, createdAt = 1L, updatedAt = 2L)
         val task = RunTaskEntity(id = "shared-task", runId = run.id, sourceTaskId = "source-task", title = "予約する", userPriority = null, availableFromAt = 3000L, dueAt = null, sortOrder = 0, createdAt = 1L, updatedAt = 2L)

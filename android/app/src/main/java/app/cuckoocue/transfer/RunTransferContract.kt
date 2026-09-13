@@ -54,4 +54,13 @@ object RunTransferContract {
         Uri.parse(webAppUrl).buildUpon()
             .appendQueryParameter("run_id", runId)
             .build()
+
+    fun buildCompletedEditorUri(webAppUrl: String, runId: String, taskIds: List<String>): Uri {
+        require(taskIds.isNotEmpty() && taskIds.distinct().size == taskIds.size)
+        require(taskIds.all { it.matches(Regex("[A-Za-z0-9_-]{1,128}")) })
+        // Fragment is not sent to the HTTP server. No task text or dates in the link.
+        return buildSaveReviewUri(webAppUrl, runId).buildUpon()
+            .fragment("edit_tasks=" + taskIds.joinToString(","))
+            .build()
+    }
 }

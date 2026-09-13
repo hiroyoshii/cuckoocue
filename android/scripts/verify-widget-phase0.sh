@@ -563,10 +563,11 @@ echo "== Build, install, and run instrumentation checks =="
     ./gradlew installDebug installDebugAndroidTest
     instrumentation_output="$OUT_DIR/instrumentation.txt"
     "$ADB" shell am instrument -w "$PACKAGE.test/androidx.test.runner.AndroidJUnitRunner" | tee "$instrumentation_output"
-    if grep -E "Process crashed|FAILURES!!!|INSTRUMENTATION_RESULT: shortMsg=Process crashed" "$instrumentation_output" >/dev/null; then
+    if ! grep -E '^OK \([0-9]+ tests?\)' "$instrumentation_output" >/dev/null; then
       echo "Android instrumentation failed; see $instrumentation_output" >&2
       exit 1
     fi
+    "$ADB" pull "/sdcard/Android/data/$PACKAGE/files/completed-reuse" "$OUT_DIR/completed-reuse"
   fi
   ./gradlew installDebug
 )

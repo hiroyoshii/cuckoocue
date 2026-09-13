@@ -9,6 +9,24 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface CuckooDao {
+    /** Validate and copy in one transaction: an Undo cannot race the selection check. */
+    @Transaction
+    suspend fun reuseCompletedTasks(sourceRunId: String, taskIds: List<String>, newRunId: String, now: Long): String? {
+        if (taskIds.isEmpty() || taskIds.distinct().size != taskIds.size) return null
+        val source = runById(sourceRunId) ?: return null
+        val selected = tasksForRun(sourceRunId).filter { it.id in taskIds }
+        if (selected.size != taskIds.size || selected.any { it.completedAt == null || it.title.isBlank() }) return null
+        insertRunAndTasks(
+            RunEntity(id = newRunId, title = source.title, sortOrder = (maxRunSortOrder() ?: -1) + 1, createdAt = now, updatedAt = now),
+            selected.mapIndexed { index, task ->
+                RunTaskEntity(id = java.util.UUID.randomUUID().toString(), runId = newRunId,
+                    title = task.title, sortOrder = index, createdAt = now, updatedAt = now)
+            },
+            now,
+        )
+        return newRunId
+    }
+
     @Query("select count(*) from runs")
     suspend fun runCount(): Int
 

@@ -11,6 +11,13 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class RunTransferContractInstrumentedTest {
     @Test
+    fun editorHandoffKeepsSelectedIdsInFragmentOnly() {
+        val uri = RunTransferContract.buildCompletedEditorUri("https://cuckoocue.hiyozoo.com", "run-1", listOf("task-2", "task-1"))
+        assertEquals(setOf("run_id"), uri.queryParameterNames)
+        assertEquals("run-1", uri.getQueryParameter("run_id"))
+        assertEquals("edit_tasks=task-2,task-1", uri.fragment)
+    }
+    @Test
     fun sameRunLinkHasOnlyOneValidatedId() {
         assertEquals("scheduled-example", RunTransferContract.parseRunId(Uri.parse("https://cuckoocue.hiyozoo.com/import?run_id=scheduled-example")))
         assertNull(RunTransferContract.parseRunId(Uri.parse("https://example.com/import?run_id=run-1")))

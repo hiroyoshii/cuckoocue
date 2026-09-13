@@ -78,6 +78,8 @@ Web仕様には原本をモバイルでも取得・編集する将来契約も�
 
 ## CIページ探索の不安定性（2026-09-13）
 
+本節のCI記録はWidgetの検証。後述の完了後再利用の受入とは別に扱う。
+
 失敗実行34739148376から[失敗画面](review-screenshots/android/failures/34739148376/verification-failure-line-1.png)と[UI階層](review-screenshots/android/failures/34739148376/verification-failure.xml)を回収した。1080×1800の画面でGoogle Discoverが前面にあり、WidgetではなくGoogleアプリの表示だった。直前のエラー注記はアーカイブ・復元・Cue設定撮影まで成功しており、アーカイブ不具合という推測は撤回する。同じ製品コードの実行34739643584は全画面検証・撮影保存に成功している。
 
 対策は製品UIではなく`show_widget_page`に限定する。各ページで再構築中のWidget hostを短く再確認し、左右それぞれの探索をHomeから開始する。Google DiscoverなどLauncher外のUIに入ったら探索を打ち切ってHomeへ戻す。見つからない場合は失敗のままとし、テストをスキップして成功扱いにしない。表示遅延・Discover境界・対象欠落の3ケースを`test-widget-page-discovery.sh`で検証する。
@@ -89,3 +91,25 @@ Web仕様には原本をモバイルでも取得・編集する将来契約も�
 サイズと密度の連続変更による途中のLauncher配置再構築を検証から切り離すため、各display profileはアプリを前面にしてLauncherを停止し、サイズ・密度の両方を設定後にLauncherへ戻す方式に変更した。Launcherのデータ削除・Widget再設置・検証対象のスキップはしない。ローカルAndroid 14で狭幅→低高さ→resetの表示と同じWidget IDの維持を確認した。これは端末profileごとの描画検証であり、Launcher起動中の連続grid migrationや実際のリサイズハンドル操作の合格を意味しない。CIでの最終受入は別途確認する。
 
 最終受入: [CI 34741030503](https://github.com/hiroyoshii/cuckoocue/actions/runs/34741030503)が成功（製品・検証コードb4efea2、画像保存b80821e）。回帰テスト4ケース、画面検証、スクリーンショットのbranch保存・artifact uploadを完了。失敗していた[低高さのWidget](review-screenshots/android/resize-filtered-short-before-scroll.png)でRun名・Cue・footerの表示を確認した。`final-reset-profile.png`は最後にHomeキーで戻った既定ページの撮影で、Widget配置ページの画像とは限らない。reset後のWidget再発見とRunを開く操作は途中のfiltered profile検証に含まれる。
+
+## 完了後の再利用とWeb編集（2026-09-13）
+
+「完了履歴をWebで見る」だけだった入口を、今回承認された操作へ置き換える。
+
+| 入口 | 結果 |
+| --- | --- |
+| 全件完了後の「もう一度使う」 | 完了本文を元の順序で新Runへコピー。日付・優先度・完了状態・由来IDは空。日程入力・ログイン不要 |
+| 「内容を選んで使う」 | 完了Taskだけを選択し、即時コピーまたはWeb編集へ進む。部分完了でも使用可能 |
+| 「再利用用に整える ↗」 | 認証→同じRunの同期成功→選択内容だけでWebの未保存editorを開く。再選択を要求しない。保存と公開はWeb上の別操作 |
+| リスト一覧の「Webでリストを探す ↗」 | 既存Web検索へ移動。アプリからのログインは強制しない |
+| Web作成Runの受信 | 受信中を表示し、完了確認前に受信成功としない。既存の同一Run ID契約を維持 |
+
+直接コピーはRoom transaction内で選択の実在・完了・重複なしを検証する。元Run、Cuebook、公開版は変更しない。同期失敗時はその場にエラーを残し、選択を保持して再操作できる。ブラウザを先に開かない。プロセス終了をまたぐAndroid側の要求自動再開は対象外。
+
+WebへはRun IDとTask IDのfragmentのみ渡し、本文・日付をURLに載せない。未ログイン・取得失敗中はリンクを保持し、正常読取後に既存のUID別workspaceへ編集を引き継ぐ。部分完了の取得は本人限定であり、Web履歴一覧の全件完了条件は変更しない。詳細契約はdesign_v2 8.1.1。
+
+Androidの直接公開UIは削除。既存のローカルCuebook編集・日程付き実行は維持する。原本のWeb/Android同期、アカウント別ローカル表示、既存Runの多端末マージ・競合解消・削除伝播は引き続き別残件。完了済みも含むタブは「実行中」から「リスト」へ訂正する。
+
+Webはbuild/lintと関連PC/mobile回帰50件が成功。選択2件の直接編集、503後の再読込、編集後のreload、無効/取り消された選択の拒否、保存/公開を自動実行しないことを確認。画像は[PC](review-screenshots/web/android-reuse/android-editor-desktop.png)・[スマホ](review-screenshots/web/android-reuse/android-editor-mobile.png)。API応答を制御したUI試験であり、今回の実Google認証・Android Chrome往復の証拠ではない。
+
+Androidの計装試験と撮影は`CompletedReuseUiTest`、DAO/転送/認証順序の既存試験に追加。CIでも計装試験を実行し、`completed-reuse/`の画面をWidget画像とともに保存する。撮影用Runとそのコピーだけを試験後に除去し、既存データやWidget配置は削除しない。

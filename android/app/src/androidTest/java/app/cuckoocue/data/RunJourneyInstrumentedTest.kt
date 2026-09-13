@@ -83,7 +83,7 @@ class RunJourneyInstrumentedTest {
                 if (wifi) device.executeShellCommand("svc wifi enable")
                 if (mobileData) device.executeShellCommand("svc data enable")
             }
-            eventually { device.hasObject(By.text("完了履歴をWebで見る")) }
+            eventually { device.hasObject(By.text("再利用用に整える ↗")) }
             device.takeScreenshot(File(out, "android-completed.png"))
             val completed = requireNotNull(dao.runSyncSnapshot(runId))
             assertNotNull(completed.first.completedAnchorAt)
@@ -97,7 +97,7 @@ class RunJourneyInstrumentedTest {
             assertEquals(completed, dao.runSyncSnapshot(runId))
             eventually { remote(auth, "/api/runs/$runId/snapshot").getJSONObject("run").getJSONArray("tasks").let { tasks -> (0 until tasks.length()).all { index -> !tasks.getJSONObject(index).isNull("completed_at") } } }
             File(out, "completed.json").writeText(completed.first.toSyncJson(completed.second, "Asia/Tokyo").toString(2))
-            device.findObject(By.text("完了履歴をWebで見る")).click()
+            device.findObject(By.text("再利用用に整える ↗")).click()
             eventually { device.currentPackageName == "com.android.chrome" }
             assertTrue(device.wait(Until.hasObject(By.res("com.android.chrome", "url_bar")), 20_000))
             device.takeScreenshot(File(out, "android-web-return.png"))

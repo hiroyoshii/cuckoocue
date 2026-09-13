@@ -3,6 +3,9 @@ package app.cuckoocue
 import android.app.DatePickerDialog
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material3.LinearProgressIndicator
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -102,9 +105,7 @@ import app.cuckoocue.data.RunEntity
 import app.cuckoocue.data.RunTaskEntity
 import app.cuckoocue.transfer.ImportedRunPayload
 import app.cuckoocue.transfer.CorpusImportClient
-import app.cuckoocue.transfer.EditableShelfSummary
 import app.cuckoocue.transfer.ImportReference
-import app.cuckoocue.transfer.PublicShelfClient
 import app.cuckoocue.transfer.RunTransferContract
 import app.cuckoocue.memory.MemoryEventClient
 import app.cuckoocue.widget.CuckooCueWidgetUpdater
@@ -130,7 +131,7 @@ private val Teal = Color(0xFF4F8E87)
 private val Green = Color(0xFF6F8F5B)
 private val Gold = Color(0xFFC9933F)
 
-private data class CuckooColors(
+internal data class CuckooColors(
     val ink: Color,
     val muted: Color,
     val surfaceBase: Color,
@@ -143,7 +144,7 @@ private data class CuckooColors(
     val gold: Color,
 )
 
-private val LocalCuckooColors = staticCompositionLocalOf { cuckooColors(dark = false) }
+internal val LocalCuckooColors = staticCompositionLocalOf { cuckooColors(dark = false) }
 
 class MainActivity : ComponentActivity() {
     private val incomingImport = MutableStateFlow<ImportedRunPayload?>(null)
@@ -159,7 +160,6 @@ class MainActivity : ComponentActivity() {
     private var pendingImportReference: ImportReference? = null
     private var importJob: Job? = null
     private var receiveJob: Job? = null
-    private var historyJob: Job? = null
     private val authUser = MutableStateFlow<FirebaseUser?>(null)
     private val authError = MutableStateFlow<String?>(null)
     private val transferError = MutableStateFlow<String?>(null)
@@ -167,7 +167,6 @@ class MainActivity : ComponentActivity() {
     private val cuckooAuth = CuckooAuth()
     private lateinit var repository: CuckooRepository
     private lateinit var importClient: CorpusImportClient
-    private lateinit var shelfClient: PublicShelfClient
     private val authListener = FirebaseAuth.AuthStateListener { auth ->
         authUser.value = auth.currentUser
         if (auth.currentUser != null && ::repository.isInitialized) {
@@ -181,7 +180,6 @@ class MainActivity : ComponentActivity() {
         val app = application as CuckooCueApp
         repository = app.repository
         importClient = CorpusImportClient(getString(R.string.cuckoo_cue_web_url))
-        shelfClient = PublicShelfClient(getString(R.string.cuckoo_cue_web_url))
         pendingImportReference = RunTransferContract.parseImportUri(intent?.data)
         pendingRunId = RunTransferContract.parseRunId(intent?.data)
         handleWidgetNavigation(intent)
@@ -218,49 +216,50 @@ class MainActivity : ComponentActivity() {
                             }) { Text("アカウントを選ぶ") } },
                         )
                     }
-                    CuckooCueScreen(
-                        widgetNavigation = widgetNavigation,
-                        onWidgetNavigationConsumed = { widgetNavigation = null },
-                        repository = repository,
-                        shelfClient = shelfClient,
-                        appearanceRepository = appearanceRepository,
-                        appearanceSettings = settings,
-                        incomingImport = importPayload,
-                        onImportConsumed = { incomingImport.value = null },
-                        receivedRunId = syncedRunId,
-                        onReceivedRunConsumed = { receivedRunId.value = null },
-                        signedInUser = signedInUser,
-                        signInError = signInError,
-                        onOpenHistory = { runId ->
-                            if (historyJob?.isActive != true) historyJob = lifecycleScope.launch {
-                                try {
-                                    openHistoryAfterSignIn(
-                                        runId = runId,
-                                        isSignedIn = { cuckooAuth.currentUser != null },
-                                        signIn = { cuckooAuth.signIn(this@MainActivity) },
-                                        sync = { repository.syncRunNow(it) },
-                                        open = { id -> startActivity(Intent(Intent.ACTION_VIEW, RunTransferContract.buildSaveReviewUri(
-                                            getString(R.string.cuckoo_cue_web_url), id,
-                                        ))) },
-                                    )
-                                } catch (cancelled: kotlinx.coroutines.CancellationException) {
-                                    throw cancelled
-                                } catch (error: Exception) {
-                                    Toast.makeText(this@MainActivity, error.localizedMessage ?: "履歴を開けませんでした", Toast.LENGTH_LONG).show()
+                    Box(Modifier.fillMaxSize()) {
+                        CuckooCueScreen(
+                            widgetNavigation = widgetNavigation,
+                            onWidgetNavigationConsumed = { widgetNavigation = null },
+                            repository = repository,
+                            appearanceRepository = appearanceRepository,
+                            appearanceSettings = settings,
+                            incomingImport = importPayload,
+                            onImportConsumed = { incomingImport.value = null },
+                            receivedRunId = syncedRunId,
+                            onReceivedRunConsumed = { receivedRunId.value = null },
+                            signedInUser = signedInUser,
+                            signInError = signInError,
+                            onOpenHistory = { runId, taskIds ->
+                                openHistoryAfterSignIn(
+                                    runId = runId,
+                                    isSignedIn = { cuckooAuth.currentUser != null },
+                                    signIn = { cuckooAuth.signIn(this@MainActivity) },
+                                    sync = { repository.syncRunNow(it) },
+                                    open = { id -> startActivity(Intent(Intent.ACTION_VIEW, RunTransferContract.buildCompletedEditorUri(
+                                        getString(R.string.cuckoo_cue_web_url), id, taskIds,
+                                    ))) },
+                                )
+                            },
+                            onSignIn = {
+                                lifecycleScope.launch {
+                                    authError.value = null
+                                    runCatching { cuckooAuth.signIn(this@MainActivity) }
+                                        .onFailure { authError.value = it.localizedMessage ?: "Google ログインに失敗しました" }
+                                }
+                            },
+                            onSignOut = {
+                                lifecycleScope.launch { cuckooAuth.signOut(this@MainActivity) }
+                            },
+                        )
+                        if (isReceiving) {
+                            Surface(modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding(), color = colors.panel) {
+                                Column(Modifier.padding(12.dp)) {
+                                    Text("Webのリストを受信中", color = colors.ink)
+                                    LinearProgressIndicator(Modifier.fillMaxWidth())
                                 }
                             }
-                        },
-                        onSignIn = {
-                            lifecycleScope.launch {
-                                authError.value = null
-                                runCatching { cuckooAuth.signIn(this@MainActivity) }
-                                    .onFailure { authError.value = it.localizedMessage ?: "Google ログインに失敗しました" }
-                            }
-                        },
-                        onSignOut = {
-                            lifecycleScope.launch { cuckooAuth.signOut(this@MainActivity) }
-                        },
-                    )
+                        }
+                    }
                 }
             }
         }
@@ -440,7 +439,6 @@ private fun CuckooCueScreen(
     widgetNavigation: Pair<Long, String?>?,
     onWidgetNavigationConsumed: () -> Unit,
     repository: CuckooRepository,
-    shelfClient: PublicShelfClient,
     appearanceRepository: AppearanceRepository,
     appearanceSettings: AppearanceSettings,
     incomingImport: ImportedRunPayload?,
@@ -449,12 +447,11 @@ private fun CuckooCueScreen(
     onReceivedRunConsumed: () -> Unit,
     signedInUser: FirebaseUser?,
     signInError: String?,
-    onOpenHistory: (String) -> Unit,
+    onOpenHistory: suspend (String, List<String>) -> Unit,
     onSignIn: () -> Unit,
     onSignOut: () -> Unit,
 ) {
     val context = LocalContext.current
-    val webAppUrl = stringResource(R.string.cuckoo_cue_web_url)
     val scope = rememberCoroutineScope()
     val widgetRedrawScheduler = remember(scope, context) { WidgetRedrawScheduler(scope, context) }
     val memoryEventClient = remember { MemoryEventClient() }
@@ -466,16 +463,11 @@ private fun CuckooCueScreen(
     var importedRunId by remember { mutableStateOf<String?>(null) }
     var pendingOpenRunId by remember { mutableStateOf<String?>(null) }
     var showAppearance by remember { mutableStateOf(false) }
-    var publishingCuebook by remember { mutableStateOf<CuebookEntity?>(null) }
-    var publishShelves by remember { mutableStateOf<List<EditableShelfSummary>>(emptyList()) }
-    var isLoadingPublishShelves by remember { mutableStateOf(false) }
-    var isPublishingCuebook by remember { mutableStateOf(false) }
 
     LaunchedEffect(widgetNavigation) {
         if (widgetNavigation != null) {
             selectedRunId = null
             selectedCuebookId = null
-            publishingCuebook = null
             showAppearance = false
             pendingOpenRunId = widgetNavigation.second
             onWidgetNavigationConsumed()
@@ -516,38 +508,6 @@ private fun CuckooCueScreen(
         )
     }
 
-    publishingCuebook?.let { cuebook ->
-        PublishCuebookDialog(
-            cuebook = cuebook,
-            shelves = publishShelves,
-            isLoading = isLoadingPublishShelves,
-            isPublishing = isPublishingCuebook,
-            onDismiss = {
-                publishingCuebook = null
-                publishShelves = emptyList()
-            },
-            onPublish = { shelf ->
-                scope.launch {
-                    val snapshot = repository.cuebookSnapshot(cuebook.id)
-                    if (snapshot == null) {
-                        Toast.makeText(context, "公開できるCueがありません", Toast.LENGTH_LONG).show()
-                        return@launch
-                    }
-                    isPublishingCuebook = true
-                    runCatching { shelfClient.publishCuebook(shelf.id, snapshot) }
-                        .onSuccess {
-                            Toast.makeText(context, "まとまりへ置きました", Toast.LENGTH_SHORT).show()
-                            publishingCuebook = null
-                            publishShelves = emptyList()
-                        }
-                        .onFailure {
-                            Toast.makeText(context, it.localizedMessage ?: "まとまりへ置けませんでした", Toast.LENGTH_LONG).show()
-                        }
-                    isPublishingCuebook = false
-                }
-            },
-        )
-    }
 
     LaunchedEffect(pendingOpenRunId, runs) {
         val pendingRunId = pendingOpenRunId ?: return@LaunchedEffect
@@ -586,22 +546,16 @@ private fun CuckooCueScreen(
                     widgetRedrawScheduler.request()
                 }
             },
-            onReuseRun = { targetAnchorDay ->
-                scope.launch {
-                    val reusedRunId = repository.reuseCompletedRun(
+            onReuseRun = { taskIds ->
+                    val reusedRunId = repository.reuseCompletedTasks(
                         sourceRunId = selectedRun.id,
-                        targetAnchorDay = targetAnchorDay,
+                        taskIds = taskIds,
                     )
-                    if (reusedRunId == null) {
-                        Toast.makeText(context, "このリストを再利用できませんでした", Toast.LENGTH_LONG).show()
-                        return@launch
-                    }
+                    checkNotNull(reusedRunId) { "選択した完了タスクが変わっています。内容を選び直してください。" }
                     pendingOpenRunId = reusedRunId
                     widgetRedrawScheduler.request()
-                    Toast.makeText(context, "新しい日程で作成しました", Toast.LENGTH_SHORT).show()
-                }
             },
-            onShareRun = { onOpenHistory(selectedRun.id) },
+            onShareRun = { taskIds -> onOpenHistory(selectedRun.id, taskIds) },
             onAddTask = { title, dueAt, priority ->
                 scope.launch {
                     val added = repository.addTask(selectedRun.id, title, dueAt, priority)
@@ -706,24 +660,6 @@ private fun CuckooCueScreen(
             onDeleteTask = { taskId ->
                 scope.launch { repository.deleteCuebookTask(selectedCuebook.id, taskId) }
             },
-            onPublish = {
-                scope.launch {
-                    if (signedInUser == null) {
-                        Toast.makeText(context, "先にGoogleアカウントでログインしてください", Toast.LENGTH_SHORT).show()
-                        onSignIn()
-                        return@launch
-                    }
-                    publishingCuebook = selectedCuebook
-                    publishShelves = emptyList()
-                    isLoadingPublishShelves = true
-                    runCatching { shelfClient.editableShelves() }
-                        .onSuccess { publishShelves = it }
-                        .onFailure {
-                            Toast.makeText(context, it.localizedMessage ?: "まとまりを読み込めませんでした", Toast.LENGTH_LONG).show()
-                        }
-                    isLoadingPublishShelves = false
-                }
-            },
         )
     } else {
         RunListScreen(
@@ -808,6 +744,8 @@ private fun RunListScreen(
     onWidgetTextScaleChange: (WidgetTextScale) -> Unit,
 ) {
     val colors = LocalCuckooColors.current
+    val context = LocalContext.current
+    val webAppUrl = stringResource(R.string.cuckoo_cue_web_url)
     var runDraft by remember { mutableStateOf("") }
     var cuebookDraft by remember { mutableStateOf("") }
     var mode by remember { mutableStateOf("runs") }
@@ -882,6 +820,12 @@ private fun RunListScreen(
                     modifier = Modifier.padding(top = 8.dp),
                 )
             }
+            item {
+                TextButton(onClick = {
+                    runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(webAppUrl))) }
+                        .onFailure { Toast.makeText(context, "ブラウザを開けませんでした", Toast.LENGTH_LONG).show() }
+                }) { Text("Webでリストを探す ↗") }
+            }
             if (mode == "runs") {
                 item { WidgetInstallAction() }
                 item {
@@ -895,7 +839,7 @@ private fun RunListScreen(
                     )
                 }
                 if (runs.isEmpty()) {
-                    item { EmptyListCard(title = "実行中のリストはまだありません", body = "一回きりのリストを作るか、再利用リストから日付付きのリストを作成します。") }
+                    item { EmptyListCard(title = "リストはまだありません", body = "新しく作るか、Webで使いたいリストを探せます。") }
                 }
                 items(runs, key = { it.id }) { run ->
                     RunCard(repository = repository, run = run, onOpen = { onOpenRun(run) })
@@ -985,7 +929,7 @@ private fun ListModeTabs(
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         ModeTab(
-            label = "実行中",
+            label = "リスト",
             selected = mode == "runs",
             onClick = { onModeChange("runs") },
             modifier = Modifier.weight(1f),
@@ -1185,8 +1129,8 @@ private fun RunDetailScreen(
     onBack: () -> Unit,
     onRenameRun: (String) -> Unit,
     onArchiveRun: () -> Unit,
-    onReuseRun: (LocalDate) -> Unit,
-    onShareRun: () -> Unit,
+    onReuseRun: suspend (List<String>) -> Unit,
+    onShareRun: suspend (List<String>) -> Unit,
     onAddTask: (String, Long?, Int?) -> Unit,
     onUpdateTaskAndAddBlankAfter: (String, String, Long?, Long?, Int?, (String?) -> Unit) -> Unit,
     onUpdateTask: (String, String, Long?, Long?, Int?) -> Unit,
@@ -1202,7 +1146,6 @@ private fun RunDetailScreen(
     var titleDraft by remember(run.id, run.updatedAt) { mutableStateOf(run.title) }
     var isRunTitleEditing by remember(run.id) { mutableStateOf(false) }
     var showCompleted by remember { mutableStateOf(false) }
-    var showReuseDialog by remember(run.id) { mutableStateOf(false) }
     var expandedTaskId by remember(run.id) { mutableStateOf<String?>(null) }
     var pendingDragOrderIds by remember(run.id) { mutableStateOf<List<String>?>(null) }
     val runTitleFocusRequester = remember { FocusRequester() }
@@ -1255,15 +1198,6 @@ private fun RunDetailScreen(
         }
     }
 
-    if (showReuseDialog) {
-        ReuseCompletedRunDialog(
-            onDismiss = { showReuseDialog = false },
-            onConfirm = { targetAnchorDay ->
-                showReuseDialog = false
-                onReuseRun(targetAnchorDay)
-            },
-        )
-    }
 
     var confirmArchive by remember(run.id) { mutableStateOf(false) }
     if (confirmArchive) {
@@ -1380,11 +1314,14 @@ private fun RunDetailScreen(
                     )
                 }
             }
-            if (pending.isEmpty() && completed.isNotEmpty()) {
+            if (completed.isNotEmpty()) {
                 item {
-                    ReuseCompletedList(
-                        onReuse = { showReuseDialog = true },
-                        onShare = onShareRun,
+                    CompletedTaskActions(
+                        runId = run.id,
+                        completed = completed,
+                        fullyCompleted = pending.isEmpty(),
+                        onReuse = onReuseRun,
+                        onEdit = onShareRun,
                     )
                 }
             }
@@ -1393,73 +1330,6 @@ private fun RunDetailScreen(
     }
 }
 
-@Composable
-private fun PublishCuebookDialog(
-    cuebook: CuebookEntity,
-    shelves: List<EditableShelfSummary>,
-    isLoading: Boolean,
-    isPublishing: Boolean,
-    onDismiss: () -> Unit,
-    onPublish: (EditableShelfSummary) -> Unit,
-) {
-    var selectedShelfId by remember(cuebook.id, shelves) { mutableStateOf(shelves.firstOrNull()?.id) }
-    val selectedShelf = shelves.firstOrNull { it.id == selectedShelfId }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("まとまりへ置く") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("「${cuebook.title}」の現在の内容から、公開用の版を作ってまとまりへ置きます。")
-                when {
-                    isLoading -> Text("まとまりを読み込んでいます。")
-                    shelves.isEmpty() -> Text("編集できるまとまりがありません。Webの探す画面から、先にまとまりを作成してください。")
-                    else -> shelves.forEach { shelf ->
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable { selectedShelfId = shelf.id },
-                            shape = RoundedCornerShape(8.dp),
-                            border = androidx.compose.foundation.BorderStroke(
-                                1.dp,
-                                if (shelf.id == selectedShelfId) LocalCuckooColors.current.teal else LocalCuckooColors.current.line,
-                            ),
-                            color = if (shelf.id == selectedShelfId) LocalCuckooColors.current.highlight else LocalCuckooColors.current.panel,
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(10.dp),
-                                verticalArrangement = Arrangement.spacedBy(3.dp),
-                            ) {
-                                Text(shelf.title, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                                Text(
-                                    shelf.context,
-                                    color = LocalCuckooColors.current.muted,
-                                    fontSize = 12.sp,
-                                    maxLines = 2,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { selectedShelf?.let(onPublish) },
-                enabled = selectedShelf != null && !isLoading && !isPublishing,
-            ) {
-                Text(if (isPublishing) "配置中" else "この内容を置く")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !isPublishing) {
-                Text("キャンセル")
-            }
-        },
-    )
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1472,7 +1342,6 @@ private fun CuebookDetailScreen(
     onAddTask: (String, Int?, Int?, Int?) -> Unit,
     onUpdateTask: (String, String, Int?, Int?, Int?) -> Unit,
     onDeleteTask: (String) -> Unit,
-    onPublish: () -> Unit,
 ) {
     val colors = LocalCuckooColors.current
     val tasks by repository.observeCuebookTasks(cuebook.id).collectAsStateWithLifecycle(initialValue = emptyList())
@@ -1514,7 +1383,6 @@ private fun CuebookDetailScreen(
                     TextButton(onClick = onBack) { Text("‹", color = colors.ink, fontSize = 28.sp) }
                 },
                 actions = {
-                    TextButton(onClick = onPublish) { Text("まとまりへ置く", color = colors.muted) }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = colors.surfaceBase),
             )
@@ -1757,47 +1625,6 @@ private fun ImportedNotice(modifier: Modifier = Modifier) {
     }
 }
 
-@Composable
-private fun ReuseCompletedList(
-    onReuse: () -> Unit,
-    onShare: () -> Unit,
-) {
-    val colors = LocalCuckooColors.current
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 16.dp)
-            .border(1.dp, colors.line, RoundedCornerShape(8.dp))
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Image(
-                painter = painterResource(R.drawable.ic_cuckoo_cue_brand),
-                contentDescription = null,
-                modifier = Modifier.size(30.dp),
-            )
-            Spacer(Modifier.width(10.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text("完了したリスト", color = colors.ink, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                Text("同じ内容を新しい日程で使えます", color = colors.muted, fontSize = 12.sp)
-            }
-        }
-        Button(
-            onClick = onReuse,
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(containerColor = colors.teal),
-        ) {
-            Text("もう一度使う")
-        }
-        OutlinedButton(
-            onClick = onShare,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text("完了履歴をWebで見る")
-        }
-    }
-}
 
 @Composable
 private fun ReuseCompletedRunDialog(
