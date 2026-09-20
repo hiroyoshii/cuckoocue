@@ -42,6 +42,9 @@ export const managedDomains = [
   { id: "license-renewal", label_ja: "免許・資格更新", description: "期限のある免許、資格、認定を更新・再認定する段取り。", includes: ["運転免許更新", "資格更新研修", "更新書類"], excludes: ["新しい試験への出願と学習は受験準備", "在留資格の更新は在留・渡航手続き"], aliases: ["免許更新", "資格更新", "認定更新"], status: "active", replacement_id: null },
   { id: "immigration-travel-documents", label_ja: "在留・渡航手続き", description: "旅券、査証、在留資格、出入国に必要な公的手続きを進める段取り。", includes: ["パスポート申請", "ビザ申請", "在留資格更新"], excludes: ["宿泊や荷物を含む旅行全体は旅行準備", "国内の免許更新は免許・資格更新"], aliases: ["渡航書類", "ビザ手続き", "在留資格手続き"], status: "active", replacement_id: null },
   { id: "contract-cancellation", label_ja: "契約解約", description: "継続サービスや会員契約を停止し、返却、精算、データ退避を行う段取り。", includes: ["サブスク解約", "通信契約停止", "レンタル品返却"], excludes: ["引っ越し全体の一部なら引っ越し", "故人契約の一括停止は葬儀・死後手続き"], aliases: ["サービス解約", "退会", "契約終了"], status: "active", replacement_id: null },
+  { id: "meal-preparation", label_ja: "料理・食事準備", description: "献立、買い物、下ごしらえ、調理、保存まで家庭の食事を整える段取り。", includes: ["献立作り", "食材の買い出し", "作り置きと保存"], excludes: ["医療上の食事療法は通院・入院", "キャンプ全体の設営や撤収はキャンプ・アウトドア"], aliases: ["自炊", "食事作り", "料理", "作り置き"], status: "active", replacement_id: null },
+  { id: "camping-outdoors", label_ja: "キャンプ・アウトドア", description: "屋外で安全に過ごすための計画、装備、設営、食事、撤収の段取り。", includes: ["キャンプ計画", "キャンプ装備", "屋外調理と撤収"], excludes: ["宿泊や交通が中心の一般旅行は旅行準備", "家庭内の料理だけなら料理・食事準備"], aliases: ["キャンプ", "ソロキャンプ", "アウトドア", "野営"], status: "active", replacement_id: null },
+  { id: "video-production", label_ja: "動画制作・配信", description: "動画の企画、撮影、素材管理、編集、公開準備を進める段取り。", includes: ["撮影準備", "動画編集", "素材のバックアップ", "公開前確認"], excludes: ["動画の視聴や配信契約の終了は契約解約", "会場を伴う催事運営はイベント開催"], aliases: ["動画制作", "映像制作", "YouTube制作", "動画配信"], status: "active", replacement_id: null },
 ] as const satisfies readonly ManagedDomain[];
 
 const activeDomains = managedDomains.filter((domain) => domain.status === "active");

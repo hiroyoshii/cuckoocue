@@ -51,6 +51,20 @@
 .result-shelves .text-action { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; min-width: 0; white-space: normal; overflow-wrap: anywhere; text-align: left; }
 .result-shelves svg { flex-shrink: 0; }
 .source-reference { display: inline-flex; margin-block: 8px; }
+.editorial-provenance { margin-block: 12px; border-left: 2px solid var(--teal); background: var(--mint); }
+.editorial-provenance summary { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; min-height: 44px; padding: 8px 12px; color: var(--teal-dark); cursor: pointer; }
+.editorial-provenance summary svg { flex: 0 0 auto; }
+.editorial-provenance summary span { font-size: 14px; font-weight: 700; }
+.editorial-provenance summary small { color: var(--muted); font-size: 12px; }
+.editorial-provenance-body { padding: 0 12px 12px 40px; }
+.editorial-provenance-body > p { margin: 0 0 8px; color: var(--muted); font-size: 13px; line-height: 1.7; }
+.editorial-provenance-body .editorial-review-date { font-size: 12px; }
+.editorial-provenance-body ul { display: grid; gap: 10px; margin: 12px 0 0; padding: 0; list-style: none; }
+.editorial-provenance-body li { min-width: 0; }
+.editorial-provenance-body a { display: inline-flex; align-items: baseline; gap: 6px; max-width: 100%; color: var(--teal-dark); font-size: 13px; font-weight: 700; overflow-wrap: anywhere; }
+.editorial-provenance-body a span { min-width: 0; }
+.editorial-provenance-body a svg { flex: 0 0 auto; }
+.editorial-provenance-body li > small { display: block; margin-top: 2px; color: var(--muted); font-size: 12px; }
 .shelf-revision h2 a { color: inherit; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 4px; overflow-wrap: anywhere; }
 .public-revision-workspace .detail-context { overflow-wrap: anywhere; }
 .expand-tasks { display: inline-flex; align-items: center; gap: 8px; }
@@ -266,6 +280,7 @@
 .handoff-task-list span { font-size: 14px; }
 .shelf-navigation { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
 .shelf-navigation .text-action { margin-bottom: 0; }
+.default-shelf-label { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 8px; color: var(--teal-dark); font-size: 13px; font-weight: 700; }
 .shelf-detail-workspace { max-width: 1080px; }
 .shelf-detail-workspace h1, .shelf-detail-workspace h2, .shelf-detail-workspace h3 { overflow-wrap: anywhere; }
 .shelf-detail-workspace .shelf-heading p { white-space: pre-wrap; overflow-wrap: anywhere; }

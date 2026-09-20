@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowDown, ArrowLeft, ArrowUp, Check, Copy, Plus, RotateCcw, Search, Trash2, X } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowUp, BadgeCheck, Check, Copy, Plus, RotateCcw, Search, Trash2, X } from "lucide-react";
 import { cueApiFetch } from "@/lib/api-client";
 import type { ShelfDetail, PublicRevisionSummary } from "@/lib/shelves";
 import type { UpdateShelfInput } from "@/lib/schema";
 import { TaskList } from "./tasks/task-list";
 import { ScheduledReuse } from "./scheduled-reuse";
 import { ShelfDescriptionGenerator } from "./shelf-description-generator";
+import { EditorialProvenanceNote } from "./editorial-provenance";
 
 type Draft = { title: string; context: string; items: ShelfDetail["items"] };
 type ForkRequest = { operation_id: string; expected_updated_at: string; title: string; context: string; items: ShelfDetail["items"] };
@@ -136,6 +137,7 @@ export function ShelfDetailView(props: Props) {
         <button className="text-action" onClick={props.onBack}><ArrowLeft size={16} />探す</button>
         <button className="secondary-action" disabled={busy || props.busy || !props.membershipReady} onClick={props.onJoin}>{!props.membershipReady ? "参加状態を確認中" : props.joined ? "参加を解除" : "参加する"}</button>
       </div>
+      {shelf.curation?.is_default ? <p className="default-shelf-label"><BadgeCheck size={16} aria-hidden="true" />{shelf.curation.curator_label}</p> : null}
       <h1>{shelf.title}</h1>
       <p>{shelf.context}</p>
       {shelf.forked_from_shelf_id ? <a className="text-action source-reference" href={`/?shelf_id=${encodeURIComponent(shelf.forked_from_shelf_id)}`}>コピー元のグループを見る</a> : null}
@@ -209,6 +211,7 @@ function RevisionCard({ revision, userId, onSignIn }: { revision: PublicRevision
     <header className="result-title-row"><div><small>{revision.published_at.slice(0, 10)} 公開</small><h2><a href={`/?revision_id=${encodeURIComponent(revision.id)}`}>{revision.title}</a></h2></div>
       <ScheduledReuse source={{ type: "revision", id: revision.id }} title={revision.title} tasks={tasks} devUserId={userId} onSignIn={onSignIn} />
     </header>
+    <EditorialProvenanceNote provenance={revision.provenance} />
     <TaskList tasks={tasks.slice(0, 3)} metadata />
     {tasks.length > 3 ? <details><summary>全{tasks.length}件を見る</summary><TaskList tasks={tasks.slice(3)} start={3} metadata /></details> : null}
   </article>;

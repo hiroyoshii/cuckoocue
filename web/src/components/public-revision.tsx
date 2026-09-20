@@ -7,6 +7,7 @@ import type { PublicRevisionDetail } from "@/lib/shelves";
 import { TaskList } from "./tasks/task-list";
 import { ScheduledReuse } from "./scheduled-reuse";
 import { RelatedShelves } from "./search/search-result";
+import { EditorialProvenanceNote } from "./editorial-provenance";
 
 export function PublicRevision({ id, userId, onBack, onSignIn, onOpenShelf }: { id: string; userId: string; onBack: () => void; onSignIn: () => void; onOpenShelf: (id: string) => void }) {
   const [revision, setRevision] = useState<PublicRevisionDetail | null>(null);
@@ -24,6 +25,7 @@ export function PublicRevision({ id, userId, onBack, onSignIn, onOpenShelf }: { 
   return <div className="workspace public-revision-workspace"><button className="text-action" onClick={onBack}><ArrowLeft size={16} />探す</button>
     {error ? <p role="alert">{error}<button onClick={() => setAttempt(attempt + 1)}>再取得</button></p> : revision ? <>
       <header className="workspace-heading"><h1>{revision.title}</h1><small>{revision.published_at.slice(0, 10)} 公開</small></header>
+      <EditorialProvenanceNote provenance={revision.provenance} />
       <p className="result-facts">{revision.tasks.length}タスク{revision.domain ? ` · ${revision.domain}` : ""}</p>
       {revision.context_text ? <p className="detail-context">{revision.context_text}</p> : null}
       <RelatedShelves shelves={revision.shelves} onOpen={onOpenShelf} disabled={false} />

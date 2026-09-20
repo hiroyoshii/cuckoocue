@@ -9,11 +9,11 @@ import * as plans from "../src/lib/search-plan.ts";
 import { activeDomainLabels, managedDomains, resolveDomainLabel } from "../src/lib/domain-catalog.ts";
 
 const plan = (overrides = {}) => ({ domain: "引っ越し", required_tasks: [], required_context: [], excluded_tasks: [], ...overrides });
-test("managed domain catalog has 30 unique canonical values and aliases never become stored values", () => {
-  assert.equal(managedDomains.length, 30);
-  assert.equal(new Set(managedDomains.map(domain => domain.id)).size, 30);
-  assert.equal(new Set(managedDomains.map(domain => domain.label_ja)).size, 30);
-  assert.equal(activeDomainLabels().length, 30);
+test("managed domain catalog has 33 unique canonical values and aliases never become stored values", () => {
+  assert.equal(managedDomains.length, 33);
+  assert.equal(new Set(managedDomains.map(domain => domain.id)).size, 33);
+  assert.equal(new Set(managedDomains.map(domain => domain.label_ja)).size, 33);
+  assert.equal(activeDomainLabels().length, 33);
   assert.equal(resolveDomainLabel("引越し"), "引っ越し");
   assert.equal(resolveDomainLabel("未知の分類"), null);
 });

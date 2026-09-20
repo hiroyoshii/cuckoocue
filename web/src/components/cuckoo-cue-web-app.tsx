@@ -35,7 +35,7 @@ import { PublishCuebook } from "./publish-cuebook";
 import { PublicationLinks } from "./publication-links";
 import { PublicRevision } from "./public-revision";
 import { ShelfDetailView } from "./shelf-detail";
-import type { ShelfDetail } from "@/lib/shelves";
+import type { EditorialProvenance, ShelfDetail } from "@/lib/shelves";
 import { ScheduledReuse, ScheduleDialog, ScheduleLoginRecovery } from "./scheduled-reuse";
 import type { ScheduledReuseInput } from "@/lib/scheduled-run";
 import { relativeDays } from "@/lib/schedule-dates";
@@ -73,6 +73,7 @@ type ShelfRevision = {
   }>;
   published_at: string;
   withdrawn_at: string | null;
+  provenance?: EditorialProvenance | null;
 };
 type Shelf = {
   id: string;
@@ -83,6 +84,7 @@ type Shelf = {
   created_at: string;
   updated_at: string;
   item_count: number;
+  curation?: { is_default: boolean; curator_label: string; reviewed_at: string } | null;
   items?: Array<{
     revision_id: string;
     position: number;

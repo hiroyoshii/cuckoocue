@@ -1,6 +1,6 @@
 # Web 残タスク
 
-最終更新: 2026-09-20
+最終更新: 2026-09-21
 
 この文書は、過去の監査履歴ではなく、現行コードを基準にした未完了項目だけを管理する。Web画面、Web API、公開レスポンス、App Hosting設定、Webから使うApp/Universal Linkを範囲とする。Android/iOS内部の実装、全面的な多端末同期、公開停止UIなどは含めない。
 
@@ -9,8 +9,9 @@
 | 優先 | 作業群 | 実装量の目安 | コスト・リスクへの効果 |
 |---|---|---:|---|
 | P0 | 公開APIの内部ID除去、検索ログ最小化、入力上限 | 完了 | 公開レスポンスからUID/私的原本IDを100%除去。検索条件由来の語句・属性hashを成功ログから100%除去。検索500文字、cursor 4,096文字、リスト200件などで固定上限化 |
-| P0 | domainカタログ、検索・保存接続 | 完了 | 30件の管理語彙へ固定。保存値と検索条件を完全一致にし、分類揺れによる候補漏れを抑制 |
-| P0 | 30 domain・90公開Revision・境界ケース | 完了 | 本番へ各domain 3件、合計90件を登録。positive/negative合計120 queryを固定し120/120合格 |
+| P0 | domainカタログ、検索・保存接続 | 完了 | 管理語彙を33件へ拡張。保存値と検索条件を完全一致にし、分類揺れによる候補漏れを抑制 |
+| P0 | 33 domain・99公開Revision・境界ケース | 本番投入・評価完了 | 各domain 3件、合計99件を本番登録。既120 queryに加え、追加3 domainの12 queryも実Vertexで12/12合格 |
+| P0 | CuckooCueデフォルト5 Shelf・30 Cuebook | BQ本番投入完了、Web配備待ち | 18件のYouTube/ブログ/公式情報から独自編集した150タスク。原文・字幕は複製せず、出典と編集注記を表示 |
 | P0 | thinking 128/BQ 1 GiBの配備・全体評価 | 実装・評価完了、7日観測中 | 16件実測ではthought token 56.1%減、検索解釈LLM推定費37.2%減、約46 USD/10万解釈。既存検索評価70/70合格。BQは1検索Jobの走査を1 GiB以下に制限 |
 | P1 | 有料APIのrate limit、App Check、429契約 | 250〜450行 + インフラ設定 | 匿名UID・登録UID・network単位で異常消費を遮断。拒否要求のVertex/BQ/Memory Bank呼出しを0回にする |
 | P1 | 公開GETのcache・ページング・BQ上限 | 120〜220行 + テスト80〜140行 | 同一公開データへの反復取得はCDN hit時にBQ呼出しを0回化。ランダムID攻撃は別途network制限で抑制 |
@@ -37,9 +38,19 @@
 - [x] **DATA-002: 各domainの初期公開データを準備する。** 30 domain × 3件、合計90件を本番`cuckoocue.cuckoo_cue`へ冪等seedした。タイトル90件・task本文270件は重複なし。
 - [x] **DATA-003: domain境界ケースを固定する。** 各domain positive 2件・negative 2件、合計120件を固定し、実Vertex判定120/120合格を記録した。
 - [x] **DATA-004: 段階的に有効化する。** 30件すべてが最低データ数と境界評価を満たしたためactive化した。公開Revisionのないdomainは実行時候補から外れる。
-- [x] **DATA-005: 旧3件の扱いを確定する。** 旧表3件は所有者の公開同意を推定できないため自動移行せず、legacy検証データとして検索対象外にした。新corpusは`cuebook_revisions` 90件のみを利用する。
+- [x] **DATA-005: 旧3件の扱いを確定する。** 旧表3件は所有者の公開同意を推定できないため自動移行せず、legacy検証データとして検索対象外にした。現在の本番corpusは`cuebook_revisions` 90件のみを利用する。
+- [x] **DATA-006: 追加3 domainを本番へ反映する。** 「料理・食事準備」「キャンプ・アウトドア」「動画制作・配信」の9 Revisionを本番seedした。追加12境界queryはthinking 128の実Vertex判定で12/12合格。
 
 完了条件: 30件のカタログ定義、90件以上のレビュー済み初期Revision、全domainの境界テスト、既存値のmappingが同じ変更セットにあり、検索・保存の両方がカタログ外値を受け付けない。
+
+## P0: CuckooCueデフォルトShelf
+
+- [x] **EDITORIAL-001: 第1弾データを固定する。** 5 Shelf、30 Cuebook/Revision、150タスク、18公開出典、30配置をmanifestに固定した。Runは利用者固有の実行記録のため作らない。
+- [x] **EDITORIAL-002: 出典と編集境界を実装する。** YouTube/ブログは調査根拠とURLを保持し、本文・字幕・画像を公開データへ複製しない。公閏DTOには内部観察メモを出さず、出典メタデータとCuckooCue編集表示だけを返す。
+- [x] **EDITORIAL-003: 安全なseedと表示回帰を用意する。** Cuebook先行作成、Revision不変検査、確認文字列、既存Revisionのembedding再計算回避、レスポンシブ/アクセシビリティE2Eを実装した。
+- [ ] **EDITORIAL-004: 本番投入と公開受入を行う。** schema追加、追加domain seed、editorial seedの順で対象project.datasetを明示して実行する。その後Webを配備し、5 Shelfの出典展開、検索命中、fork後にデフォルト印が継承されないことを確認する。
+
+完了条件: 本番で5 Shelf・30 Revisionが閲覧でき、各Revisionの出典が開け、詳細・Shelf・forkの表示境界がローカルE2Eと一致する。
 
 ## P0: 検索コスト変更の配備と評価
 

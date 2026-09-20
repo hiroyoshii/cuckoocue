@@ -1,11 +1,55 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import type { EditorialProvenance } from "@/lib/shelves";
 
 const revision = (id: string, title: string) => ({ id, title, published_at: "2026-09-12T00:00:00.000Z", withdrawn_at: null,
-  tasks: [{ id: `task-${id}`, title: `${title}を確認する`, default_priority: null, relative_start_day: -7, relative_end_day: 0 }] });
+  tasks: [{ id: `task-${id}`, title: `${title}を確認する`, default_priority: null, relative_start_day: -7, relative_end_day: 0 }],
+  provenance: null as EditorialProvenance | null });
 const revisions = [revision("r1", "猫の移動準備"), revision("r2", "新居の準備"), revision("r3", "住所手続き")];
 const source = { id: "source", title: "猫と引っ越す", context: "猫と電車で引っ越す人", is_owned: false, updated_at: "2026-09-12T00:00:00.000Z", created_at: "2026-09-12T00:00:00.000Z", forked_from_shelf_id: null, item_count: 2,
   items: revisions.slice(0, 2).map((revision, position) => ({ revision, revision_id: revision.id, position })) };
+
+test("CuckooCue default: editorial label and research sources are explicit and accessible", async ({ page }) => {
+  const curated = structuredClone(source) as typeof source & {
+    curation: { is_default: boolean; curator_label: string; reviewed_at: string };
+  };
+  curated.curation = { is_default: true, curator_label: "CuckooCueデフォルト", reviewed_at: "2026-09-21T00:00:00.000Z" };
+  curated.items[0].revision = {
+    ...curated.items[0].revision,
+    provenance: {
+      origin_type: "editorial_synthesis",
+      curator_label: "CuckooCue編集",
+      context_mode: "composite",
+      reviewed_at: "2026-09-21T00:00:00.000Z",
+      sources: [
+        { url: "https://www.youtube.com/watch?v=example", title: "猫との暮らしの紹介", publisher: "生活紹介チャンネル", source_type: "youtube", rights: "platform-link-only" },
+        { url: "https://www.env.go.jp/nature/dobutsu/aigo/2_data/pamph/h2209.html", title: "飼う前に考えて！", publisher: "環境省", source_type: "official", rights: "government-standard-terms-2.0" },
+      ],
+    },
+  };
+  await page.route("**/api/**", (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path === "/api/memberships") return route.fulfill({ json: { shelf_ids: [] } });
+    if (path === "/api/shelves") return route.fulfill({ json: { shelves: [curated] } });
+    return route.fulfill({ json: { shelf: curated } });
+  });
+
+  await page.goto("/?shelf_id=source");
+  await expect(page.getByText("CuckooCueデフォルト", { exact: true })).toBeVisible();
+  const disclosure = page.locator(".editorial-provenance");
+  await expect(disclosure).toBeVisible();
+  await expect(disclosure.locator("summary")).toContainText("CuckooCue編集");
+  await expect(disclosure.locator("summary")).toContainText("2件の公開情報を参照");
+  await disclosure.locator("summary").click();
+  await expect(page.getByText("複数の公開情報から生活条件と手順を抽出し、CuckooCue独自の表現で構成しています。原文の転載ではありません。", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "猫との暮らしの紹介" })).toHaveAttribute("href", "https://www.youtube.com/watch?v=example");
+  await expect(page.getByRole("link", { name: "飼う前に考えて！" })).toHaveAttribute("href", "https://www.env.go.jp/nature/dobutsu/aigo/2_data/pamph/h2209.html");
+  for (const width of [320, 390, 768, 1024, 1440]) {
+    await page.setViewportSize({ width, height: 1000 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  }
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+});
 
 test("W06/W07: membership unknown is not unjoined; fork retries the fixed snapshot and survives auto-join failure", async ({ page }) => {
   let failMembershipReads = true; let joined: string[] = []; const forks: Record<string, unknown>[] = [];

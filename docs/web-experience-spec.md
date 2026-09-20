@@ -1137,3 +1137,17 @@ W01/C07/D8。ユーザー承認で主ナビゲーションとモバイルナビ�
 第28節モバイル省スペース化（W01/C07）: ユーザー指定で680px以下の導入見出しを24pxに縮小し、画像をPCと同じ横並び版に統一。見出し・画像・検索欄の間隔も縮めた。縦版素材は保持するが表示しない。390px幅では検索欄の上端が約503px、下端が約686pxとなり、844px高の初期表示内で検索操作できる。[表示記録](review-screenshots/web/compact-introduction/display.json)と[mobile](review-screenshots/web/compact-introduction/390.png)。320/390/768/1024/1440pxで横はみ出しなし。PCの構成は維持。build/lint成功、関連PC/mobile回帰4件を実行。ローカル3143に反映、本番未配備。
 
 第29節省スペース化（C07）: ユーザー指定でタスク管理の紹介画像・アプリアイコン・大見出し・Widgetの静的使用例を削除。「タスクの管理には、スマホアプリをご利用ください。」の短い説明からAndroid/iOSの配布案内へ直結させる。配布URL・QR・準備中・端末順序のロジックは維持。[mobile](review-screenshots/web/task-management/compact-390.png)と[PC](review-screenshots/web/task-management/compact-1440.png)を確認。320/390/1440pxで横はみ出しなし。build/lint成功、案内と検索比較のPC/mobile回帰4件成功。ローカル3143に反映、本番未配備。
+
+## 30. CuckooCueデフォルトShelfと編集来歴（2026-09-21）
+
+D1〜D4/C04。公開情報をそのまま転載せず、生活条件・制約・手順をCuckooCue独自のCuebookへ再編集し、公式のデフォルトShelfへ配置する。Runは利用者が借用後に作る私的な実行記録であり、初期データとして作成・収集しない。
+
+- 第1弾は「猫2匹と暮らす家」「一人暮らしのこだわり料理」「ソロキャンプ飯」「小学生のいる家族」「自宅で動画を作る人」の5 Shelf。各6 Cuebook、合計30のPrivate Cuebook、30の不変Revision、150タスク、30配置を定義する。
+- YouTube・ブログは`platform-link-only`または`research-only`の調査根拠としてURL・公開メタデータ・編集者の要約観察だけを保持する。字幕、本文、画像、動画を公開コーパスへ複製しない。官公庁情報は安全・制度の確認根拠として併用する。
+- 各公式Cuebookは2件以上の根拠を持ち、ShelfごとにYouTube/ブログ等の生活事例と公式確認情報の両方を必須とする。複数ソースを合成した文脈は`context_mode=composite`として保存する。
+- BQの公開Revisionには公開可能な最小限の`provenance`（編集種別、表示名、確認日、出典URL・題名・発行者・種別・利用区分）を持たせる。内部の観察メモはリポジトリ内manifestに留め、公開DTOへ出さない。
+- BQのShelfには`curation`を持たせ、公式5 Shelfだけを`CuckooCueデフォルト`として表示する。利用者がforkしたShelfへこの印は継承しない。表示名やID接頭辞から管理者性を推定しない。
+- 管理語彙は成果物の種類を表すため、「料理・食事準備」「キャンプ・アウトドア」「動画制作・配信」を追加する。猫二匹、一人暮らし、小学生家族などの対象者属性はdomainにせずShelf contextへ置く。各追加domainにも検索境界用の3 Revisionとpositive/negativeケースを登録する。
+- 公式CuebookをBQへ先に保存し、実在する`source_cuebook_id`からRevisionを作る。同じRevision IDの再投入で本文が異なる場合は拒否し、既存の不変Revisionを更新しない。Shelfは全Revisionの存在確認後に配置する。
+
+データ検証は`web/scripts/validate-editorial-shelves.mjs`、単体検証は`web/scripts/test-editorial-shelves.mjs`、dry-run/applyは`web/scripts/seed-editorial-shelves.mjs`。applyは既存seedと同じく`CUE_SEED_CONFIRM`で対象project.datasetの完全一致を要求する。2026-09-21に本番`cuckoocue.cuckoo_cue`へ99 managed Revision・33 domain、30 editorial Revision・5 default Shelf・30配置をassert済み。外部サイトの自動クロールと投稿者との個別許諾取得は実施していない。

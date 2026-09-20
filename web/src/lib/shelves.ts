@@ -10,9 +10,21 @@ export type PublicRevisionTask = {
   id: string; title: string; default_priority: number | null;
   relative_start_day: number | null; relative_end_day: number | null;
 };
+export type EditorialProvenance = {
+  origin_type: "editorial_synthesis" | "licensed_adaptation" | "creator_contributed";
+  curator_label: string;
+  context_mode: "explicit" | "editorial_inference" | "composite";
+  reviewed_at: string;
+  sources: Array<{
+    url: string; title: string; publisher: string;
+    source_type: "official" | "youtube" | "blog" | "interview";
+    rights: string;
+  }>;
+};
 export type PublicRevisionSummary = {
   id: string; title: string; tasks: PublicRevisionTask[];
   published_at: string; withdrawn_at: string | null;
+  provenance?: EditorialProvenance | null;
 };
 export type PublicRevisionDetail = PublicRevisionSummary & {
   domain: string | null;
@@ -23,6 +35,7 @@ export type PublicRevisionDetail = PublicRevisionSummary & {
 export type ShelfSummary = {
   id: string; title: string; context: string; forked_from_shelf_id: string | null;
   is_owned: boolean; created_at: string; updated_at: string; item_count: number;
+  curation?: { is_default: boolean; curator_label: string; reviewed_at: string } | null;
 };
 export type ShelfDetail = ShelfSummary & {
   items: Array<{ revision_id: string; position: number; revision: PublicRevisionSummary }>;
@@ -30,11 +43,20 @@ export type ShelfDetail = ShelfSummary & {
 const shelfColumns = (ownerExpression: string) => `id, title, context, forked_from_shelf_id, ${ownerExpression} AS is_owned,
   FORMAT_TIMESTAMP('%Y-%m-%dT%H:%M:%E6SZ', created_at) AS created_at,
   FORMAT_TIMESTAMP('%Y-%m-%dT%H:%M:%E6SZ', updated_at) AS updated_at,
-  ARRAY_LENGTH(items) AS item_count`;
+  ARRAY_LENGTH(items) AS item_count,
+  IF(curation IS NULL, NULL, STRUCT(curation.is_default AS is_default, curation.curator_label AS curator_label,
+    FORMAT_TIMESTAMP('%Y-%m-%dT%H:%M:%E6SZ', curation.reviewed_at) AS reviewed_at)) AS curation`;
 const revisionColumns = `id, title,
   ARRAY(SELECT AS STRUCT t.id, t.text AS title, t.default_priority, t.relative_start_day, t.relative_end_day FROM UNNEST(tasks) t WITH OFFSET pos ORDER BY pos) AS tasks,
   FORMAT_TIMESTAMP('%Y-%m-%dT%H:%M:%E6SZ', created_at) AS published_at,
-  FORMAT_TIMESTAMP('%Y-%m-%dT%H:%M:%E6SZ', withdrawn_at) AS withdrawn_at`;
+  FORMAT_TIMESTAMP('%Y-%m-%dT%H:%M:%E6SZ', withdrawn_at) AS withdrawn_at,
+  IF(provenance IS NULL, NULL, STRUCT(
+    provenance.origin_type AS origin_type, provenance.curator_label AS curator_label,
+    provenance.context_mode AS context_mode,
+    FORMAT_TIMESTAMP('%Y-%m-%dT%H:%M:%E6SZ', provenance.reviewed_at) AS reviewed_at,
+    ARRAY(SELECT AS STRUCT source.url, source.title, source.publisher, source.source_type, source.rights
+      FROM UNNEST(provenance.sources) source WITH OFFSET pos ORDER BY pos) AS sources
+  )) AS provenance`;
 
 export async function listShelves(viewer = ""): Promise<ShelfSummary[]> {
   return bqRead(`SELECT ${shelfColumns("created_by = @viewer")} FROM ${bqTable("shelves")} ORDER BY updated_at DESC`, { viewer });

@@ -11,8 +11,13 @@
     "test:e2e": "playwright test",
     "capture:quality": "node scripts/capture-web-quality.mjs",
     "bq:init": "node scripts/create-bq-table.mjs",
+    "bq:init-cuebooks": "node scripts/create-bq-cuebooks.mjs",
     "bq:reset": "node scripts/reset-bq-table.mjs",
     "bq:seed-managed-domains": "node scripts/seed-managed-domain-corpus.mjs",
+    "bq:seed-editorial-shelves": "node scripts/seed-editorial-shelves.mjs",
+    "bq:verify-editorial-production": "node scripts/verify-editorial-production.mjs",
+    "editorial:validate": "node scripts/validate-editorial-shelves.mjs",
+    "test:editorial": "node --test scripts/test-editorial-shelves.mjs",
     "memory-bank:create": "python3 scripts/create-memory-bank.py",
     "scenario:moving": "node scripts/run-moving-scenario.mjs",
     "scenario:moving-comparison": "node scripts/run-moving-comparison-scenario.mjs"
