@@ -69,6 +69,7 @@ final class CueStoreTests: XCTestCase {
             ]
         )
         let store = makeStore(CueSnapshot(runs: [source]))
+        let storedSource = store.snapshot.runs[0]
 
         let newRunID = store.reuseCompletedRun(runID: "source")
         let copied = store.snapshot.runs.first { $0.id == newRunID }
@@ -79,7 +80,7 @@ final class CueStoreTests: XCTestCase {
         XCTAssertTrue(copied?.tasks.allSatisfy {
             $0.userPriority == nil && $0.availableFrom == nil && $0.dueAt == nil && $0.completedAt == nil
         } == true)
-        XCTAssertEqual(store.snapshot.runs.first(where: { $0.id == "source" }), source)
+        XCTAssertEqual(store.snapshot.runs.first(where: { $0.id == "source" }), storedSource)
     }
 
     func testLegacyArchivedRunCanBeRestoredWithoutAddingArchiveUI() {

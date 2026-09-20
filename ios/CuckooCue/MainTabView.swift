@@ -68,6 +68,9 @@ private struct RunListView: View {
                         .resizable()
                         .scaledToFit()
                         .frame(width: 116, height: 38)
+                        .padding(.horizontal, 4)
+                        .background(Color(red: 1, green: 0.965, blue: 0.906))
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
                         .accessibilityLabel("Cuckoo Cue")
                         .accessibilityIdentifier("brand-lockup")
                 }
