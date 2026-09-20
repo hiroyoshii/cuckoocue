@@ -1,4 +1,4 @@
-name: iOS widget screenshots
+name: iOS E2E screenshots
 
 on:
   workflow_dispatch:
@@ -14,6 +14,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -21,6 +22,7 @@ concurrency:
 
 jobs:
   build-test-screenshot:
+    name: Build, Test, and Capture Screenshots
     runs-on: macos-15
     timeout-minutes: 45
     steps:
@@ -31,6 +33,9 @@ jobs:
 
       - name: Install XcodeGen
         run: command -v xcodegen >/dev/null || brew install xcodegen
+
+      - name: Validate project metadata
+        run: bash ios/Scripts/validate-project.sh
 
       - name: Generate Xcode project
         run: xcodegen generate --spec ios/project.yml
@@ -165,13 +170,15 @@ jobs:
         if: steps.home-screen.outcome == 'failure'
         run: exit 1
 
-      - name: Upload widget screenshots
+      - name: Upload E2E screenshots and diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: cuckoo-cue-ios-widget-screenshots
+          name: cuckoo-cue-ios-e2e-screenshots
           path: |
             build/ios-widget-screenshots/**/*.png
             build/ios-widget-screenshots/*.png
+            build/*.log
+            build/*.xcresult/**
           if-no-files-found: warn
           retention-days: 14

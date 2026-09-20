@@ -53,7 +53,36 @@ enable the account and Web handoff UI in a signed build:
 Without the plist the app still builds and local/Widget features work, but the
 account sheet explicitly reports that Web transfer authentication is unavailable.
 
-The GitHub Actions workflow builds without signing, runs unit/UI tests, captures
-Small, Medium, Large, scoped-run, paged, and multi-run previews from the iOS
-Simulator, and uploads the PNGs as the `cuckoo-cue-ios-widget-screenshots`
-artifact.
+## GitHub Actions
+
+`iOS E2E screenshots` runs for iOS changes and can also be started manually. It
+builds without signing, runs the unit/UI tests, captures app flows plus Small,
+Medium, Large, Lock Screen, scoped-run, paged, and multi-run Widget states, and
+uploads them with logs and result bundles as the
+`cuckoo-cue-ios-e2e-screenshots` artifact.
+
+`iOS TestFlight Upload` is manual-only. It injects Firebase configuration,
+installs an Apple Distribution certificate and the app/Widget App Store
+provisioning profiles in a temporary keychain, archives and validates the IPA,
+then uploads it to App Store Connect. Configure these repository secrets before
+running it:
+
+- `GOOGLE_SERVICE_INFO_PLIST_BASE64`
+- `APPLE_DISTRIBUTION_CERTIFICATE_P12_BASE64`
+- `APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD`
+- `CUCKOOCUE_APPSTORE_PROFILE_APP_BASE64`
+- `CUCKOOCUE_APPSTORE_PROFILE_WIDGET_BASE64`
+- `APP_STORE_CONNECT_API_KEY_P8`
+- `APP_STORE_CONNECT_KEY_ID`
+- `APP_STORE_CONNECT_ISSUER_ID`
+
+Create two App Store Connect provisioning profiles in Apple Developer with the
+exact names expected by the generated project and export options:
+
+- `CuckooCue AppStore App` for `app.cuckoocue.ios`
+- `CuckooCue AppStore Widget` for `app.cuckoocue.ios.widget`
+
+Both profiles must contain `group.app.cuckoocue.shared`; the app profile must
+also contain `applinks:cuckoocue.hiyozoo.com`. Base64-encode the binary plist,
+certificate, and profile files without modifying their contents before storing
+them as secrets. Store the App Store Connect `.p8` file as its original text.
