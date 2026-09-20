@@ -19,7 +19,7 @@
 - [x] `アーカイブ`タブとRun詳細のアーカイブ操作を廃止した。既存DBフィールドは同期・移行互換として残すが、新しいユーザー操作には露出しない。
 - [x] 主画面をRun一覧中心にし、Web探索・新規作成・Widget設定は領域を奪わないアイコンへ整理した。実行中Runがない場合だけWeb探索を中央の主導線にする。
 - [x] 完了Runは最新1件だけ一覧末尾に残し、その下からWebの完了履歴へ進める。
-- [ ] 同じ操作構造をiOSへ反映する。Materialの見た目は移植しない。
+- [x] 同じ操作構造をiOSへ反映する。Materialの見た目は移植しない。
 
 完了条件：Androidは達成。iOS反映後、通常利用・設定変更・完了後・Web再利用への入口と戻り先を両OSで説明できる。
 
@@ -35,7 +35,7 @@
 
 完了条件：同じデータを使い、一覧→編集→Widget表示設定→完了→再利用／復元を両OSで比較できる。iOSのNavigationStack・sheet・FormとWidget familyは維持する。
 
-根拠：`ios/CuckooCue/MainTabView.swift`はリスト／ウィジェットの2タブで、Run詳細は追加・完了中心。`ios/Shared/CueStore.swift`に項目編集・Run復元・再利用メソッドはまだない。`archivedAt`フィールドがあることを、復元導線が完成済みの根拠にしない。
+根拠：`ios/CuckooCue/MainTabView.swift`はM01でRun一覧中心・Widget設定sheetへ整理済みだが、Run詳細は追加・完了中心。`ios/Shared/CueStore.swift`に項目編集・Run復元・再利用メソッドはまだない。`archivedAt`フィールドがあることを、復元導線が完成済みの根拠にしない。
 
 ### M03：iOSを既存Web受渡し契約へ接続する【実装／残件の中では大きい】
 

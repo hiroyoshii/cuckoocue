@@ -1,6 +1,43 @@
 import XCTest
 
 final class CuckooCueScreenshotTests: XCTestCase {
+    func testTopLevelNavigationMatchesRunFirstStructure() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing"]
+        app.launch()
+
+        XCTAssertEqual(app.tabBars.count, 0)
+        XCTAssertTrue(app.navigationBars["Cuckoo Cue"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.links["Webでタスクを探す"].exists)
+        XCTAssertTrue(app.buttons["新しいリストを作る"].exists)
+
+        app.buttons["Widget設定"].tap()
+        XCTAssertTrue(app.navigationBars["ウィジェット"].waitForExistence(timeout: 5))
+        app.buttons["完了"].tap()
+        XCTAssertTrue(app.navigationBars["Cuckoo Cue"].waitForExistence(timeout: 5))
+    }
+
+    func testEmptyRunStatePromotesWebSearchInContent() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "state-empty"]
+        app.launch()
+
+        XCTAssertTrue(app.staticTexts["リストを始めましょう"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.links["Webでタスクを探す"].exists)
+        XCTAssertTrue(app.buttons["新しいリストを作る"].exists)
+    }
+
+    func testOnlyLatestCompletedRunIsFollowedByWebHistory() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "state-completed-run"]
+        app.launch()
+
+        XCTAssertTrue(app.staticTexts["最近完了"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["週末の用事"].exists)
+        XCTAssertFalse(app.staticTexts["リリース準備"].exists)
+        XCTAssertTrue(app.links["完了履歴からもう一度使う"].exists)
+    }
+
     func testWidgetScreenshotHarnessIsAccessibleAtAllSizes() {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "--screenshot-gallery"]

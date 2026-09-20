@@ -80,6 +80,11 @@ private extension CueSnapshot {
         if arguments.contains("state-empty") {
             state.runs = []
         }
+        if arguments.contains("state-completed-run"), !state.runs.isEmpty {
+            for index in state.runs.indices {
+                state.runs[index].completedAnchorAt = Date(timeIntervalSince1970: Double(index + 1))
+            }
+        }
         if arguments.contains("state-dark") {
             state.widgetTheme = .dark
         }

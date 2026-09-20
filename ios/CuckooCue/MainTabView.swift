@@ -2,53 +2,84 @@ import SwiftUI
 
 struct MainTabView: View {
     var body: some View {
-        TabView {
-            RunListView()
-                .tabItem { Label("リスト", systemImage: "checklist") }
-            WidgetSettingsView()
-                .tabItem { Label("ウィジェット", systemImage: "square.grid.2x2") }
-        }
-        .tint(Color.cueTeal)
+        RunListView()
+            .tint(Color.cueTeal)
     }
 }
 
 private struct RunListView: View {
     @EnvironmentObject private var store: CueStore
     @State private var presentingNewRun = false
+    @State private var presentingWidgetSettings = false
     @State private var path: [String] = []
+
+    private var activeRuns: [CueRun] {
+        store.snapshot.runs.filter { $0.archivedAt == nil && $0.completedAnchorAt == nil }
+    }
+
+    private var latestCompletedRun: CueRun? {
+        store.snapshot.runs
+            .filter { $0.archivedAt == nil && $0.completedAnchorAt != nil }
+            .max { ($0.completedAnchorAt ?? .distantPast) < ($1.completedAnchorAt ?? .distantPast) }
+    }
 
     var body: some View {
         NavigationStack(path: $path) {
-            Group {
-                if store.snapshot.runs.isEmpty {
-                    ContentUnavailableView(
-                        "リストがありません",
-                        systemImage: "checklist",
-                        description: Text("小さなリストを作ると、優先度の高い項目がウィジェットに現れます。")
-                    )
+            List {
+                if activeRuns.isEmpty {
+                    EmptyRunSearchView(hasCompletedRun: latestCompletedRun != nil)
+                        .listRowInsets(EdgeInsets(top: 28, leading: 20, bottom: 28, trailing: 20))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
                 } else {
-                    List {
-                        Section("実行中") {
-                            ForEach(store.snapshot.runs.filter { $0.archivedAt == nil }) { run in
-                                NavigationLink(value: run.id) {
-                                    VStack(alignment: .leading, spacing: 5) {
-                                        Text(run.title).font(.headline)
-                                        Text("未完了 \(run.tasks.filter { $0.completedAt == nil }.count)件")
-                                            .font(.caption).foregroundStyle(.secondary)
-                                    }
-                                    .padding(.vertical, 4)
-                                }
+                    Section("実行中") {
+                        ForEach(activeRuns) { run in
+                            NavigationLink(value: run.id) {
+                                RunRow(run: run, completed: false)
                             }
                         }
                     }
                 }
+
+                if let completedRun = latestCompletedRun {
+                    Section("最近完了") {
+                        NavigationLink(value: completedRun.id) {
+                            RunRow(run: completedRun, completed: true)
+                        }
+
+                        Link(destination: CuckooCueWeb.historyURL) {
+                            Label("完了履歴からもう一度使う", systemImage: "arrow.up.right")
+                                .frame(maxWidth: .infinity, alignment: .center)
+                        }
+                        .accessibilityHint("Webの完了履歴を開きます")
+                    }
+                }
             }
+            .listStyle(.insetGrouped)
             .navigationTitle("Cuckoo Cue")
             .navigationDestination(for: String.self) { RunDetailView(runID: $0) }
             .toolbar {
-                Button("リストを追加", systemImage: "plus") { presentingNewRun = true }
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    if !activeRuns.isEmpty {
+                        Link(destination: CuckooCueWeb.homeURL) {
+                            Label("Webでタスクを探す", systemImage: "magnifyingglass")
+                        }
+                        .accessibilityHint("Webの検索画面を開きます")
+                    }
+
+                    Button("新しいリストを作る", systemImage: "plus") {
+                        presentingNewRun = true
+                    }
+
+                    Button("Widget設定", systemImage: "square.grid.2x2") {
+                        presentingWidgetSettings = true
+                    }
+                }
             }
             .sheet(isPresented: $presentingNewRun) { NewRunSheet() }
+            .sheet(isPresented: $presentingWidgetSettings) {
+                WidgetSettingsView(allowsDismiss: true)
+            }
             .onOpenURL { url in
                 guard url.scheme == "cuckoocue", url.host == "queue" else { return }
                 let runID = URLComponents(url: url, resolvingAgainstBaseURL: false)?
@@ -61,6 +92,60 @@ private struct RunListView: View {
             }
         }
     }
+}
+
+private struct RunRow: View {
+    let run: CueRun
+    let completed: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(run.title)
+                .font(.headline)
+            Text(statusText)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding(.vertical, 4)
+    }
+
+    private var statusText: String {
+        if completed {
+            return "完了済み・\(run.tasks.count)件"
+        }
+        return "未完了 \(run.tasks.filter { $0.completedAt == nil }.count)件"
+    }
+}
+
+private struct EmptyRunSearchView: View {
+    let hasCompletedRun: Bool
+
+    var body: some View {
+        VStack(spacing: 14) {
+            Image(systemName: "checklist")
+                .font(.system(size: 34, weight: .regular))
+                .foregroundStyle(Color.cueTeal)
+                .accessibilityHidden(true)
+            Text(hasCompletedRun ? "実行中のリストはありません" : "リストを始めましょう")
+                .font(.headline)
+            Text("Webで自分に合う段取りを探すか、右上の＋から新しいリストを作れます。")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+            Link(destination: CuckooCueWeb.homeURL) {
+                Label("Webでタスクを探す", systemImage: "magnifyingglass")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .accessibilityHint("Webの検索画面を開きます")
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+private enum CuckooCueWeb {
+    static let homeURL = URL(string: "https://cuckoocue.hiyozoo.com")!
+    static let historyURL = URL(string: "https://cuckoocue.hiyozoo.com/?view=history")!
 }
 
 struct NewRunSheet: View {
@@ -177,6 +262,8 @@ struct NewTaskSheet: View {
 
 struct WidgetSettingsView: View {
     @EnvironmentObject private var store: CueStore
+    @Environment(\.dismiss) private var dismiss
+    var allowsDismiss = false
 
     var body: some View {
         NavigationStack {
@@ -201,6 +288,13 @@ struct WidgetSettingsView: View {
                 }
             }
             .navigationTitle("ウィジェット")
+            .toolbar {
+                if allowsDismiss {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("完了") { dismiss() }
+                    }
+                }
+            }
         }
     }
 }
