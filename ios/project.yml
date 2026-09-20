@@ -38,7 +38,7 @@ targets:
         Release:
           CODE_SIGN_STYLE: Manual
           CODE_SIGN_IDENTITY: Apple Distribution
-          PROVISIONING_PROFILE_SPECIFIER: CuckooCue AppStore App
+          PROVISIONING_PROFILE_SPECIFIER: Cuckoo Cue
     info:
       path: CuckooCue/Info.plist
       properties:
@@ -94,7 +94,7 @@ targets:
         Release:
           CODE_SIGN_STYLE: Manual
           CODE_SIGN_IDENTITY: Apple Distribution
-          PROVISIONING_PROFILE_SPECIFIER: CuckooCue AppStore Widget
+          PROVISIONING_PROFILE_SPECIFIER: Cuckoo Cue Widget
     info:
       path: CuckooCueWidget/Info.plist
       properties:

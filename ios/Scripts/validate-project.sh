@@ -10,8 +10,8 @@ export_options="ios/CuckooCueExportOptions.plist"
 grep -q 'DEVELOPMENT_TEAM: 3M4M7DRUZY' "$project"
 grep -q 'PRODUCT_BUNDLE_IDENTIFIER: app.cuckoocue.ios$' "$project"
 grep -q 'PRODUCT_BUNDLE_IDENTIFIER: app.cuckoocue.ios.widget$' "$project"
-grep -q 'PROVISIONING_PROFILE_SPECIFIER: CuckooCue AppStore App' "$project"
-grep -q 'PROVISIONING_PROFILE_SPECIFIER: CuckooCue AppStore Widget' "$project"
+grep -q 'PROVISIONING_PROFILE_SPECIFIER: Cuckoo Cue' "$project"
+grep -q 'PROVISIONING_PROFILE_SPECIFIER: Cuckoo Cue Widget' "$project"
 grep -q 'applinks:cuckoocue.hiyozoo.com' "$project"
 
 plutil -lint "$app_entitlements" >/dev/null

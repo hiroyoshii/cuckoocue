@@ -10,8 +10,8 @@ if [[ ! -d "$PROFILE_DIR" ]]; then
 fi
 
 expected_profiles=(
-  "CuckooCue AppStore App|3M4M7DRUZY.app.cuckoocue.ios|app"
-  "CuckooCue AppStore Widget|3M4M7DRUZY.app.cuckoocue.ios.widget|widget"
+  "Cuckoo Cue|3M4M7DRUZY.app.cuckoocue.ios|app"
+  "Cuckoo Cue Widget|3M4M7DRUZY.app.cuckoocue.ios.widget|widget"
 )
 
 for expected in "${expected_profiles[@]}"; do

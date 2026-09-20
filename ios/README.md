@@ -79,8 +79,8 @@ running it:
 Create two App Store Connect provisioning profiles in Apple Developer with the
 exact names expected by the generated project and export options:
 
-- `CuckooCue AppStore App` for `app.cuckoocue.ios`
-- `CuckooCue AppStore Widget` for `app.cuckoocue.ios.widget`
+- `Cuckoo Cue` for `app.cuckoocue.ios`
+- `Cuckoo Cue Widget` for `app.cuckoocue.ios.widget`
 
 Both profiles must contain `group.app.cuckoocue.shared`; the app profile must
 also contain `applinks:cuckoocue.hiyozoo.com`. Base64-encode the binary plist,
