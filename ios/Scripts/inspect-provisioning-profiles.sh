@@ -39,8 +39,11 @@ for expected in "${expected_profiles[@]}"; do
     /usr/libexec/PlistBuddy -c 'Print :Entitlements:com.apple.security.application-groups' "$plist" \
       | grep -q 'group.app.cuckoocue.shared'
     if [[ "$expected_kind" == "app" ]]; then
-      /usr/libexec/PlistBuddy -c 'Print :Entitlements:com.apple.developer.associated-domains' "$plist" \
-        | grep -q 'applinks:cuckoocue.hiyozoo.com'
+      # Distribution profiles authorize Associated Domains with a wildcard;
+      # the concrete applinks domain is declared in the app entitlements.
+      /usr/libexec/PlistBuddy \
+        -c 'Print :Entitlements:com.apple.developer.associated-domains' \
+        "$plist" >/dev/null
     fi
   done
 
