@@ -2,12 +2,24 @@ import SwiftUI
 
 @main
 struct CuckooCueApp: App {
-    @StateObject private var store = CueStore()
+    @StateObject private var store: CueStore
+    @StateObject private var transfer: RunTransferController
+    @Environment(\.scenePhase) private var scenePhase
+
+    init() {
+        let store = CueStore()
+        _store = StateObject(wrappedValue: store)
+        _transfer = StateObject(wrappedValue: RunTransferController(store: store))
+    }
 
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environmentObject(store)
+                .environmentObject(transfer)
+                .onChange(of: scenePhase) { _, phase in
+                    if phase == .active { transfer.applicationBecameActive() }
+                }
         }
     }
 }

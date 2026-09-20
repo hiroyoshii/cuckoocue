@@ -12,6 +12,13 @@ settings:
     DEVELOPMENT_TEAM: ""
     CODE_SIGN_STYLE: Automatic
     ENABLE_USER_SCRIPT_SANDBOXING: YES
+packages:
+  Firebase:
+    url: https://github.com/firebase/firebase-ios-sdk.git
+    exactVersion: 11.15.0
+  GoogleSignIn:
+    url: https://github.com/google/GoogleSignIn-iOS.git
+    exactVersion: 9.0.0
 targets:
   CuckooCue:
     type: application
@@ -46,9 +53,17 @@ targets:
       properties:
         com.apple.security.application-groups:
           - group.app.cuckoocue.shared
+        com.apple.developer.associated-domains:
+          - applinks:cuckoocue.hiyozoo.com
     dependencies:
       - target: CuckooCueWidgetExtension
         embed: true
+      - package: Firebase
+        product: FirebaseAuth
+      - package: Firebase
+        product: FirebaseCore
+      - package: GoogleSignIn
+        product: GoogleSignIn
     scheme:
       testTargets:
         - CuckooCueTests

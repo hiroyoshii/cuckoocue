@@ -92,6 +92,16 @@ final class CueStoreTests: XCTestCase {
         XCTAssertFalse(store.restoreRun(runID: "archived"))
     }
 
+    func testReceivingSameRunIDDoesNotOverwriteLocalEdits() {
+        let local = CueRun(id: "shared", title: "ローカル編集", sortOrder: 0, tasks: [])
+        let store = makeStore(CueSnapshot(runs: [local]))
+        let remote = CueRun(id: "shared", title: "Web版", sortOrder: 0, tasks: [])
+
+        XCTAssertFalse(store.insertReceivedRun(remote))
+        XCTAssertEqual(store.snapshot.runs.first?.title, "ローカル編集")
+        XCTAssertEqual(store.snapshot.runs.count, 1)
+    }
+
     private func makeStore(_ snapshot: CueSnapshot) -> CueStore {
         CueStorage.resetForUITesting(snapshot)
         return CueStore()

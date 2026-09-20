@@ -11,18 +11,26 @@ struct CompleteCueIntent: AppIntent {
     init(taskID: String) { self.taskID = taskID }
 
     func perform() async throws -> some IntentResult {
+        var changedRunID: String?
         CueStorage.update { state in
             for runIndex in state.runs.indices {
                 guard let taskIndex = state.runs[runIndex].tasks.firstIndex(where: { $0.id == taskID }) else { continue }
                 let task = state.runs[runIndex].tasks[taskIndex]
                 guard task.completedAt == nil else { return }
-                state.runs[runIndex].tasks[taskIndex].completedAt = .now
-                state.runs[runIndex].tasks[taskIndex].updatedAt = .now
+                let now = Date.now
+                state.runs[runIndex].tasks[taskIndex].completedAt = now
+                state.runs[runIndex].tasks[taskIndex].updatedAt = now
+                if state.runs[runIndex].tasks.allSatisfy({ $0.completedAt != nil }) {
+                    state.runs[runIndex].completedAnchorAt = state.runs[runIndex].completedAnchorAt ?? now
+                }
+                state.runs[runIndex].updatedAt = now
                 state.undoTaskID = taskID
                 state.undoTitle = task.title
+                changedRunID = state.runs[runIndex].id
                 return
             }
         }
+        if let changedRunID { CueSyncMetadataStore.markPending(runID: changedRunID) }
         WidgetCenter.shared.reloadTimelines(ofKind: CueWidgetConstants.kind)
         return .result()
     }
@@ -42,17 +50,23 @@ struct UndoCueIntent: AppIntent {
     static var title: LocalizedStringResource = "完了を戻す"
 
     func perform() async throws -> some IntentResult {
+        var changedRunID: String?
         CueStorage.update { state in
             guard let taskID = state.undoTaskID else { return }
             for runIndex in state.runs.indices {
                 if let taskIndex = state.runs[runIndex].tasks.firstIndex(where: { $0.id == taskID }) {
+                    let now = Date.now
                     state.runs[runIndex].tasks[taskIndex].completedAt = nil
-                    state.runs[runIndex].tasks[taskIndex].updatedAt = .now
+                    state.runs[runIndex].tasks[taskIndex].updatedAt = now
+                    state.runs[runIndex].completedAnchorAt = nil
+                    state.runs[runIndex].updatedAt = now
+                    changedRunID = state.runs[runIndex].id
                 }
             }
             state.undoTaskID = nil
             state.undoTitle = nil
         }
+        if let changedRunID { CueSyncMetadataStore.markPending(runID: changedRunID) }
         WidgetCenter.shared.reloadTimelines(ofKind: CueWidgetConstants.kind)
         return .result()
     }

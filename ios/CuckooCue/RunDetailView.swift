@@ -2,10 +2,14 @@ import SwiftUI
 
 struct RunDetailView: View {
     @EnvironmentObject private var store: CueStore
+    @EnvironmentObject private var transfer: RunTransferController
+    @Environment(\.openURL) private var openURL
     let runID: String
     var onOpenRun: (String) -> Void = { _ in }
     @State private var presentingNewTask = false
     @State private var editingTask: CueTask?
+    @State private var preparingWeb = false
+    @State private var webError: String?
 
     private var run: CueRun? { store.snapshot.runs.first { $0.id == runID } }
     private var pendingTasks: [CueTask] { run?.tasks.filter { $0.completedAt == nil } ?? [] }
@@ -31,11 +35,16 @@ struct RunDetailView: View {
                         ForEach(completedTasks) { task in taskRow(task) }
                     }
                 }
-                if !run.tasks.isEmpty && pendingTasks.isEmpty {
-                    CompletedRunActions {
-                        guard let reusedRunID = store.reuseCompletedRun(runID: runID) else { return }
-                        onOpenRun(reusedRunID)
-                    }
+                if !completedTasks.isEmpty {
+                    CompletedRunActions(
+                        canReuseLocally: !run.tasks.isEmpty && pendingTasks.isEmpty,
+                        isPreparingWeb: preparingWeb,
+                        onReuse: {
+                            guard let reusedRunID = store.reuseCompletedRun(runID: runID) else { return }
+                            onOpenRun(reusedRunID)
+                        },
+                        onPrepareWeb: prepareCompletedTasksForWeb
+                    )
                 }
             }
         }
@@ -48,6 +57,14 @@ struct RunDetailView: View {
         }
         .sheet(item: $editingTask) { task in
             TaskEditorSheet(runID: runID, task: task)
+        }
+        .alert("Webへ反映できませんでした", isPresented: Binding(
+            get: { webError != nil },
+            set: { if !$0 { webError = nil } }
+        )) {
+            Button("閉じる", role: .cancel) {}
+        } message: {
+            Text(webError ?? "")
         }
     }
 
@@ -66,6 +83,20 @@ struct RunDetailView: View {
         )
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             Button("削除", role: .destructive) { store.deleteTask(taskID: task.id) }
+        }
+    }
+
+    private func prepareCompletedTasksForWeb() {
+        let taskIDs = completedTasks.sorted { $0.sortOrder < $1.sortOrder }.map(\.id)
+        preparingWeb = true
+        Task {
+            defer { preparingWeb = false }
+            do {
+                let url = try await transfer.prepareForWeb(runID: runID, completedTaskIDs: taskIDs)
+                openURL(url)
+            } catch {
+                webError = error.localizedDescription
+            }
         }
     }
 }
@@ -136,19 +167,35 @@ private struct TaskRow: View {
 }
 
 private struct CompletedRunActions: View {
+    let canReuseLocally: Bool
+    let isPreparingWeb: Bool
     let onReuse: () -> Void
+    let onPrepareWeb: () -> Void
 
     var body: some View {
         Section {
             VStack(alignment: .leading, spacing: 10) {
-                Text("このリストは完了しました")
+                Text(canReuseLocally ? "このリストは完了しました" : "完了した項目を再利用できます")
                     .font(.headline)
-                Button(action: onReuse) {
-                    Text("もう一度使う")
-                        .frame(maxWidth: .infinity)
+                if canReuseLocally {
+                    Button(action: onReuse) {
+                        Text("もう一度使う")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
                 }
-                .buttonStyle(.borderedProminent)
-                Text("本文だけを新しいリストへコピーし、日付・優先度・完了状態をリセットします。")
+                Button(action: onPrepareWeb) {
+                    HStack {
+                        if isPreparingWeb { ProgressView() }
+                        Text("再利用用に整える")
+                        .frame(maxWidth: .infinity)
+                    }
+                }
+                .buttonStyle(.bordered)
+                .disabled(isPreparingWeb)
+                Text(canReuseLocally
+                     ? "「もう一度使う」は本文だけを新しいリストへコピーします。Webでは完了した項目を編集して残せます。"
+                     : "同期後、完了した項目だけをWebで編集して残せます。")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

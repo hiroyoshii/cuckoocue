@@ -9,8 +9,10 @@ struct MainTabView: View {
 
 private struct RunListView: View {
     @EnvironmentObject private var store: CueStore
+    @EnvironmentObject private var transfer: RunTransferController
     @State private var presentingNewRun = false
     @State private var presentingWidgetSettings = false
+    @State private var presentingAccount = false
     @State private var path: [String] = []
 
     private var activeRuns: [CueRun] {
@@ -26,6 +28,8 @@ private struct RunListView: View {
     var body: some View {
         NavigationStack(path: $path) {
             List {
+                TransferStatusSection()
+
                 if activeRuns.isEmpty {
                     EmptyRunSearchView(hasCompletedRun: latestCompletedRun != nil)
                         .listRowInsets(EdgeInsets(top: 28, leading: 20, bottom: 28, trailing: 20))
@@ -87,6 +91,9 @@ private struct RunListView: View {
                     Button("Widget設定", systemImage: "square.grid.2x2") {
                         presentingWidgetSettings = true
                     }
+                    Button(transfer.user == nil ? "ログイン" : "アカウント", systemImage: transfer.user == nil ? "person.crop.circle" : "person.crop.circle.fill") {
+                        presentingAccount = true
+                    }
                 }
             }
             .sheet(isPresented: $presentingNewRun) {
@@ -95,7 +102,11 @@ private struct RunListView: View {
             .sheet(isPresented: $presentingWidgetSettings) {
                 WidgetSettingsView(allowsDismiss: true)
             }
+            .sheet(isPresented: $presentingAccount) {
+                AccountSheet()
+            }
             .onOpenURL { url in
+                transfer.handle(url: url)
                 guard url.scheme == "cuckoocue", url.host == "queue" else { return }
                 let runID = URLComponents(url: url, resolvingAgainstBaseURL: false)?
                     .queryItems?
@@ -103,8 +114,89 @@ private struct RunListView: View {
                     .value
                 if let runID, store.snapshot.runs.contains(where: { $0.id == runID && $0.archivedAt == nil }) {
                     path = [runID]
+                } else if runID == nil {
+                    path = []
                 }
             }
+            .onChange(of: transfer.openedRunID) { _, runID in
+                guard let runID else { return }
+                path = [runID]
+                transfer.consumeOpenedRunID()
+            }
+        }
+    }
+}
+
+private struct TransferStatusSection: View {
+    @EnvironmentObject private var transfer: RunTransferController
+
+    @ViewBuilder
+    var body: some View {
+        switch transfer.transferState {
+        case .idle:
+            EmptyView()
+        case .receiving:
+            Section {
+                HStack(spacing: 12) {
+                    ProgressView()
+                    Text("Webのリストを受信しています…")
+                }
+                .accessibilityIdentifier("run-transfer-receiving")
+            }
+        case .needsSignIn:
+            Section("Webから受け取る") {
+                Text(transfer.configurationAvailable
+                     ? "Webで使ったGoogleアカウントでログインすると、このリストを受け取れます。"
+                     : "このビルドにはiOS用のFirebase設定が含まれていないため、リストを受信できません。")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Button("Googleでログイン") { Task { await transfer.signIn() } }
+                    .disabled(!transfer.configurationAvailable)
+            }
+        case let .failed(_, message):
+            Section("リストを受信できませんでした") {
+                Text(message)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                if transfer.user == nil {
+                    Button("Googleでログイン") { Task { await transfer.signIn() } }
+                        .disabled(!transfer.configurationAvailable)
+                } else {
+                    Button("もう一度試す") { transfer.retryReceive() }
+                }
+            }
+        }
+    }
+}
+
+private struct AccountSheet: View {
+    @EnvironmentObject private var transfer: RunTransferController
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                if let user = transfer.user {
+                    Section("ログイン中") {
+                        LabeledContent("アカウント", value: user.displayName ?? user.email ?? "Googleアカウント")
+                        if let email = user.email, user.displayName != nil {
+                            LabeledContent("メール", value: email)
+                        }
+                        Button("ログアウト", role: .destructive) { transfer.signOut() }
+                    }
+                } else {
+                    Section {
+                        Button("Googleでログイン") { Task { await transfer.signIn() } }
+                            .disabled(!transfer.configurationAvailable)
+                    } footer: {
+                        Text(transfer.configurationAvailable
+                             ? "Webと同じアカウントを使うと、リストを安全に送受信できます。"
+                             : "このビルドにはiOS用のFirebase設定が含まれていません。")
+                    }
+                }
+            }
+            .navigationTitle("アカウント")
+            .toolbar { Button("閉じる") { dismiss() } }
         }
     }
 }

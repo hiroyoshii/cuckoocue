@@ -4,6 +4,7 @@ import WidgetKit
 @MainActor
 final class CueStore: ObservableObject {
     @Published private(set) var snapshot: CueSnapshot
+    var onRunMutation: ((String) -> Void)?
 
     init() {
         let arguments = ProcessInfo.processInfo.arguments
@@ -18,7 +19,7 @@ final class CueStore: ObservableObject {
         let clean = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !clean.isEmpty else { return nil }
         let runID = UUID().uuidString
-        commit { state in
+        commit(runID: runID) { state in
             let nextOrder = (state.runs.map(\.sortOrder).max() ?? -1) + 1
             state.runs.append(CueRun(id: runID, title: clean, sortOrder: nextOrder))
         }
@@ -37,7 +38,7 @@ final class CueStore: ObservableObject {
         guard !clean.isEmpty, validDateRange(availableFrom: availableFrom, dueAt: dueAt) else { return nil }
         let taskID = UUID().uuidString
         var added = false
-        commit { state in
+        commit(runID: runID) { state in
             guard let runIndex = state.runs.firstIndex(where: { $0.id == runID }) else { return }
             let order = (state.runs[runIndex].tasks.map(\.sortOrder).max() ?? -1) + 1
             state.runs[runIndex].tasks.append(
@@ -69,7 +70,8 @@ final class CueStore: ObservableObject {
         let clean = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !clean.isEmpty, validDateRange(availableFrom: availableFrom, dueAt: dueAt) else { return false }
         var updated = false
-        commit { state in
+        let runID = runID(containingTask: taskID)
+        commit(runID: runID) { state in
             for runIndex in state.runs.indices {
                 guard let taskIndex = state.runs[runIndex].tasks.firstIndex(where: { $0.id == taskID }) else {
                     continue
@@ -88,7 +90,8 @@ final class CueStore: ObservableObject {
     }
 
     func deleteTask(taskID: String) {
-        commit { state in
+        let runID = runID(containingTask: taskID)
+        commit(runID: runID) { state in
             for runIndex in state.runs.indices {
                 let before = state.runs[runIndex].tasks.count
                 state.runs[runIndex].tasks.removeAll { $0.id == taskID }
@@ -104,7 +107,8 @@ final class CueStore: ObservableObject {
     }
 
     func complete(taskID: String) {
-        commit { state in
+        let runID = runID(containingTask: taskID)
+        commit(runID: runID) { state in
             for runIndex in state.runs.indices {
                 guard let taskIndex = state.runs[runIndex].tasks.firstIndex(where: { $0.id == taskID }) else { continue }
                 guard state.runs[runIndex].tasks[taskIndex].completedAt == nil else { break }
@@ -120,14 +124,16 @@ final class CueStore: ObservableObject {
     }
 
     func undoComplete(taskID: String) {
-        commit { state in
+        let runID = runID(containingTask: taskID)
+        commit(runID: runID) { state in
             undoComplete(taskID: taskID, in: &state)
         }
     }
 
     func undo() {
         guard let taskID = snapshot.undoTaskID else { return }
-        commit { state in
+        let runID = runID(containingTask: taskID)
+        commit(runID: runID) { state in
             undoComplete(taskID: taskID, in: &state)
         }
     }
@@ -135,7 +141,7 @@ final class CueStore: ObservableObject {
     @discardableResult
     func restoreRun(runID: String) -> Bool {
         var restored = false
-        commit { state in
+        commit(runID: runID) { state in
             guard let runIndex = state.runs.firstIndex(where: { $0.id == runID }),
                   state.runs[runIndex].archivedAt != nil else { return }
             state.runs[runIndex].archivedAt = nil
@@ -155,7 +161,7 @@ final class CueStore: ObservableObject {
 
         let newRunID = UUID().uuidString
         let now = Date.now
-        commit { state in
+        commit(runID: newRunID) { state in
             let nextOrder = (state.runs.map(\.sortOrder).max() ?? -1) + 1
             let tasks = completed.enumerated().map { index, task in
                 CueTask(
@@ -192,9 +198,33 @@ final class CueStore: ObservableObject {
         commit { $0.widgetTextScale = scale }
     }
 
-    private func commit(_ mutation: (inout CueSnapshot) -> Void) {
-        snapshot = CueStorage.update(mutation)
+    @discardableResult
+    func insertReceivedRun(_ run: CueRun) -> Bool {
+        guard !snapshot.runs.contains(where: { $0.id == run.id }) else { return false }
+        snapshot = CueStorage.update { state in
+            guard !state.runs.contains(where: { $0.id == run.id }) else { return }
+            state.runs.append(run)
+        }
         WidgetCenter.shared.reloadTimelines(ofKind: CueWidgetConstants.kind)
+        return true
+    }
+
+    func reloadFromStorage() {
+        let stored = CueStorage.load()
+        if stored != snapshot { snapshot = stored }
+    }
+
+    private func commit(runID: String? = nil, _ mutation: (inout CueSnapshot) -> Void) {
+        snapshot = CueStorage.update(mutation)
+        if let runID {
+            CueSyncMetadataStore.markPending(runID: runID)
+            onRunMutation?(runID)
+        }
+        WidgetCenter.shared.reloadTimelines(ofKind: CueWidgetConstants.kind)
+    }
+
+    private func runID(containingTask taskID: String) -> String? {
+        snapshot.runs.first(where: { run in run.tasks.contains(where: { $0.id == taskID }) })?.id
     }
 
     private func validDateRange(availableFrom: Date?, dueAt: Date?) -> Bool {
