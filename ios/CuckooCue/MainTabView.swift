@@ -54,6 +54,7 @@ private struct RunListView: View {
                             Label("完了履歴からもう一度使う", systemImage: "arrow.up.right")
                                 .frame(maxWidth: .infinity, alignment: .center)
                         }
+                        .accessibilityIdentifier("web-history-link")
                         .accessibilityHint("Webの完了履歴を開きます")
                     }
                 }
@@ -83,6 +84,7 @@ private struct RunListView: View {
                         Link(destination: CuckooCueWeb.homeURL) {
                             Label("Webでタスクを探す", systemImage: "magnifyingglass")
                         }
+                        .accessibilityIdentifier("web-search-link")
                         .accessibilityHint("Webの検索画面を開きます")
                     }
                     Button("新しいリストを作る", systemImage: "plus") {
@@ -244,6 +246,7 @@ private struct EmptyRunSearchView: View {
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
+            .accessibilityIdentifier("web-search-link")
             .accessibilityHint("Webの検索画面を開きます")
         }
         .frame(maxWidth: .infinity)

@@ -9,7 +9,7 @@ final class CuckooCueScreenshotTests: XCTestCase {
         XCTAssertEqual(app.tabBars.count, 0)
         XCTAssertTrue(app.navigationBars["Cuckoo Cue"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.images["brand-lockup"].exists)
-        XCTAssertTrue(app.links["Webでタスクを探す"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["web-search-link"].exists)
         XCTAssertTrue(app.buttons["新しいリストを作る"].exists)
 
         app.buttons["Widget設定"].tap()
@@ -25,7 +25,7 @@ final class CuckooCueScreenshotTests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(app.staticTexts["リストを始めましょう"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.links["Webでタスクを探す"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["web-search-link"].exists)
         XCTAssertTrue(app.buttons["新しいリストを作る"].exists)
     }
 
@@ -37,7 +37,7 @@ final class CuckooCueScreenshotTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["最近完了"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["週末の用事"].exists)
         XCTAssertFalse(app.staticTexts["リリース準備"].exists)
-        XCTAssertTrue(app.links["完了履歴からもう一度使う"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["web-history-link"].exists)
     }
 
     func testCompletedRunCanBeRestoredOrReusedLocally() {
