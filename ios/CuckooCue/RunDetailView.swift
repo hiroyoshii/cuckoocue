@@ -11,6 +11,7 @@ struct RunDetailView: View {
     @State private var runTitle = ""
     @State private var expandedTaskID: String?
     @State private var showCompleted = false
+    @State private var editMode: EditMode = .inactive
     @State private var preparingWeb = false
     @State private var webError: String?
     @FocusState private var runTitleFocused: Bool
@@ -90,10 +91,15 @@ struct RunDetailView: View {
             }
         }
         .navigationTitle("")
+        .environment(\.editMode, $editMode)
         .toolbar {
             if pendingTasks.count > 1 {
-                EditButton()
-                    .accessibilityLabel("項目を並べ替える")
+                Button(editMode.isEditing ? "完了" : "並べ替え") {
+                    withAnimation {
+                        editMode = editMode.isEditing ? .inactive : .active
+                    }
+                }
+                .accessibilityLabel(editMode.isEditing ? "並べ替えを完了" : "項目を並べ替える")
             }
         }
         .onAppear {
