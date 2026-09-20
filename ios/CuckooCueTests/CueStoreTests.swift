@@ -47,6 +47,30 @@ final class CueStoreTests: XCTestCase {
         XCTAssertNil(store.snapshot.runs[0].tasks.first(where: { $0.id == "pending" })?.completedAt)
     }
 
+    func testPendingTasksCanBeReorderedWithoutMovingCompletedTasksIntoPendingSection() {
+        let completedAt = Date(timeIntervalSince1970: 1_000)
+        let tasks = [
+            CueTask(id: "first", runID: "run", title: "First", sortOrder: 0),
+            CueTask(id: "done", runID: "run", title: "Done", sortOrder: 1, completedAt: completedAt),
+            CueTask(id: "second", runID: "run", title: "Second", sortOrder: 2),
+        ]
+        let store = makeStore(CueSnapshot(runs: [CueRun(id: "run", title: "List", sortOrder: 0, tasks: tasks)]))
+
+        store.movePendingTasks(runID: "run", fromOffsets: IndexSet(integer: 0), toOffset: 2)
+
+        XCTAssertEqual(store.snapshot.runs[0].tasks.map(\.id), ["second", "first", "done"])
+        XCTAssertEqual(store.snapshot.runs[0].tasks.map(\.sortOrder), [0, 1, 2])
+    }
+
+    func testRunCanBeRenamedInline() {
+        let store = makeStore(CueSnapshot(runs: [CueRun(id: "run", title: "Before", sortOrder: 0)]))
+
+        XCTAssertTrue(store.renameRun(runID: "run", title: "After"))
+        XCTAssertEqual(store.snapshot.runs[0].title, "After")
+        XCTAssertFalse(store.renameRun(runID: "run", title: "   "))
+        XCTAssertEqual(store.snapshot.runs[0].title, "After")
+    }
+
     func testReuseCopiesOnlyTextAndResetsExecutionState() {
         let completedAt = Date(timeIntervalSince1970: 2_000)
         let source = CueRun(

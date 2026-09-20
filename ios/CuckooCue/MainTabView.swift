@@ -214,15 +214,47 @@ private struct RunRow: View {
     let run: CueRun
     let completed: Bool
 
+    private var previewTasks: [CueTask] {
+        Array(
+            run.tasks
+                .filter { completed || $0.completedAt == nil }
+                .sorted { $0.sortOrder < $1.sortOrder }
+                .prefix(3)
+        )
+    }
+
+    private var remainingCount: Int {
+        max(0, run.tasks.filter { completed || $0.completedAt == nil }.count - previewTasks.count)
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
+        VStack(alignment: .leading, spacing: 8) {
             Text(run.title)
                 .font(.headline)
-            Text(completed ? "完了済み・\(run.tasks.count)件" : "未完了 \(run.tasks.filter { $0.completedAt == nil }.count)件")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            ForEach(previewTasks) { task in
+                HStack(spacing: 8) {
+                    Circle()
+                        .fill(priorityColor(task.effectivePriority()))
+                        .frame(width: 8, height: 8)
+                        .accessibilityHidden(true)
+                    Text(task.title)
+                        .font(.subheadline)
+                        .foregroundStyle(completed ? Color.secondary : Color.primary)
+                        .strikethrough(completed)
+                        .lineLimit(1)
+                }
+            }
+            if remainingCount > 0 {
+                Text("ほか \(remainingCount)件")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 6)
+    }
+
+    private func priorityColor(_ priority: CuePriority) -> Color {
+        priority == .strong ? Color.cueTeal : priority == .medium ? Color.cueGreen : Color.secondary
     }
 }
 

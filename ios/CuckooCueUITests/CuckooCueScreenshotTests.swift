@@ -11,6 +11,7 @@ final class CuckooCueScreenshotTests: XCTestCase {
         XCTAssertTrue(app.images["brand-lockup"].exists)
         XCTAssertTrue(app.descendants(matching: .any)["web-search-link"].exists)
         XCTAssertTrue(app.buttons["新しいリストを作る"].exists)
+        XCTAssertTrue(app.staticTexts["ストア掲載文を確認する"].exists)
 
         app.buttons["Widget設定"].tap()
         XCTAssertTrue(app.navigationBars["ウィジェット"].waitForExistence(timeout: 5))
@@ -52,7 +53,7 @@ final class CuckooCueScreenshotTests: XCTestCase {
         XCTAssertTrue(app.buttons["植物に水をあげるを完了"].waitForExistence(timeout: 5))
     }
 
-    func testExistingTaskOpensEditorFromRunDetail() {
+    func testExistingTaskEditsInlineFromRunDetail() {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing"]
         app.launch()
@@ -63,7 +64,22 @@ final class CuckooCueScreenshotTests: XCTestCase {
         ).firstMatch
         XCTAssertTrue(editTask.waitForExistence(timeout: 5))
         editTask.tap()
-        XCTAssertTrue(app.navigationBars["項目を編集"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.textFields["task-title-editor-demo-1"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.navigationBars["項目を編集"].exists)
+    }
+
+    func testTaskMetadataExpandsInsideRunDetail() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing"]
+        app.launch()
+
+        app.staticTexts["リリース準備"].tap()
+        let details = app.buttons["ストア掲載文を確認するの日付と優先度を編集"]
+        XCTAssertTrue(details.waitForExistence(timeout: 5))
+        details.tap()
+        XCTAssertTrue(app.otherElements["task-details-demo-1"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.switches["開始日を設定"].exists)
+        XCTAssertTrue(app.switches["期限を設定"].exists)
     }
 
     func testWidgetScreenshotHarnessIsAccessibleAtAllSizes() {

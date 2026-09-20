@@ -41,11 +41,15 @@ private struct RootView: View {
         } else if arguments.contains("--screenshot-new-run") {
             NewRunSheet()
         } else if arguments.contains("--screenshot-new-task") {
-            TaskEditorSheet(runID: store.snapshot.runs.first?.id ?? "missing")
+            NavigationStack {
+                RunDetailView(runID: store.snapshot.runs.first?.id ?? "missing")
+            }
         } else if arguments.contains("--screenshot-edit-task"),
                   let run = store.snapshot.runs.first,
                   let task = run.tasks.first {
-            TaskEditorSheet(runID: run.id, task: task)
+            NavigationStack {
+                RunDetailView(runID: run.id, initiallyExpandedTaskID: task.id)
+            }
         } else {
             MainTabView()
         }

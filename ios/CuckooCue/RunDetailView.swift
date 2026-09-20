@@ -6,35 +6,76 @@ struct RunDetailView: View {
     @Environment(\.openURL) private var openURL
     let runID: String
     var onOpenRun: (String) -> Void = { _ in }
-    @State private var presentingNewTask = false
-    @State private var editingTask: CueTask?
+    var initiallyExpandedTaskID: String?
+    @State private var newTaskTitle = ""
+    @State private var runTitle = ""
+    @State private var expandedTaskID: String?
+    @State private var showCompleted = false
     @State private var preparingWeb = false
     @State private var webError: String?
+    @FocusState private var runTitleFocused: Bool
 
     private var run: CueRun? { store.snapshot.runs.first { $0.id == runID } }
-    private var pendingTasks: [CueTask] { run?.tasks.filter { $0.completedAt == nil } ?? [] }
-    private var completedTasks: [CueTask] { run?.tasks.filter { $0.completedAt != nil } ?? [] }
+    private var pendingTasks: [CueTask] {
+        (run?.tasks ?? []).filter { $0.completedAt == nil }.sorted { $0.sortOrder < $1.sortOrder }
+    }
+    private var completedTasks: [CueTask] {
+        (run?.tasks ?? []).filter { $0.completedAt != nil }.sorted { $0.sortOrder < $1.sortOrder }
+    }
+    private var completedTasksAreVisible: Bool { showCompleted || pendingTasks.isEmpty }
 
     var body: some View {
         List {
             if let run {
-                if run.tasks.isEmpty {
-                    ContentUnavailableView(
-                        "項目がありません",
-                        systemImage: "checklist",
-                        description: Text("右上の＋から最初の項目を追加できます。")
-                    )
+                Section {
+                    TextField("リスト名", text: $runTitle)
+                        .font(.largeTitle.bold())
+                        .focused($runTitleFocused)
+                        .submitLabel(.done)
+                        .onSubmit(saveRunTitle)
+                        .accessibilityIdentifier("run-title-editor")
                 }
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 4, trailing: 20))
+
+                Section {
+                    NewTaskComposer(title: $newTaskTitle, onAdd: addTask)
+                }
+
                 if !pendingTasks.isEmpty {
                     Section("未完了") {
-                        ForEach(pendingTasks) { task in taskRow(task) }
+                        ForEach(pendingTasks) { task in
+                            taskRow(task)
+                        }
+                        .onMove { fromOffsets, toOffset in
+                            store.movePendingTasks(runID: runID, fromOffsets: fromOffsets, toOffset: toOffset)
+                        }
                     }
                 }
+
                 if !completedTasks.isEmpty {
-                    Section("完了済み") {
-                        ForEach(completedTasks) { task in taskRow(task) }
+                    Section {
+                        Button {
+                            withAnimation { showCompleted.toggle() }
+                        } label: {
+                            HStack {
+                                Text(completedTasksAreVisible ? "完了済みを閉じる" : "完了済み")
+                                Spacer()
+                                Text("\(completedTasks.count)")
+                                    .foregroundStyle(.secondary)
+                                Image(systemName: completedTasksAreVisible ? "chevron.up" : "chevron.down")
+                                    .font(.caption.weight(.semibold))
+                            }
+                        }
+
+                        if completedTasksAreVisible {
+                            ForEach(completedTasks) { task in
+                                taskRow(task)
+                            }
+                        }
                     }
                 }
+
                 if !completedTasks.isEmpty {
                     CompletedRunActions(
                         canReuseLocally: !run.tasks.isEmpty && pendingTasks.isEmpty,
@@ -48,15 +89,22 @@ struct RunDetailView: View {
                 }
             }
         }
-        .navigationTitle(run?.title ?? "リスト")
+        .navigationTitle("")
         .toolbar {
-            Button("項目を追加", systemImage: "plus") { presentingNewTask = true }
+            if pendingTasks.count > 1 {
+                EditButton()
+                    .accessibilityLabel("項目を並べ替える")
+            }
         }
-        .sheet(isPresented: $presentingNewTask) {
-            TaskEditorSheet(runID: runID)
+        .onAppear {
+            runTitle = run?.title ?? ""
+            expandedTaskID = initiallyExpandedTaskID
         }
-        .sheet(item: $editingTask) { task in
-            TaskEditorSheet(runID: runID, task: task)
+        .onChange(of: run?.updatedAt) { _, _ in
+            if !runTitleFocused { runTitle = run?.title ?? "" }
+        }
+        .onChange(of: runTitleFocused) { _, focused in
+            if !focused { saveRunTitle() }
         }
         .alert("Webへ反映できませんでした", isPresented: Binding(
             get: { webError != nil },
@@ -70,8 +118,12 @@ struct RunDetailView: View {
 
     @ViewBuilder
     private func taskRow(_ task: CueTask) -> some View {
-        TaskRow(
+        InlineTaskRow(
             task: task,
+            isExpanded: Binding(
+                get: { expandedTaskID == task.id },
+                set: { expandedTaskID = $0 ? task.id : nil }
+            ),
             onToggleCompletion: {
                 if task.completedAt == nil {
                     store.complete(taskID: task.id)
@@ -79,15 +131,43 @@ struct RunDetailView: View {
                     store.undoComplete(taskID: task.id)
                 }
             },
-            onEdit: { editingTask = task }
+            onSave: { title, priority, availableFrom, dueAt in
+                store.updateTask(
+                    taskID: task.id,
+                    title: title,
+                    priority: priority,
+                    availableFrom: availableFrom,
+                    dueAt: dueAt
+                )
+            },
+            onDelete: { store.deleteTask(taskID: task.id) }
         )
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             Button("削除", role: .destructive) { store.deleteTask(taskID: task.id) }
         }
     }
 
+    private func addTask() {
+        guard store.addTask(
+            runID: runID,
+            title: newTaskTitle,
+            priority: nil,
+            availableFrom: nil,
+            dueAt: nil
+        ) != nil else { return }
+        newTaskTitle = ""
+    }
+
+    private func saveRunTitle() {
+        guard !runTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            runTitle = run?.title ?? ""
+            return
+        }
+        _ = store.renameRun(runID: runID, title: runTitle)
+    }
+
     private func prepareCompletedTasksForWeb() {
-        let taskIDs = completedTasks.sorted { $0.sortOrder < $1.sortOrder }.map(\.id)
+        let taskIDs = completedTasks.map(\.id)
         preparingWeb = true
         Task {
             defer { preparingWeb = false }
@@ -99,71 +179,6 @@ struct RunDetailView: View {
             }
         }
     }
-}
-
-private struct TaskRow: View {
-    let task: CueTask
-    let onToggleCompletion: () -> Void
-    let onEdit: () -> Void
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Button(action: onToggleCompletion) {
-                Image(systemName: task.completedAt == nil ? "square" : "checkmark.square.fill")
-                    .font(.title3)
-                    .foregroundStyle(task.completedAt == nil ? Color.secondary : Color.cueTeal)
-            }
-            .buttonStyle(.borderless)
-            .accessibilityLabel(task.completedAt == nil ? "\(task.title)を完了" : "\(task.title)の完了を取り消す")
-
-            Button(action: onEdit) {
-                HStack(spacing: 10) {
-                    Circle()
-                        .fill(priorityColor(task.effectivePriority()))
-                        .frame(width: 10, height: 10)
-                        .accessibilityHidden(true)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(task.title)
-                            .foregroundStyle(task.completedAt == nil ? Color.primary : .secondary)
-                            .strikethrough(task.completedAt != nil)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        if !metadata.isEmpty {
-                            Text(metadata)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                    }
-                    Image(systemName: "chevron.right")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.tertiary)
-                }
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("\(task.title)を編集、優先度\(task.effectivePriority().label)\(metadata.isEmpty ? "" : "、\(metadata)")")
-        }
-        .padding(.vertical, 3)
-        .accessibilityIdentifier("task-row-\(task.id)")
-    }
-
-    private var metadata: String {
-        var values: [String] = []
-        if let availableFrom = task.availableFrom { values.append("開始 \(Self.dateFormatter.string(from: availableFrom))") }
-        if let dueAt = task.dueAt { values.append("期限 \(Self.dateFormatter.string(from: dueAt))") }
-        return values.joined(separator: "・")
-    }
-
-    private func priorityColor(_ priority: CuePriority) -> Color {
-        priority == .strong ? Color.cueTeal : priority == .medium ? Color.cueGreen : Color.secondary
-    }
-
-    private static let dateFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ja_JP")
-        formatter.setLocalizedDateFormatFromTemplate("Md")
-        return formatter
-    }()
 }
 
 private struct CompletedRunActions: View {
@@ -179,16 +194,14 @@ private struct CompletedRunActions: View {
                     .font(.headline)
                 if canReuseLocally {
                     Button(action: onReuse) {
-                        Text("もう一度使う")
-                            .frame(maxWidth: .infinity)
+                        Text("もう一度使う").frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
                 }
                 Button(action: onPrepareWeb) {
                     HStack {
                         if isPreparingWeb { ProgressView() }
-                        Text("再利用用に整える")
-                        .frame(maxWidth: .infinity)
+                        Text("再利用用に整える").frame(maxWidth: .infinity)
                     }
                 }
                 .buttonStyle(.bordered)

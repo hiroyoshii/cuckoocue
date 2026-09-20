@@ -27,6 +27,24 @@ final class CueStore: ObservableObject {
     }
 
     @discardableResult
+    func renameRun(runID: String, title: String) -> Bool {
+        let clean = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clean.isEmpty else { return false }
+        var renamed = false
+        commit(runID: runID) { state in
+            guard let runIndex = state.runs.firstIndex(where: { $0.id == runID }) else { return }
+            guard state.runs[runIndex].title != clean else {
+                renamed = true
+                return
+            }
+            state.runs[runIndex].title = clean
+            state.runs[runIndex].updatedAt = .now
+            renamed = true
+        }
+        return renamed
+    }
+
+    @discardableResult
     func addTask(
         runID: String,
         title: String,
@@ -103,6 +121,42 @@ final class CueStore: ObservableObject {
                 }
                 break
             }
+        }
+    }
+
+    func movePendingTasks(runID: String, fromOffsets: IndexSet, toOffset: Int) {
+        commit(runID: runID) { state in
+            guard let runIndex = state.runs.firstIndex(where: { $0.id == runID }) else { return }
+            let allTasks = state.runs[runIndex].tasks
+            var pending = allTasks
+                .filter { $0.completedAt == nil }
+                .sorted { $0.sortOrder < $1.sortOrder }
+            let completed = allTasks
+                .filter { $0.completedAt != nil }
+                .sorted { $0.sortOrder < $1.sortOrder }
+            guard !fromOffsets.isEmpty,
+                  fromOffsets.allSatisfy({ pending.indices.contains($0) }),
+                  (0...pending.count).contains(toOffset) else { return }
+
+            let moving = fromOffsets.sorted().map { pending[$0] }
+            for index in fromOffsets.sorted(by: >) {
+                pending.remove(at: index)
+            }
+            let removedBeforeDestination = fromOffsets.filter { $0 < toOffset }.count
+            let insertionIndex = max(0, min(pending.count, toOffset - removedBeforeDestination))
+            pending.insert(contentsOf: moving, at: insertionIndex)
+
+            let now = Date.now
+            var reordered = pending + completed
+            for index in reordered.indices {
+                if reordered[index].sortOrder != index {
+                    reordered[index].sortOrder = index
+                    reordered[index].updatedAt = now
+                }
+            }
+            guard reordered != allTasks else { return }
+            state.runs[runIndex].tasks = reordered
+            state.runs[runIndex].updatedAt = now
         }
     }
 
