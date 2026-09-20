@@ -68,6 +68,9 @@ function errorResponse(error: unknown) {
   if (error instanceof Response) {
     return error;
   }
-  console.error("Search processing failed", error);
+  console.error(JSON.stringify({
+    event: "search.failed",
+    error_type: error instanceof Error ? error.name : "unknown",
+  }));
   return NextResponse.json({ error: "検索処理に失敗しました。時間をおいて再検索してください。" }, { status: 503 });
 }

@@ -23,7 +23,7 @@
 ## P0: 公開境界・ログ・入力上限
 
 - [x] **PRIV-001: 公開DTOから内部識別子を除去する。** `created_by`と`source_cuebook_id`を公開DTO/SQL projectionから除外し、認証済みviewerに対するboolean `is_owned`だけを返す。匿名・本人の公開導線をE2Eで固定した。
-- [x] **PRIV-002: 検索成功ログを最小化する。** `plan`、`query_hash`、`context_attribute_hashes`を削除し、domain、条件数、属性数、Job ID、件数などの運用値だけにした。Cloud Logging `_Default` bucketの保持期間は30日であることを確認した。
+- [x] **PRIV-002: 検索ログを最小化する。** 成功ログから`plan`、`query_hash`、`context_attribute_hashes`を削除し、domain、条件数、属性数、Job ID、件数などの運用値だけにした。失敗ログもprovider error全体を出さずerror型だけにし、検索文を含むrequest bodyの記録を止めた。Cloud Logging `_Default` bucketの保持期間は30日であることを確認した。
 - [x] **BOUND-001: 有料処理へ渡す入力に上限を付ける。** 検索`message` 500文字、`cursor` 4,096文字、task 200件、Memory event ID 160文字/text 1,200文字/offset付き日時などをschemaで有料処理前に拒否し、境界テストを追加した。
 
 完了条件: 未認証で取得できる全JSONを検査してFirebase UID・私的Cuebook IDがなく、検索成功ログに検索語またはプロフィール属性を推測できる値がなく、上限超過テストで有料API呼出しが0回になる。
@@ -43,7 +43,7 @@
 
 ## P0: 検索コスト変更の配備と評価
 
-- [ ] **COST-001: 現在の変更をmainへ反映し配備する。** 検索解釈とプロフィール選択のthinking budget 128、BQの1 GiB上限、生のVertex `usageMetadata`ログを、検証済みcommitからApp Hostingへ配備する。
+- [x] **COST-001: 現在の変更をmainへ反映し配備する。** thinking budget 128、BQ 1 GiB上限、生のVertex `usageMetadata`ログをmainへ反映し、App Hosting rollout `rollout-2026-09-20-020`で配備した。匿名本番検索はHTTP 200、6.5秒、正しいdomain、3件取得を確認した。
 - [x] **COST-002: 128で全検索評価を再実行する。** 既存70ケースを再実行し、必要候補・目的外候補・先頭候補・domainの全判定が70/70合格。1024との差分だった学校・インターネット条件をprompt規則と回帰へ固定した。
 - [ ] **COST-003: 本番分布を確認する。** stage別のinput/output/thought token、成功率、P50/P95、検索回数を集計する。検索文、UID、IP、トークン本文は記録しない。128から0への変更はこの結果まで保留する。
 - [x] **COST-004: Cloud Billingの予算通知を設定する。** project `cuckoocue`を対象に暫定月額1,000円、50%・80%・100%の既定メール通知を設定した（budget ID `e3a0a05a-8052-4ebc-baee-2f6c6fd46972`）。通知のみで自動停止ではない。異常時はまずApp Hostingの公開を止め、継続する課金要求があればVertex AI APIとBigQuery APIを無効化し、原因修正後に段階復旧する。

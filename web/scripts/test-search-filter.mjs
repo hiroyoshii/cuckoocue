@@ -193,3 +193,9 @@ test("paid-input schemas reject oversized payloads and unmanaged domains before 
   assert.equal(schemas.memoryEventInputSchema.safeParse({ event_id: "event", kind: "android_task_added", text: "確認", occurred_at: "not-a-date" }).success, false);
   assert.equal(schemas.saveTaskListSchema.safeParse({ title: "管理外", tasks: [task], operation_id: "00000000-0000-4000-8000-000000000000", domain: "自由分類" }).success, false);
 });
+
+test("search failures never serialize the provider error or request body", async () => {
+  const routeSource = await readFile(new URL("../src/app/api/search/route.ts", import.meta.url), "utf8");
+  assert.match(routeSource, /event:\s*"search\.failed"/);
+  assert.doesNotMatch(routeSource, /console\.error\([^\n]*,\s*error\s*\)/);
+});
