@@ -76,9 +76,9 @@ class CompletedReuseUiTest {
             val previewTasks = dao.tasksForRun(copy.id)
             context.startActivity(Intent(context, MainActivity::class.java).setAction("app.cuckoocue.OPEN_WIDGET")
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-            assertTrue(device.wait(Until.hasObject(By.text("新しいリスト")), 10_000))
+            assertTrue(device.wait(Until.hasObject(By.desc("新しいリストを作る")), 10_000))
             assertFalse(device.hasObject(By.text("表示例")))
-            device.findObject(By.text("表示")).click()
+            device.findObject(By.desc("Widget設定")).click()
             assertTrue(device.wait(Until.hasObject(By.text("Widget text")), 10_000))
             device.waitForIdle()
             assertTrue(device.wait(Until.hasObject(By.descContains("操作できないWidgetプレビュー")), 20_000))
@@ -106,8 +106,8 @@ class CompletedReuseUiTest {
                 assertTrue(device.wait(Until.hasObject(By.descContains("Large、Dark")), 20_000))
             }
             device.pressBack()
-            assertTrue(device.wait(Until.hasObject(By.text("新しいリスト")), 10_000))
-            device.findObject(By.text("表示")).click()
+            assertTrue(device.wait(Until.hasObject(By.desc("新しいリストを作る")), 10_000))
+            device.findObject(By.desc("Widget設定")).click()
             assertTrue(device.wait(Until.hasObject(By.descContains("Large、Dark")), 20_000))
             device.takeScreenshot(File(out, "widget-preview-reopened.png"))
         } finally {

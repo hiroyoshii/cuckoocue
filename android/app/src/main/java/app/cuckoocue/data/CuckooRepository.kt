@@ -254,27 +254,6 @@ class CuckooRepository internal constructor(
         zoneId: ZoneId = ZoneId.systemDefault(),
     ): String? {
         if (payload.title.isBlank() || payload.tasks.isEmpty()) return null
-        if (payload.originRevisionId != null) {
-            val cuebookId = createCuebook(
-                title = payload.title,
-                originRevisionId = payload.originRevisionId,
-                tasks = payload.tasks.map { task ->
-                    CuebookTaskDraft(
-                        title = task.title,
-                        defaultPriority = task.defaultPriority,
-                        relativeStartDay = task.relativeStartDay,
-                        relativeEndDay = task.relativeEndDay,
-                    )
-                },
-                clock = clock,
-            ) ?: return null
-            return createRunFromCuebook(
-                cuebookId = cuebookId,
-                targetAnchorDay = payload.targetAnchorDay,
-                clock = clock,
-                zoneId = zoneId,
-            )
-        }
         val now = clock()
         val runId = UUID.randomUUID().toString()
         val nextOrder = (dao.maxRunSortOrder() ?: -1) + 1

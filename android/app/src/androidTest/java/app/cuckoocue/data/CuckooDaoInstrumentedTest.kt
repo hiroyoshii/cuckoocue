@@ -373,7 +373,7 @@ class CuckooDaoInstrumentedTest {
     }
 
     @Test
-    fun importedRevisionCreatesPrivateCuebookAndRun() = runTest {
+    fun importedRevisionCreatesRunWithoutAndroidPrivateCuebook() = runTest {
         val repository = repository()
 
         val runId = requireNotNull(
@@ -397,15 +397,12 @@ class CuckooDaoInstrumentedTest {
         )
 
         val run = requireNotNull(dao.runById(runId))
-        val cuebook = dao.observeCuebooks().first().single()
-        val cuebookTask = dao.tasksForCuebook(cuebook.id).single()
         val runTask = dao.tasksForRun(runId).single()
 
-        assertEquals(1, dao.cuebookCount())
-        assertEquals("revision-1", cuebook.originRevisionId)
-        assertEquals(cuebook.id, run.sourceCuebookId)
+        assertEquals(0, dao.cuebookCount())
+        assertEquals(null, run.sourceCuebookId)
         assertEquals(LocalDate.of(2026, 10, 1).epochMillis(), run.targetAnchorDay)
-        assertEquals(cuebookTask.id, runTask.sourceTaskId)
+        assertEquals(null, runTask.sourceTaskId)
         assertEquals(LocalDate.of(2026, 9, 1).epochMillis(), runTask.availableFromAt)
         assertEquals(LocalDate.of(2026, 9, 10).epochMillis(), runTask.dueAt)
     }

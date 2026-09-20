@@ -44,6 +44,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -97,7 +99,6 @@ import app.cuckoocue.appearance.WidgetThemeMode
 import app.cuckoocue.auth.CuckooAuth
 import app.cuckoocue.auth.openHistoryAfterSignIn
 import app.cuckoocue.data.CuebookEntity
-import app.cuckoocue.data.CuebookTaskDraft
 import app.cuckoocue.data.CuebookTaskEntity
 import app.cuckoocue.data.CuckooRepository
 import app.cuckoocue.data.PriorityExposure
@@ -366,7 +367,7 @@ private fun cuckooColors(dark: Boolean): CuckooColors =
         )
     }
 
-private fun cuckooColorScheme(colors: CuckooColors, dark: Boolean): ColorScheme {
+internal fun cuckooColorScheme(colors: CuckooColors, dark: Boolean): ColorScheme {
     val base = if (dark) {
         androidx.compose.material3.darkColorScheme()
     } else {
@@ -456,10 +457,7 @@ private fun CuckooCueScreen(
     val widgetRedrawScheduler = remember(scope, context) { WidgetRedrawScheduler(scope, context) }
     val memoryEventClient = remember { MemoryEventClient() }
     val runs by repository.runs.collectAsStateWithLifecycle(initialValue = emptyList())
-    val archivedRuns by repository.archivedRuns.collectAsStateWithLifecycle(initialValue = emptyList())
-    val cuebooks by repository.cuebooks.collectAsStateWithLifecycle(initialValue = emptyList())
     var selectedRunId by remember { mutableStateOf<String?>(null) }
-    var selectedCuebookId by remember { mutableStateOf<String?>(null) }
     var importedRunId by remember { mutableStateOf<String?>(null) }
     var pendingOpenRunId by remember { mutableStateOf<String?>(null) }
     var showAppearance by remember { mutableStateOf(false) }
@@ -467,7 +465,6 @@ private fun CuckooCueScreen(
     LaunchedEffect(widgetNavigation) {
         if (widgetNavigation != null) {
             selectedRunId = null
-            selectedCuebookId = null
             showAppearance = false
             pendingOpenRunId = widgetNavigation.second
             onWidgetNavigationConsumed()
@@ -521,11 +518,6 @@ private fun CuckooCueScreen(
     if (selectedRunId != null && selectedRun == null) {
         selectedRunId = null
     }
-    val selectedCuebook = cuebooks.firstOrNull { it.id == selectedCuebookId }
-    if (selectedCuebookId != null && selectedCuebook == null) {
-        selectedCuebookId = null
-    }
-
     if (selectedRun != null) {
         BackHandler { selectedRunId = null }
         RunDetailScreen(
@@ -537,13 +529,6 @@ private fun CuckooCueScreen(
                 scope.launch {
                     repository.renameRun(selectedRun.id, title)
                     widgetRedrawScheduler.request(clearUndo = false)
-                }
-            },
-            onArchiveRun = {
-                scope.launch {
-                    repository.archiveRun(selectedRun.id)
-                    selectedRunId = null
-                    widgetRedrawScheduler.request()
                 }
             },
             onReuseRun = { taskIds ->
@@ -610,71 +595,10 @@ private fun CuckooCueScreen(
                 }
             },
         )
-    } else if (selectedCuebook != null) {
-        BackHandler { selectedCuebookId = null }
-        CuebookDetailScreen(
-            repository = repository,
-            cuebook = selectedCuebook,
-            onBack = { selectedCuebookId = null },
-            onRenameCuebook = { title ->
-                scope.launch { repository.renameCuebook(selectedCuebook.id, title) }
-            },
-            onCreateRun = { targetAnchorDay ->
-                scope.launch {
-                    val runId = repository.createRunFromCuebook(
-                        cuebookId = selectedCuebook.id,
-                        targetAnchorDay = targetAnchorDay,
-                    )
-                    if (runId == null) {
-                        Toast.makeText(context, "実行リストを作成できませんでした", Toast.LENGTH_LONG).show()
-                        return@launch
-                    }
-                    selectedCuebookId = null
-                    pendingOpenRunId = runId
-                    widgetRedrawScheduler.request()
-                }
-            },
-            onAddTask = { title, priority, relativeStartDay, relativeEndDay ->
-                scope.launch {
-                    repository.addCuebookTask(
-                        cuebookId = selectedCuebook.id,
-                        title = title,
-                        defaultPriority = priority,
-                        relativeStartDay = relativeStartDay,
-                        relativeEndDay = relativeEndDay,
-                    )
-                }
-            },
-            onUpdateTask = { taskId, title, priority, relativeStartDay, relativeEndDay ->
-                scope.launch {
-                    repository.updateCuebookTask(
-                        cuebookId = selectedCuebook.id,
-                        taskId = taskId,
-                        title = title,
-                        defaultPriority = priority,
-                        relativeStartDay = relativeStartDay,
-                        relativeEndDay = relativeEndDay,
-                    )
-                }
-            },
-            onDeleteTask = { taskId ->
-                scope.launch { repository.deleteCuebookTask(selectedCuebook.id, taskId) }
-            },
-        )
     } else {
         RunListScreen(
             repository = repository,
             runs = runs,
-            archivedRuns = archivedRuns,
-            onRestoreRun = { run ->
-                scope.launch {
-                    if (repository.restoreRun(run.id)) {
-                        pendingOpenRunId = run.id
-                        widgetRedrawScheduler.request()
-                    } else Toast.makeText(context, "復元できませんでした", Toast.LENGTH_LONG).show()
-                }
-            },
-            cuebooks = cuebooks,
             appearanceSettings = appearanceSettings,
             signedInUser = signedInUser,
             signInError = signInError,
@@ -683,19 +607,10 @@ private fun CuckooCueScreen(
             onSignIn = onSignIn,
             onSignOut = onSignOut,
             onOpenRun = { selectedRunId = it.id },
-            onOpenCuebook = { selectedCuebookId = it.id },
             onCreateRun = { title ->
                 scope.launch {
                     repository.createRun(title)?.let { selectedRunId = it }
                     widgetRedrawScheduler.request()
-                }
-            },
-            onCreateCuebook = { title ->
-                scope.launch {
-                    repository.createCuebook(
-                        title = title,
-                        tasks = listOf(CuebookTaskDraft(title = "最初のCue")),
-                    )?.let { selectedCuebookId = it }
                 }
             },
             onAppThemeChange = { mode ->
@@ -722,12 +637,9 @@ private fun CuckooCueScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun RunListScreen(
+internal fun RunListScreen(
     repository: CuckooRepository,
     runs: List<RunEntity>,
-    archivedRuns: List<RunEntity>,
-    onRestoreRun: (RunEntity) -> Unit,
-    cuebooks: List<CuebookEntity>,
     appearanceSettings: AppearanceSettings,
     signedInUser: FirebaseUser?,
     signInError: String?,
@@ -736,9 +648,7 @@ private fun RunListScreen(
     onSignIn: () -> Unit,
     onSignOut: () -> Unit,
     onOpenRun: (RunEntity) -> Unit,
-    onOpenCuebook: (CuebookEntity) -> Unit,
     onCreateRun: (String) -> Unit,
-    onCreateCuebook: (String) -> Unit,
     onAppThemeChange: (AppThemeMode) -> Unit,
     onWidgetThemeChange: (WidgetThemeMode) -> Unit,
     onWidgetTextScaleChange: (WidgetTextScale) -> Unit,
@@ -746,9 +656,21 @@ private fun RunListScreen(
     val colors = LocalCuckooColors.current
     val context = LocalContext.current
     val webAppUrl = stringResource(R.string.cuckoo_cue_web_url)
-    var runDraft by remember { mutableStateOf("") }
-    var cuebookDraft by remember { mutableStateOf("") }
-    var mode by remember { mutableStateOf("runs") }
+    var creating by remember { mutableStateOf(false) }
+    val activeRuns = remember(runs) { runs.filter { it.completedAnchorAt == null } }
+    val latestCompleted = remember(runs) { runs.filter { it.completedAnchorAt != null }.maxByOrNull { it.completedAnchorAt ?: Long.MIN_VALUE } }
+    fun openWeb(view: String? = null) {
+        val uri = Uri.parse(webAppUrl).buildUpon().apply { if (view != null) appendQueryParameter("view", view) }.build()
+        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, uri)) }
+            .onFailure { Toast.makeText(context, "ブラウザを開けませんでした", Toast.LENGTH_LONG).show() }
+    }
+    if (creating) {
+        CreateListDialog(title = "新しいリストを作る",
+            onDismiss = { creating = false }, onCreate = { name ->
+                onCreateRun(name)
+                creating = false
+            })
+    }
 
     if (showAppearance) {
         ModalBottomSheet(
@@ -771,25 +693,30 @@ private fun RunListScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Image(
-                            painter = painterResource(R.drawable.ic_cuckoo_cue_brand),
-                            contentDescription = null,
-                            modifier = Modifier.size(34.dp),
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Column {
-                            Text("Cuckoo Cue", fontSize = 12.sp, color = colors.teal, fontWeight = FontWeight.Bold)
-                            Text("リスト", color = colors.ink, fontWeight = FontWeight.Bold)
-                        }
-                    }
+                    Image(
+                        painter = painterResource(R.drawable.cuckoo_cue_brand_lockup),
+                        contentDescription = "Cuckoo Cue",
+                        // The supplied lockup has dark lettering; retain a light backing in dark mode.
+                        modifier = Modifier.width(120.dp).height(44.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(Color(0xFFFFF6E7)),
+                    )
                 },
                 actions = {
-                    TextButton(onClick = if (signedInUser == null) onSignIn else onSignOut) {
-                        Text(if (signedInUser == null) "ログイン" else "ログアウト", color = colors.teal)
+                    IconButton(onClick = if (signedInUser == null) onSignIn else onSignOut) {
+                        Icon(painterResource(R.drawable.ic_account),
+                            contentDescription = if (signedInUser == null) "ログイン" else "ログアウト", tint = colors.teal)
                     }
-                    TextButton(onClick = onToggleAppearance) {
-                        Text("表示", color = colors.muted)
+                    if (activeRuns.isNotEmpty()) {
+                        IconButton(onClick = { openWeb() }) {
+                            Icon(painterResource(R.drawable.ic_search), contentDescription = "Webでタスクを探す", tint = colors.muted)
+                        }
+                    }
+                    IconButton(onClick = { creating = true }) {
+                        Icon(painterResource(R.drawable.ic_add), contentDescription = "新しいリストを作る", tint = colors.muted)
+                    }
+                    IconButton(onClick = onToggleAppearance) {
+                        Icon(painterResource(R.drawable.ic_widgets), contentDescription = "Widget設定", tint = colors.muted)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = colors.surfaceBase),
@@ -813,163 +740,35 @@ private fun RunListScreen(
                     )
                 }
             }
-            item {
-                ListModeTabs(
-                    mode = mode,
-                    onModeChange = { mode = it },
-                    modifier = Modifier.padding(top = 8.dp),
-                )
-            }
-            item {
-                TextButton(onClick = {
-                    runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(webAppUrl))) }
-                        .onFailure { Toast.makeText(context, "ブラウザを開けませんでした", Toast.LENGTH_LONG).show() }
-                }) { Text("Webでリストを探す ↗") }
-            }
-            if (mode == "runs") {
+            if (activeRuns.isEmpty()) {
                 item {
-                    NewRunComposer(
-                        value = runDraft,
-                        onValueChange = { runDraft = it },
-                        onCreate = {
-                            onCreateRun(runDraft)
-                            runDraft = ""
-                        },
+                    EmptyRunSearchAction(
+                        hasCompletedRun = latestCompleted != null,
+                        onSearch = { openWeb() },
+                        modifier = Modifier.padding(top = 16.dp, bottom = 12.dp),
                     )
-                }
-                if (runs.isEmpty()) {
-                    item { EmptyListCard(title = "リストはまだありません", body = "新しく作るか、Webで使いたいリストを探せます。") }
-                }
-                items(runs, key = { it.id }) { run ->
-                    RunCard(repository = repository, run = run, onOpen = { onOpenRun(run) })
-                }
-            } else if (mode == "cuebooks") {
-                item {
-                    NewRunComposer(
-                        value = cuebookDraft,
-                        onValueChange = { cuebookDraft = it },
-                        onCreate = {
-                            onCreateCuebook(cuebookDraft)
-                            cuebookDraft = ""
-                        },
-                        label = "新しい再利用リスト",
-                        buttonLabel = "作成",
-                    )
-                }
-                if (cuebooks.isEmpty()) {
-                    item { EmptyListCard(title = "再利用リストはまだありません", body = "次回も使う項目セットを作ると、完了予定日から実行リストを作れます。") }
-                }
-                items(cuebooks, key = { it.id }) { cuebook ->
-                    CuebookCard(repository = repository, cuebook = cuebook, onOpen = { onOpenCuebook(cuebook) })
                 }
             } else {
-                if (archivedRuns.isEmpty()) {
-                    item { EmptyListCard(title = "アーカイブはありません", body = "一覧から外したリストはここから復元できます。") }
+                items(activeRuns, key = { it.id }) { run ->
+                    RunCard(repository = repository, run = run, onOpen = { onOpenRun(run) })
                 }
-                items(archivedRuns, key = { it.id }) { run ->
-                    Surface(shape = RoundedCornerShape(8.dp), color = colors.panel) {
-                        Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Text(run.title, Modifier.weight(1f), color = colors.ink)
-                            TextButton(onClick = { onRestoreRun(run) }) { Text("復元") }
-                        }
+            }
+            latestCompleted?.let { completedRun ->
+                item {
+                    Text("最近完了", color = colors.muted, fontSize = 12.sp, fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(top = 14.dp, bottom = 2.dp))
+                }
+                item(key = "latest-completed-${completedRun.id}") {
+                    RunCard(repository = repository, run = completedRun, onOpen = { onOpenRun(completedRun) })
+                }
+                item {
+                    TextButton(onClick = { openWeb("history") }, modifier = Modifier.fillMaxWidth()) {
+                        Text("完了履歴からもう一度使う ↗", color = colors.teal)
                     }
                 }
             }
             item { Spacer(Modifier.height(20.dp)) }
         }
-    }
-}
-
-@Composable
-private fun NewRunComposer(
-    value: String,
-    onValueChange: (String) -> Unit,
-    onCreate: () -> Unit,
-    modifier: Modifier = Modifier,
-    label: String = "新しいリスト",
-    buttonLabel: String = "作成",
-) {
-    val colors = LocalCuckooColors.current
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        OutlinedTextField(
-            value = value,
-            onValueChange = onValueChange,
-            modifier = Modifier.weight(1f),
-            label = { Text(label) },
-            singleLine = true,
-        )
-        Button(
-            onClick = onCreate,
-            enabled = value.isNotBlank(),
-            colors = ButtonDefaults.buttonColors(containerColor = colors.teal),
-        ) {
-            Text(buttonLabel)
-        }
-    }
-}
-
-@Composable
-private fun ListModeTabs(
-    mode: String,
-    onModeChange: (String) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val colors = LocalCuckooColors.current
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .border(1.dp, colors.line, RoundedCornerShape(8.dp))
-            .padding(4.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        ModeTab(
-            label = "リスト",
-            selected = mode == "runs",
-            onClick = { onModeChange("runs") },
-            modifier = Modifier.weight(1f),
-        )
-        ModeTab(
-            label = "再利用",
-            selected = mode == "cuebooks",
-            onClick = { onModeChange("cuebooks") },
-            modifier = Modifier.weight(1f),
-        )
-        ModeTab(
-            label = "アーカイブ",
-            selected = mode == "archived",
-            onClick = { onModeChange("archived") },
-            modifier = Modifier.weight(1f),
-        )
-    }
-}
-
-@Composable
-private fun ModeTab(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val colors = LocalCuckooColors.current
-    Box(
-        modifier = modifier
-            .height(38.dp)
-            .clip(RoundedCornerShape(6.dp))
-            .background(if (selected) colors.highlight else Color.Transparent)
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = label,
-            color = if (selected) colors.ink else colors.muted,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Bold,
-        )
     }
 }
 
@@ -1127,7 +926,6 @@ private fun RunDetailScreen(
     isImported: Boolean,
     onBack: () -> Unit,
     onRenameRun: (String) -> Unit,
-    onArchiveRun: () -> Unit,
     onReuseRun: suspend (List<String>) -> Unit,
     onShareRun: suspend (List<String>) -> Unit,
     onAddTask: (String, Long?, Int?) -> Unit,
@@ -1198,17 +996,6 @@ private fun RunDetailScreen(
     }
 
 
-    var confirmArchive by remember(run.id) { mutableStateOf(false) }
-    if (confirmArchive) {
-        AlertDialog(
-            onDismissRequest = { confirmArchive = false },
-            title = { Text("リストをアーカイブしますか？") },
-            text = { Text("「${run.title}」を一覧とWidgetから外します。内容は削除せず、アーカイブから復元できます。") },
-            confirmButton = { TextButton(onClick = { confirmArchive = false; onArchiveRun() }) { Text("アーカイブする") } },
-            dismissButton = { TextButton(onClick = { confirmArchive = false }) { Text("キャンセル") } },
-        )
-    }
-
     Scaffold(
         topBar = {
             TopAppBar(
@@ -1218,9 +1005,7 @@ private fun RunDetailScreen(
                 navigationIcon = {
                     TextButton(onClick = onBack) { Text("‹", color = colors.ink, fontSize = 28.sp) }
                 },
-                actions = {
-                    TextButton(onClick = { confirmArchive = true }) { Text("アーカイブ", color = colors.muted) }
-                },
+                actions = {},
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = colors.surfaceBase),
             )
         },
@@ -1610,12 +1395,6 @@ private fun ImportedNotice(modifier: Modifier = Modifier) {
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Image(
-            painter = painterResource(R.drawable.ic_cuckoo_cue_brand),
-            contentDescription = null,
-            modifier = Modifier.size(24.dp),
-        )
-        Spacer(Modifier.width(8.dp))
         Column {
             Text("Webから取り込みました", color = colors.ink, fontSize = 14.sp, fontWeight = FontWeight.Bold)
             Text("日付と優先度を確認して、このまま使えます", color = colors.muted, fontSize = 12.sp)

@@ -125,6 +125,39 @@ ui_resource_bounds() {
     sed -n 's/.*bounds="\[\([0-9]*\),\([0-9]*\)\]\[\([0-9]*\),\([0-9]*\)\]".*/\1 \2 \3 \4/p'
 }
 
+ui_desc_bounds() {
+  local desc="$1"
+  adb_shell uiautomator dump /sdcard/window.xml >/dev/null 2>&1 || return 1
+  "$ADB" exec-out cat /sdcard/window.xml |
+    tr '>' '\n' |
+    grep -F "content-desc=\"$desc\"" |
+    head -n 1 |
+    sed -n 's/.*bounds="\[\([0-9]*\),\([0-9]*\)\]\[\([0-9]*\),\([0-9]*\)\]".*/\1 \2 \3 \4/p'
+}
+
+tap_desc() {
+  local desc="$1"
+  local bounds
+  bounds="$(ui_desc_bounds "$desc")"
+  [ -n "$bounds" ] || return 1
+  local left top right bottom
+  read -r left top right bottom <<<"$bounds"
+  adb_shell input tap "$(((left + right) / 2))" "$(((top + bottom) / 2))"
+  sleep "${2:-2}"
+}
+
+wait_for_desc() {
+  local desc="$1"
+  local attempts="${2:-15}"
+  local pause="${3:-1}"
+  for _ in $(seq 1 "$attempts"); do
+    if [ -n "$(ui_desc_bounds "$desc" || true)" ]; then return 0; fi
+    sleep "$pause"
+  done
+  echo "Timed out waiting for content description: $desc" >&2
+  return 1
+}
+
 run_open_bounds() {
   adb_shell uiautomator dump /sdcard/window.xml >/dev/null 2>&1 || return 1
   "$ADB" exec-out cat /sdcard/window.xml | tr '>' '\n' |
@@ -441,9 +474,9 @@ request_pin_widget() {
     echo "Trying widget pin request through Pixel Launcher API, attempt $attempt..."
     home
     adb_shell am start -n "$MAIN_ACTIVITY" -a "$PACKAGE.OPEN_WIDGET" >/dev/null || return 1
-    wait_for_text "新しいリスト" 10 1 || return 1
+    wait_for_desc "新しいリストを作る" 10 1 || return 1
     assert_text_absent "表示例" || return 1
-    tap_text "表示" 2 || return 1
+    tap_desc "Widget設定" 2 || return 1
     wait_for_text "ホーム画面にWidgetを追加" 10 1 || return 1
     wait_for_text "Widgetプレビュー" 10 1 || return 1
     screenshot "app-widget-install-entry" || return 1
@@ -456,7 +489,7 @@ request_pin_widget() {
         if wait_for_text "Widget text" 2 1; then
           adb_shell input keyevent KEYCODE_BACK || return 1
         fi
-        wait_for_text "新しいリスト" 10 1 || return 1
+        wait_for_desc "新しいリストを作る" 10 1 || return 1
         assert_text_absent "表示例" || return 1
         assert_text_absent "ホーム画面にWidgetを追加" || return 1
         screenshot "app-widget-installed" || return 1
@@ -574,6 +607,7 @@ echo "== Build, install, and run instrumentation checks =="
       exit 1
     fi
     "$ADB" pull "/sdcard/Android/data/$PACKAGE/files/completed-reuse" "$OUT_DIR/completed-reuse"
+    "$ADB" pull "/sdcard/Android/data/$PACKAGE/files/list-start" "$OUT_DIR/list-start"
   fi
   ./gradlew installDebug
 )
@@ -639,28 +673,10 @@ sleep 2
 restart_app_fresh 4
 wait_for_text "朝の支度" 20 1 || true
 screenshot "app-list-many-runs"
-echo "== Display sheet and recoverable archive =="
-tap_text "表示" 2
+echo "== Widget settings sheet =="
+tap_desc "Widget設定" 2
 wait_for_text "Widget text" 10 1
 screenshot "app-display-sheet"
-adb_shell input keyevent KEYCODE_BACK
-sleep 2
-tap_text "朝の支度" 2
-tap_text "アーカイブ" 2
-wait_for_text "リストをアーカイブしますか？" 10 1
-screenshot "app-archive-confirmation"
-tap_text "キャンセル" 2
-wait_for_text "新しい項目" 10 1
-tap_text "アーカイブ" 2
-tap_text "アーカイブする" 2
-wait_for_text "新しいリスト" 10 1
-tap_text "アーカイブ" 2
-wait_for_text "復元" 10 1
-screenshot "app-archive-list"
-tap_text "復元" 2
-wait_for_text "新しい項目" 10 1
-wait_for_text "朝の支度" 10 1
-screenshot "app-archive-restored"
 adb_shell input keyevent KEYCODE_BACK
 sleep 2
 tap_text "朝の支度" 2 || true
@@ -708,12 +724,12 @@ adb_shell uiautomator dump /sdcard/window.xml >/dev/null 2>&1
 nav_footer_bounds="$(footer_run_bounds)"
 read -r nav_left nav_top nav_right nav_bottom <<<"$nav_footer_bounds"
 tap "$(((nav_left + nav_right) / 2))" "$((nav_top - 50))" 2
-wait_for_text "新しいリスト" 10 1
+wait_for_desc "新しいリストを作る" 10 1
 screenshot "navigation-central-blank-top"
 home
 show_widget_page
 tap "$(((nav_left + nav_right) / 2))" "$((nav_bottom + 12))" 2
-wait_for_text "新しいリスト" 10 1
+wait_for_desc "新しいリストを作る" 10 1
 screenshot "navigation-background-top"
 home
 show_widget_page
