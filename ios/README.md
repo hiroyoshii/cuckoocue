@@ -47,7 +47,8 @@ enable the account and Web handoff UI in a signed build:
 3. Enable Associated Domains for the app ID. `project.yml` already declares
    `applinks:cuckoocue.hiyozoo.com`.
 4. Serve an Apple App Site Association file for `/import` from that host using
-   the selected Apple Team ID and `app.cuckoocue.ios` bundle ID.
+   Apple Team ID `3M4M7DRUZY` and `app.cuckoocue.ios` bundle ID. The repository
+   provides this at `web/public/.well-known/apple-app-site-association`.
 
 Without the plist the app still builds and local/Widget features work, but the
 account sheet explicitly reports that Web transfer authentication is unavailable.

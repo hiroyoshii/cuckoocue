@@ -1,0 +1,15 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["3M4M7DRUZY.app.cuckoocue.ios"],
+        "components": [
+          {
+            "/": "/import",
+            "comment": "Open an existing Cuckoo Cue run in the iOS app."
+          }
+        ]
+      }
+    ]
+  }
+}
