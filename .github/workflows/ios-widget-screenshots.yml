@@ -77,6 +77,22 @@ jobs:
             exit "$status"
           fi
 
+      - name: Run app and model tests
+        timeout-minutes: 15
+        shell: bash
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project ios/CuckooCue.xcodeproj \
+            -scheme CuckooCue \
+            -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.id }}' \
+            -derivedDataPath build/ios-derived-data \
+            -resultBundlePath build/CuckooCueTests.xcresult \
+            -only-testing:CuckooCueTests \
+            -only-testing:CuckooCueUITests \
+            CODE_SIGNING_ALLOWED=NO \
+            | tee build/CuckooCueTests.log
+
       - name: Capture widget previews
         timeout-minutes: 10
         shell: bash
@@ -112,7 +128,10 @@ jobs:
           capture widget-states/widget-many-runs-medium --screenshot-gallery medium state-many-runs
           capture widget-states/widget-many-runs-large --screenshot-gallery large state-many-runs
           capture app/app-list
+          capture app/app-empty-list state-empty
+          capture app/app-completed-list state-completed-run
           capture app/app-detail --screenshot-detail
+          capture app/app-completed-detail --screenshot-detail state-completed-run
           capture app/app-many-runs-list state-many-runs
           capture app/app-many-runs-detail --screenshot-detail state-many-runs
           capture app/app-widget-settings --screenshot-settings

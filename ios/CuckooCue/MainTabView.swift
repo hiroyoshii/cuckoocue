@@ -46,7 +46,6 @@ private struct RunListView: View {
                         NavigationLink(value: completedRun.id) {
                             RunRow(run: completedRun, completed: true)
                         }
-
                         Link(destination: CuckooCueWeb.historyURL) {
                             Label("完了履歴からもう一度使う", systemImage: "arrow.up.right")
                                 .frame(maxWidth: .infinity, alignment: .center)
@@ -57,8 +56,21 @@ private struct RunListView: View {
             }
             .listStyle(.insetGrouped)
             .navigationTitle("Cuckoo Cue")
-            .navigationDestination(for: String.self) { RunDetailView(runID: $0) }
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationDestination(for: String.self) { runID in
+                RunDetailView(runID: runID) { reusedRunID in
+                    path = [reusedRunID]
+                }
+            }
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Image("CuckooCueBrandLockup")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 116, height: 38)
+                        .accessibilityLabel("Cuckoo Cue")
+                        .accessibilityIdentifier("brand-lockup")
+                }
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     if !activeRuns.isEmpty {
                         Link(destination: CuckooCueWeb.homeURL) {
@@ -66,17 +78,17 @@ private struct RunListView: View {
                         }
                         .accessibilityHint("Webの検索画面を開きます")
                     }
-
                     Button("新しいリストを作る", systemImage: "plus") {
                         presentingNewRun = true
                     }
-
                     Button("Widget設定", systemImage: "square.grid.2x2") {
                         presentingWidgetSettings = true
                     }
                 }
             }
-            .sheet(isPresented: $presentingNewRun) { NewRunSheet() }
+            .sheet(isPresented: $presentingNewRun) {
+                NewRunSheet { runID in path = [runID] }
+            }
             .sheet(isPresented: $presentingWidgetSettings) {
                 WidgetSettingsView(allowsDismiss: true)
             }
@@ -102,18 +114,11 @@ private struct RunRow: View {
         VStack(alignment: .leading, spacing: 5) {
             Text(run.title)
                 .font(.headline)
-            Text(statusText)
+            Text(completed ? "完了済み・\(run.tasks.count)件" : "未完了 \(run.tasks.filter { $0.completedAt == nil }.count)件")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
         .padding(.vertical, 4)
-    }
-
-    private var statusText: String {
-        if completed {
-            return "完了済み・\(run.tasks.count)件"
-        }
-        return "未完了 \(run.tasks.filter { $0.completedAt == nil }.count)件"
     }
 }
 
@@ -151,6 +156,7 @@ private enum CuckooCueWeb {
 struct NewRunSheet: View {
     @EnvironmentObject private var store: CueStore
     @Environment(\.dismiss) private var dismiss
+    var onCreated: (String) -> Void = { _ in }
     @State private var title = ""
 
     var body: some View {
@@ -160,141 +166,14 @@ struct NewRunSheet: View {
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) { Button("キャンセル") { dismiss() } }
                     ToolbarItem(placement: .confirmationAction) {
-                        Button("作成") { store.createRun(title: title); dismiss() }
-                            .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    }
-                }
-        }
-    }
-}
-
-struct RunDetailView: View {
-    @EnvironmentObject private var store: CueStore
-    let runID: String
-    @State private var presentingTask = false
-
-    private var run: CueRun? { store.snapshot.runs.first { $0.id == runID } }
-
-    var body: some View {
-        List {
-            if let run {
-                Section("このリスト") {
-                    ForEach(run.tasks) { task in
-                        Button { store.complete(taskID: task.id) } label: {
-                            HStack(spacing: 12) {
-                                Image(systemName: task.completedAt == nil ? "square" : "checkmark.square.fill")
-                                    .foregroundStyle(task.completedAt == nil ? Color.secondary : Color.cueTeal)
-                                Circle().fill(priorityColor(task.effectivePriority())).frame(width: 10, height: 10)
-                                Text(task.title)
-                                    .foregroundStyle(task.completedAt == nil ? Color.primary : .secondary)
-                                    .strikethrough(task.completedAt != nil)
-                            }
+                        Button("作成") {
+                            guard let runID = store.createRun(title: title) else { return }
+                            dismiss()
+                            onCreated(runID)
                         }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("\(task.title)、\(task.completedAt == nil ? "未完了" : "完了済み")")
+                        .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
                 }
-            }
-        }
-        .navigationTitle(run?.title ?? "リスト")
-        .toolbar { Button("項目を追加", systemImage: "plus") { presentingTask = true } }
-        .sheet(isPresented: $presentingTask) { NewTaskSheet(runID: runID) }
-    }
-
-    private func priorityColor(_ priority: CuePriority) -> Color {
-        priority == .strong ? Color.cueTeal : priority == .medium ? Color.cueGreen : Color.secondary
-    }
-}
-
-struct NewTaskSheet: View {
-    @EnvironmentObject private var store: CueStore
-    @Environment(\.dismiss) private var dismiss
-    let runID: String
-    @State private var title = ""
-    @State private var priority: CuePriority? = .medium
-    @State private var hasDueDate = false
-    @State private var dueAt = Date()
-
-    private var effectivePriority: CuePriority {
-        if let priority { return priority }
-        return CueTask(runID: runID, title: title, dueAt: hasDueDate ? dueAt : nil, sortOrder: 0)
-            .effectivePriority()
-    }
-
-    private var widgetHint: String {
-        switch effectivePriority {
-        case .strong, .medium:
-            return "このCueはホーム画面に出ます。"
-        case .quiet:
-            return "今はホーム画面に出ません。強・中にするか、近い期限を設定すると表示されます。"
-        }
-    }
-
-    var body: some View {
-        NavigationStack {
-            Form {
-                TextField("項目", text: $title)
-                Picker("優先度", selection: $priority) {
-                    Text("期限から自動").tag(CuePriority?.none)
-                    ForEach(CuePriority.allCases) { Text($0.label).tag(Optional($0)) }
-                }
-                Toggle("期限を設定", isOn: $hasDueDate)
-                if hasDueDate { DatePicker("期限", selection: $dueAt, displayedComponents: .date) }
-                Section("ホーム画面") {
-                    Text(widgetHint)
-                        .foregroundStyle(effectivePriority == .quiet ? Color.secondary : Color.cueTeal)
-                }
-            }
-            .navigationTitle("新しい項目")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("キャンセル") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("追加") {
-                        store.addTask(runID: runID, title: title, priority: priority, dueAt: hasDueDate ? dueAt : nil)
-                        dismiss()
-                    }
-                    .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                }
-            }
-        }
-    }
-}
-
-struct WidgetSettingsView: View {
-    @EnvironmentObject private var store: CueStore
-    @Environment(\.dismiss) private var dismiss
-    var allowsDismiss = false
-
-    var body: some View {
-        NavigationStack {
-            Form {
-                Section("外観") {
-                    Picker("テーマ", selection: Binding(
-                        get: { store.snapshot.widgetTheme },
-                        set: store.setTheme
-                    )) {
-                        ForEach(WidgetTheme.allCases) { Text($0.label).tag($0) }
-                    }
-                    Picker("文字サイズ", selection: Binding(
-                        get: { store.snapshot.widgetTextScale },
-                        set: store.setTextScale
-                    )) {
-                        ForEach(WidgetTextScale.allCases) { Text($0.label).tag($0) }
-                    }
-                }
-                Section {
-                    Text("ホーム画面を長押しして、Cuckoo Cueウィジェットを追加してください。")
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .navigationTitle("ウィジェット")
-            .toolbar {
-                if allowsDismiss {
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button("完了") { dismiss() }
-                    }
-                }
-            }
         }
     }
 }

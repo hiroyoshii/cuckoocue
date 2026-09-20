@@ -8,11 +8,13 @@ final class CuckooCueScreenshotTests: XCTestCase {
 
         XCTAssertEqual(app.tabBars.count, 0)
         XCTAssertTrue(app.navigationBars["Cuckoo Cue"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.images["brand-lockup"].exists)
         XCTAssertTrue(app.links["Webでタスクを探す"].exists)
         XCTAssertTrue(app.buttons["新しいリストを作る"].exists)
 
         app.buttons["Widget設定"].tap()
         XCTAssertTrue(app.navigationBars["ウィジェット"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.otherElements["widget-settings-preview"].exists)
         app.buttons["完了"].tap()
         XCTAssertTrue(app.navigationBars["Cuckoo Cue"].waitForExistence(timeout: 5))
     }
@@ -36,6 +38,18 @@ final class CuckooCueScreenshotTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["週末の用事"].exists)
         XCTAssertFalse(app.staticTexts["リリース準備"].exists)
         XCTAssertTrue(app.links["完了履歴からもう一度使う"].exists)
+    }
+
+    func testCompletedRunCanBeRestoredOrReusedLocally() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "state-completed-run"]
+        app.launch()
+
+        app.staticTexts["週末の用事"].tap()
+        XCTAssertTrue(app.buttons["植物に水をあげるの完了を取り消す"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["もう一度使う"].exists)
+        app.buttons["もう一度使う"].tap()
+        XCTAssertTrue(app.buttons["植物に水をあげるを完了"].waitForExistence(timeout: 5))
     }
 
     func testWidgetScreenshotHarnessIsAccessibleAtAllSizes() {
