@@ -70,7 +70,12 @@ final class RunTransferTests: XCTestCase {
         XCTAssertEqual(captured?.value(forHTTPHeaderField: "If-Match"), "\"v1\"")
         XCTAssertEqual(object["source_cuebook_id"] as? String, "book")
         XCTAssertEqual((object["target_anchor_day"] as? NSNumber)?.int64Value, 1_800_000_000_000)
+        XCTAssertTrue(object["archived_at"] is NSNull)
+        XCTAssertTrue(object["completed_anchor_at"] is NSNull)
         XCTAssertEqual(tasks.first?["source_task_id"] as? String, "source")
+        XCTAssertTrue(tasks.first?["available_from_at"] is NSNull)
+        XCTAssertTrue(tasks.first?["due_at"] is NSNull)
+        XCTAssertTrue(tasks.first?["completed_at"] is NSNull)
     }
 
     func testOwnerCannotBeReassignedAcrossAccounts() {

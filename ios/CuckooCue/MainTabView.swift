@@ -134,7 +134,14 @@ private struct TransferStatusSection: View {
     var body: some View {
         switch transfer.transferState {
         case .idle:
-            EmptyView()
+            if let message = transfer.backgroundError {
+                Section("Web同期を完了できませんでした") {
+                    Text(message)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Button("もう一度試す") { transfer.retryPendingSyncs() }
+                }
+            }
         case .receiving:
             Section {
                 HStack(spacing: 12) {

@@ -71,6 +71,11 @@ final class RunTransferController: ObservableObject {
         Task { await receivePendingRun() }
     }
 
+    func retryPendingSyncs() {
+        backgroundError = nil
+        flushOwnedPendingRuns()
+    }
+
     func consumeOpenedRunID() {
         openedRunID = nil
     }

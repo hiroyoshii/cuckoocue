@@ -101,7 +101,6 @@ struct RunAPIClient {
     func sync(run: CueRun, token: String, etag: String?) async throws -> String? {
         guard RunTransferLink.isValidID(run.id) else { throw RunSyncError.invalidLink }
         let payload = SyncedRun(run: run)
-        guard !payload.tasks.isEmpty else { return etag }
         var request = URLRequest(url: baseURL.appending(path: "api/runs/\(run.id)"))
         request.httpMethod = "PUT"
         request.timeoutInterval = 12
@@ -188,6 +187,23 @@ private struct SyncedRun: Codable {
             .map(SyncedTask.init)
     }
 
+    func encode(to encoder: Encoder) throws {
+        var values = encoder.container(keyedBy: CodingKeys.self)
+        try values.encode(id, forKey: .id)
+        try values.encode(title, forKey: .title)
+        try values.encodeIfPresent(sourceCuebookID, forKey: .sourceCuebookID)
+        try values.encodeIfPresent(targetAnchorDay, forKey: .targetAnchorDay)
+        try values.encode(sortOrder, forKey: .sortOrder)
+        if let archivedAt { try values.encode(archivedAt, forKey: .archivedAt) }
+        else { try values.encodeNil(forKey: .archivedAt) }
+        if let completedAnchorAt { try values.encode(completedAnchorAt, forKey: .completedAnchorAt) }
+        else { try values.encodeNil(forKey: .completedAnchorAt) }
+        try values.encode(timeZone, forKey: .timeZone)
+        try values.encode(createdAt, forKey: .createdAt)
+        try values.encode(updatedAt, forKey: .updatedAt)
+        try values.encode(tasks, forKey: .tasks)
+    }
+
     var hasUniqueTaskIDs: Bool { Set(tasks.map(\.id)).count == tasks.count }
 
     var localValue: CueRun {
@@ -242,6 +258,24 @@ private struct SyncedTask: Codable {
         completedAt = task.completedAt.map(epochMillis)
         createdAt = epochMillis(task.createdAt)
         updatedAt = epochMillis(task.updatedAt)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var values = encoder.container(keyedBy: CodingKeys.self)
+        try values.encode(id, forKey: .id)
+        try values.encode(title, forKey: .title)
+        try values.encodeIfPresent(sourceTaskID, forKey: .sourceTaskID)
+        if let userPriority { try values.encode(userPriority, forKey: .userPriority) }
+        else { try values.encodeNil(forKey: .userPriority) }
+        if let availableFrom { try values.encode(availableFrom, forKey: .availableFrom) }
+        else { try values.encodeNil(forKey: .availableFrom) }
+        if let dueAt { try values.encode(dueAt, forKey: .dueAt) }
+        else { try values.encodeNil(forKey: .dueAt) }
+        try values.encode(sortOrder, forKey: .sortOrder)
+        if let completedAt { try values.encode(completedAt, forKey: .completedAt) }
+        else { try values.encodeNil(forKey: .completedAt) }
+        try values.encode(createdAt, forKey: .createdAt)
+        try values.encode(updatedAt, forKey: .updatedAt)
     }
 
     func localValue(runID: String) -> CueTask {
