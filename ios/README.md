@@ -35,14 +35,15 @@ Center and Action Button control that opens the queue.
 
 ## Firebase and Universal Link setup
 
-The repository intentionally does not contain production Firebase configuration.
-To enable the account and Web handoff UI in a signed build:
+The Firebase project contains an iOS app for `app.cuckoocue.ios`, but the
+repository intentionally does not contain its production configuration. To
+enable the account and Web handoff UI in a signed build:
 
-1. Register the iOS bundle ID `app.cuckoocue.ios` in the existing `cuckoocue`
-   Firebase project and download `GoogleService-Info.plist` to
+1. Download that app's `GoogleService-Info.plist` from the existing `cuckoocue`
+   Firebase project to
    `ios/CuckooCue/GoogleService-Info.plist`.
-2. Add the plist's `REVERSED_CLIENT_ID` as a URL scheme in the CuckooCue target.
-   Keep the existing `cuckoocue` scheme used by the Widget.
+2. Keep its `REVERSED_CLIENT_ID` URL scheme and the existing `cuckoocue`
+   Widget scheme declared in `project.yml`.
 3. Enable Associated Domains for the app ID. `project.yml` already declares
    `applinks:cuckoocue.hiyozoo.com`.
 4. Serve an Apple App Site Association file for `/import` from that host using

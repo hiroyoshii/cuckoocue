@@ -49,6 +49,9 @@ targets:
           - CFBundleURLName: app.cuckoocue.queue
             CFBundleURLSchemes:
               - cuckoocue
+          - CFBundleURLName: app.cuckoocue.google-sign-in
+            CFBundleURLSchemes:
+              - com.googleusercontent.apps.675825988404-o807mdu6vlcpfm6kbmkumftcj11va7o5
     entitlements:
       path: CuckooCue/CuckooCue.entitlements
       properties:
