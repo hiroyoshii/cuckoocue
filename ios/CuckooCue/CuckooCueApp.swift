@@ -1,6 +1,7 @@
 import SwiftUI
 
 @main
+@MainActor
 struct CuckooCueApp: App {
     @StateObject private var store: CueStore
     @StateObject private var transfer: RunTransferController

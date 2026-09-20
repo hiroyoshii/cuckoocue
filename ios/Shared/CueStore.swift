@@ -215,8 +215,10 @@ final class CueStore: ObservableObject {
     }
 
     private func commit(runID: String? = nil, _ mutation: (inout CueSnapshot) -> Void) {
+        let previousRun = runID.flatMap { id in snapshot.runs.first(where: { $0.id == id }) }
         snapshot = CueStorage.update(mutation)
-        if let runID {
+        let currentRun = runID.flatMap { id in snapshot.runs.first(where: { $0.id == id }) }
+        if let runID, previousRun != currentRun {
             CueSyncMetadataStore.markPending(runID: runID)
             onRunMutation?(runID)
         }
