@@ -59,7 +59,7 @@ struct CueWidgetCard: View {
     private var pageIndex: Int {
         guard family != .systemSmall, !allCues.isEmpty else { return 0 }
         let pageCount = max(Int(ceil(Double(allCues.count) / Double(pageSize))), 1)
-        let storedOffset = snapshot.widgetPageOffsets?[scopeID] ?? snapshot.footerOffset
+        let storedOffset = snapshot.widgetPageOffsets?[scopeID] ?? 0
         return max(storedOffset / pageSize, 0) % pageCount
     }
 

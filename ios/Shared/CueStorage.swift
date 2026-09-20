@@ -6,14 +6,10 @@ enum CueStorage {
 
     static func load() -> CueSnapshot {
         guard let data = coordinatedRead(),
-              let snapshot = try? decode(data) else {
+              let snapshot = try? decoder.decode(CueSnapshot.self, from: data) else {
             return CueSnapshot()
         }
         return snapshot
-    }
-
-    static func decode(_ data: Data) throws -> CueSnapshot {
-        try decoder.decode(CueSnapshot.self, from: data)
     }
 
     @discardableResult

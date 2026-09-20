@@ -92,22 +92,3 @@ final class RunTransferTests: XCTestCase {
         HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: nil, headerFields: headers)!
     }
 }
-
-final class CueStorageCompatibilityTests: XCTestCase {
-    func testDecodesSnapshotWrittenBeforeM02AndM03Fields() throws {
-        let oldJSON = """
-        {"runs":[{"id":"legacy-run","title":"以前のリスト","sortOrder":0,"createdAt":1000,"updatedAt":2000,"tasks":[{"id":"legacy-task","runID":"legacy-run","title":"以前の項目","sortOrder":0,"createdAt":1000,"updatedAt":2000}]}],"footerOffset":1,"updatedAt":2000}
-        """.data(using: .utf8)!
-
-        let snapshot = try CueStorage.decode(oldJSON)
-
-        XCTAssertEqual(snapshot.runs.first?.id, "legacy-run")
-        XCTAssertNil(snapshot.runs.first?.sourceCuebookID)
-        XCTAssertNil(snapshot.runs.first?.targetAnchorDay)
-        XCTAssertNil(snapshot.runs.first?.timeZone)
-        XCTAssertEqual(snapshot.runs.first?.tasks.first?.id, "legacy-task")
-        XCTAssertNil(snapshot.runs.first?.tasks.first?.sourceTaskID)
-        XCTAssertEqual(snapshot.widgetTheme, .system)
-        XCTAssertEqual(snapshot.widgetTextScale, .standard)
-    }
-}

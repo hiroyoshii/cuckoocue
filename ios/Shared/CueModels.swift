@@ -87,62 +87,12 @@ enum WidgetTextScale: String, Codable, CaseIterable, Identifiable {
 
 struct CueSnapshot: Codable, Equatable {
     var runs: [CueRun] = []
-    // Retained for decoding snapshots written by the first WidgetKit implementation.
-    var selectedFilterTaskID: String?
-    var footerOffset = 0
     var widgetPageOffsets: [String: Int]?
     var undoTaskID: String?
     var undoTitle: String?
     var widgetTheme: WidgetTheme = .system
     var widgetTextScale: WidgetTextScale = .standard
     var updatedAt: Date = .now
-
-    private enum CodingKeys: String, CodingKey {
-        case runs
-        case selectedFilterTaskID
-        case footerOffset
-        case widgetPageOffsets
-        case undoTaskID
-        case undoTitle
-        case widgetTheme
-        case widgetTextScale
-        case updatedAt
-    }
-
-    init(
-        runs: [CueRun] = [],
-        selectedFilterTaskID: String? = nil,
-        footerOffset: Int = 0,
-        widgetPageOffsets: [String: Int]? = nil,
-        undoTaskID: String? = nil,
-        undoTitle: String? = nil,
-        widgetTheme: WidgetTheme = .system,
-        widgetTextScale: WidgetTextScale = .standard,
-        updatedAt: Date = .now
-    ) {
-        self.runs = runs
-        self.selectedFilterTaskID = selectedFilterTaskID
-        self.footerOffset = footerOffset
-        self.widgetPageOffsets = widgetPageOffsets
-        self.undoTaskID = undoTaskID
-        self.undoTitle = undoTitle
-        self.widgetTheme = widgetTheme
-        self.widgetTextScale = widgetTextScale
-        self.updatedAt = updatedAt
-    }
-
-    init(from decoder: Decoder) throws {
-        let values = try decoder.container(keyedBy: CodingKeys.self)
-        runs = try values.decodeIfPresent([CueRun].self, forKey: .runs) ?? []
-        selectedFilterTaskID = try values.decodeIfPresent(String.self, forKey: .selectedFilterTaskID)
-        footerOffset = try values.decodeIfPresent(Int.self, forKey: .footerOffset) ?? 0
-        widgetPageOffsets = try values.decodeIfPresent([String: Int].self, forKey: .widgetPageOffsets)
-        undoTaskID = try values.decodeIfPresent(String.self, forKey: .undoTaskID)
-        undoTitle = try values.decodeIfPresent(String.self, forKey: .undoTitle)
-        widgetTheme = try values.decodeIfPresent(WidgetTheme.self, forKey: .widgetTheme) ?? .system
-        widgetTextScale = try values.decodeIfPresent(WidgetTextScale.self, forKey: .widgetTextScale) ?? .standard
-        updatedAt = try values.decodeIfPresent(Date.self, forKey: .updatedAt) ?? .now
-    }
 
     var widgetCues: [CueTask] {
         widgetCues(runID: nil, includeQuiet: false)

@@ -293,7 +293,9 @@ private extension CueSnapshot {
             }
         }
         if arguments.contains("state-paged") {
-            state.footerOffset = 3
+            var offsets = state.widgetPageOffsets ?? [:]
+            offsets["all-focused-medium"] = 3
+            state.widgetPageOffsets = offsets
         }
         if arguments.contains("state-priority-empty") {
             for runIndex in state.runs.indices {
