@@ -79,17 +79,19 @@ async function interpreter(payload) {
   const source = await readFile(new URL("../src/lib/search-domain.ts", import.meta.url), "utf8");
   const requests = [];
   const logs = [];
+  const retryOptions = [];
   const dependencies = {
     zod: { z },
     "google-auth-library": { GoogleAuth: class { async request(options) { requests.push(options); return { data: payload }; } } },
     "./search-plan": plans,
     "./env": { cueEnv: { googleCloudLocation: () => "asia-northeast1", projectId: () => "test" } },
-    "./resilience": { withRetry: operation => operation() },
+    "./resilience": { withRetry: (operation, options) => { retryOptions.push(options); return operation(); } },
   };
   const runtime = { exports: {}, process, console: { info: value => logs.push(value) }, require: name => dependencies[name] };
   vm.runInNewContext(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, runtime);
   runtime.exports.__requests = requests;
   runtime.exports.__logs = logs;
+  runtime.exports.__retryOptions = retryOptions;
   return runtime.exports;
 }
 async function interpret(payload) { return (await interpreter(payload)).interpretSearchQuery("子どもの転校を伴う引っ越し", ["引っ越し", "旅行"]); }
@@ -124,6 +126,8 @@ test("search LLM calls use the 128-token budgets and log native usage metadata",
   const interpretation = await interpreter({ ...response(plan()), usageMetadata });
   await interpretation.interpretSearchQuery("検索", ["引っ越し"]);
   assert.equal(interpretation.__requests[0].data.generationConfig.thinkingConfig.thinkingBudget, 128);
+  assert.equal(interpretation.__requests[0].timeout, 30000);
+  assert.equal(interpretation.__retryOptions[0].attempts, 1);
   assert.deepEqual(JSON.parse(interpretation.__logs[0]), {
     event: "search.model_usage",
     stage: "interpret",
@@ -134,6 +138,8 @@ test("search LLM calls use the 128-token budgets and log native usage metadata",
   const profile = await interpreter({ ...response([0]), usageMetadata });
   await profile.selectSearchProfileAttributes("検索", ["属性"], plan());
   assert.equal(profile.__requests[0].data.generationConfig.thinkingConfig.thinkingBudget, 128);
+  assert.equal(profile.__requests[0].timeout, 30000);
+  assert.equal(profile.__retryOptions[0].attempts, 1);
   assert.equal(JSON.parse(profile.__logs[0]).stage, "profile_selection");
 });
 

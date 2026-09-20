@@ -126,6 +126,8 @@ thinking budgetを128へ変更後、同じ既存評価を再実行し、通常48
 
 `thinkingBudget`はsoft limitなので、128指定でも1呼び出し最大213 thought tokenを観測した。生の`usageMetadata`を検索段階・モデルとともにログへ残し、本番分布で再評価する。
 
+本番配備直後のsmoke testではVertex応答が21.6秒かかる時間帯があり、従来の12秒timeout×2回では同一生成を2回開始した後に503となった。検索解釈とプロフィール選択は30秒timeout×1回へ変更した。これはtoken単価を変えないが、timeout時の同一要求による最大呼出し回数を2回から1回へ固定する。通常時の再試行性ではなく、費用の予測可能性とリクエスト全体時間を優先した判断である。
+
 証跡は`thinking-1024.json`、`thinking-128.json`、`thinking-0.json`。再集計は`web/scripts/summarize-thinking-eval.mjs`を使う。
 
 単体21件、実BQの条件分離24ケース、検索UI回帰10件、公開関連UI回帰6件、lint/buildが成功。UI回帰には応答差し替えを含むため、実サービスの証拠とは分ける。
