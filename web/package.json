@@ -17,7 +17,7 @@
     "bq:seed-editorial-shelves": "node scripts/seed-editorial-shelves.mjs",
     "bq:verify-editorial-production": "node scripts/verify-editorial-production.mjs",
     "editorial:validate": "node scripts/validate-editorial-shelves.mjs",
-    "test:editorial": "node --test scripts/test-editorial-shelves.mjs",
+    "test:editorial": "node --test scripts/test-editorial-shelves.mjs scripts/test-seed-query-count.mjs",
     "memory-bank:create": "python3 scripts/create-memory-bank.py",
     "scenario:moving": "node scripts/run-moving-scenario.mjs",
     "scenario:moving-comparison": "node scripts/run-moving-comparison-scenario.mjs"

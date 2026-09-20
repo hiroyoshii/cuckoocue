@@ -59,6 +59,7 @@
 - [ ] **COST-003: 本番分布を確認する。** stage別のinput/output/thought token、成功率、P50/P95、検索回数を集計する。検索文、UID、IP、トークン本文は記録しない。128から0への変更はこの結果まで保留する。
 - [x] **COST-004: Cloud Billingの予算通知を設定する。** project `cuckoocue`を対象に暫定月額1,000円、50%・80%・100%の既定メール通知を設定した（budget ID `e3a0a05a-8052-4ebc-baee-2f6c6fd46972`）。通知のみで自動停止ではない。異常時はまずApp Hostingの公開を止め、継続する課金要求があればVertex AI APIとBigQuery APIを無効化し、原因修正後に段階復旧する。
 - [ ] **COST-005: 低頻度LLM処理を別に計測する。** `task-list-enrichment`と`shelf-description`にも加工しない`usageMetadata`を記録し、呼出し回数とtoken分布を確認する。両者のthinking budget 1024は検索解釈と品質要件が異なるため、同じ128へ一括変更せず評価ケースを作ってから決める。
+- [x] **COST-006: seedのBQ jobをバッチ化する。** managed seedは233から5 parent job、editorial seedは69から7 parent jobへ削減した（合計302から12、96.0%減）。本番で既存129 Revisionを再利用して新規embedding 0件の冪等実行と全件assertを完了した。2026年9月の請求CSVではBQ Analysisは0.03 TiB・0円で、500円通知の原因はBQではなくVertex AIの累積利用だった。
 
 完了条件: 本番RevisionとGit commitが一致し、匿名・登録済み検索が成功し、1 GiB超過が検索失敗として安全に処理され、最低7日分のstage別usage集計を確認できる。
 
