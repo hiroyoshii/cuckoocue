@@ -142,6 +142,7 @@ jobs:
           capture app/app-widget-settings --screenshot-settings
           capture app/app-new-run --screenshot-new-run
           capture app/app-new-task --screenshot-new-task
+          capture app/app-edit-task --screenshot-edit-task
 
       - name: Capture actual Home Screen widget
         id: home-screen

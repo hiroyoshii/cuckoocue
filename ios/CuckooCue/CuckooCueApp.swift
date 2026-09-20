@@ -33,13 +33,19 @@ private struct RootView: View {
         if arguments.contains("--screenshot-gallery") {
             WidgetScreenshotHarnessView()
         } else if arguments.contains("--screenshot-detail") {
-            RunDetailView(runID: store.snapshot.runs.first?.id ?? "missing")
+            NavigationStack {
+                RunDetailView(runID: store.snapshot.runs.first?.id ?? "missing")
+            }
         } else if arguments.contains("--screenshot-settings") {
             WidgetSettingsView()
         } else if arguments.contains("--screenshot-new-run") {
             NewRunSheet()
         } else if arguments.contains("--screenshot-new-task") {
             TaskEditorSheet(runID: store.snapshot.runs.first?.id ?? "missing")
+        } else if arguments.contains("--screenshot-edit-task"),
+                  let run = store.snapshot.runs.first,
+                  let task = run.tasks.first {
+            TaskEditorSheet(runID: run.id, task: task)
         } else {
             MainTabView()
         }

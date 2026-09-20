@@ -52,6 +52,20 @@ final class CuckooCueScreenshotTests: XCTestCase {
         XCTAssertTrue(app.buttons["植物に水をあげるを完了"].waitForExistence(timeout: 5))
     }
 
+    func testExistingTaskOpensEditorFromRunDetail() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing"]
+        app.launch()
+
+        app.staticTexts["リリース準備"].tap()
+        let editTask = app.buttons.matching(
+            NSPredicate(format: "label BEGINSWITH %@", "ストア掲載文を確認するを編集")
+        ).firstMatch
+        XCTAssertTrue(editTask.waitForExistence(timeout: 5))
+        editTask.tap()
+        XCTAssertTrue(app.navigationBars["項目を編集"].waitForExistence(timeout: 5))
+    }
+
     func testWidgetScreenshotHarnessIsAccessibleAtAllSizes() {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "--screenshot-gallery"]
