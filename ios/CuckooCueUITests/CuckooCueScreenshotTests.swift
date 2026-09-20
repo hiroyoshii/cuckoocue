@@ -64,7 +64,7 @@ final class CuckooCueScreenshotTests: XCTestCase {
         ).firstMatch
         XCTAssertTrue(editTask.waitForExistence(timeout: 5))
         editTask.tap()
-        XCTAssertTrue(app.textFields["task-title-editor-demo-1"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["task-title-editor-demo-1"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.navigationBars["項目を編集"].exists)
     }
 
@@ -77,9 +77,9 @@ final class CuckooCueScreenshotTests: XCTestCase {
         let details = app.buttons["ストア掲載文を確認するの日付と優先度を編集"]
         XCTAssertTrue(details.waitForExistence(timeout: 5))
         details.tap()
-        XCTAssertTrue(app.otherElements["task-details-demo-1"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.switches["開始日を設定"].exists)
-        XCTAssertTrue(app.switches["期限を設定"].exists)
+        XCTAssertTrue(app.switches["開始日を設定"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.switches["期限を設定"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.navigationBars["項目を編集"].exists)
     }
 
     func testWidgetScreenshotHarnessIsAccessibleAtAllSizes() {

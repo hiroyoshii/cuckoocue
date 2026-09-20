@@ -174,11 +174,9 @@ struct InlineTaskRow: View {
                     }
                 }
                 .padding(.leading, 34)
-                .accessibilityIdentifier("task-details-\(task.id)")
             }
         }
         .padding(.vertical, 3)
-        .accessibilityIdentifier("task-row-\(task.id)")
         .onChange(of: titleFocused) { _, focused in
             if !focused && editingTitle { saveAndFinishTitle() }
         }
