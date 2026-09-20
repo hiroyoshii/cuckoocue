@@ -24,6 +24,7 @@ jobs:
       DERIVED_DATA: build/ios-testflight-derived-data
       DESTINATION: generic/platform=iOS
       BUILD_NUMBER: ${{ github.run_number }}
+      DEVELOPMENT_TEAM: 3M4M7DRUZY
 
     steps:
       - name: Checkout
@@ -106,6 +107,7 @@ jobs:
             -archivePath "$ARCHIVE_PATH" \
             -derivedDataPath "$DERIVED_DATA" \
             CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
+            DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM" \
             CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY="Apple Distribution" \
             archive | tee artifacts/xcodebuild-archive.log
