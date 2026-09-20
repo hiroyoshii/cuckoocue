@@ -63,7 +63,6 @@ type ImportPayload = AndroidImportTransfer;
 type View = "explore" | "publish" | "history" | "library" | "apps";
 type ShelfRevision = {
   id: string;
-  source_cuebook_id: string;
   title: string;
   tasks: Array<{
     id: string;
@@ -80,7 +79,7 @@ type Shelf = {
   title: string;
   context: string;
   forked_from_shelf_id: string | null;
-  created_by: string;
+  is_owned: boolean;
   created_at: string;
   updated_at: string;
   item_count: number;
@@ -894,7 +893,7 @@ function AccountWorkspace({ user, authReady, devUserId, setDevUserId, importRunI
           <SignInRequired title={view === "history" ? "完了履歴" : view === "library" ? "自分のリスト" : "再利用用に整える"} onBack={() => changeView("explore")} onSignIn={signInWithGoogle} />
         ) : view === "history" || view === "library" ? (
           <OwnerLists key={`${identity}:${view}`} kind={view} devUserId={devUserId} onOpen={(id) => void openOwnedList(id)} onSwitch={() => changeView(view === "history" ? "library" : "history")}
-            ownedShelves={shelves.filter(shelf => shelf.created_by === currentUserId)} onShelf={id => void openShelf(id)} />
+            ownedShelves={shelves.filter(shelf => shelf.is_owned)} onShelf={id => void openShelf(id)} />
         ) : reviewingCompleted && completedReview ? (
           <CompletedRunReview state={completedReview} onChange={setCompletedReview} devUserId={devUserId}
             onBack={() => changeView("history")} onEdit={(selected) => { setTasks(selected); setCuebookTaskIds(selected.map(() => crypto.randomUUID())); setEnrichment(null); setReviewingCompleted(false); }} />
@@ -908,7 +907,7 @@ function AccountWorkspace({ user, authReady, devUserId, setDevUserId, importRunI
             source={saveSource}
             scheduleUnavailable={completedReview?.run.source_anchor_day === null}
             savedTitle={savedTitle} onPrepare={prepareSave} onSave={saveTaskList} onReset={resetSave}
-            savedCuebook={savedCuebook} devUserId={devUserId} ownedShelves={shelves.filter((shelf) => shelf.created_by === currentUserId)}
+            savedCuebook={savedCuebook} devUserId={devUserId} ownedShelves={shelves.filter((shelf) => shelf.is_owned)}
             onPublished={() => { setShelvesLoaded(false); }}
             onReloadOriginal={() => void openOwnedList(cuebookId, false)}
             onLibrary={() => changeView("library")}

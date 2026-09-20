@@ -32,6 +32,13 @@ export async function requireRequestUser(request: NextRequest): Promise<RequestU
   };
 }
 
+export async function optionalRequestUser(request: NextRequest): Promise<RequestUser | null> {
+  if (!request.headers.get("authorization") && !(cueEnv.allowDevAuth() && request.headers.get("x-dev-user-id"))) {
+    return null;
+  }
+  return requireRequestUser(request);
+}
+
 export async function requireUserId(request: NextRequest): Promise<string> {
   return (await requireRequestUser(request)).id;
 }

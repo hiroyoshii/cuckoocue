@@ -14,7 +14,7 @@ test("public group text rejects obvious contact details but allows reusable cont
 });
 
 test("search and detail link only to actual placements without joining", async ({ page }) => {
-  const shelf = { id: "public-shelf", title: "猫と公共交通で引っ越す", context: "猫2匹と電車で移動する", created_by: "someone-else", items: [], updated_at: "2026-09-12T00:00:00.000000Z" };
+  const shelf = { id: "public-shelf", title: "猫と公共交通で引っ越す", context: "猫2匹と電車で移動する", is_owned: false, items: [], updated_at: "2026-09-12T00:00:00.000000Z" };
   const result = { id: "public-revision", title: original.title, tasks: original.tasks, ...original.enrichment, text_matched: true, shelves: [{ id: shelf.id, title: shelf.title }] };
   const mutations: string[] = [];
   await page.route("**/api/**", (route) => {
@@ -44,7 +44,7 @@ test("group validation can be corrected; unknown publication outcome retries ide
   let groupCreated = false;
   const groupRequests: Record<string, unknown>[] = [];
   const publicationRequests: unknown[] = [];
-  const shelf = { id: "created-shelf", title: "猫と公共交通で引っ越す", created_by: "local-user" };
+  const shelf = { id: "created-shelf", title: "猫と公共交通で引っ越す", is_owned: true };
   await page.route("**/api/**", async (route) => {
     const path = new URL(route.request().url()).pathname;
     const method = route.request().method();

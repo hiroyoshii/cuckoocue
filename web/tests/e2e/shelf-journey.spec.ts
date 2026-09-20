@@ -1,16 +1,16 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
-const revision = (id: string, title: string) => ({ id, source_cuebook_id: `original-${id}`, title, published_at: "2026-09-12T00:00:00.000Z", withdrawn_at: null,
+const revision = (id: string, title: string) => ({ id, title, published_at: "2026-09-12T00:00:00.000Z", withdrawn_at: null,
   tasks: [{ id: `task-${id}`, title: `${title}を確認する`, default_priority: null, relative_start_day: -7, relative_end_day: 0 }] });
 const revisions = [revision("r1", "猫の移動準備"), revision("r2", "新居の準備"), revision("r3", "住所手続き")];
-const source = { id: "source", title: "猫と引っ越す", context: "猫と電車で引っ越す人", created_by: "author", updated_at: "2026-09-12T00:00:00.000Z", created_at: "2026-09-12T00:00:00.000Z", forked_from_shelf_id: null, item_count: 2,
+const source = { id: "source", title: "猫と引っ越す", context: "猫と電車で引っ越す人", is_owned: false, updated_at: "2026-09-12T00:00:00.000Z", created_at: "2026-09-12T00:00:00.000Z", forked_from_shelf_id: null, item_count: 2,
   items: revisions.slice(0, 2).map((revision, position) => ({ revision, revision_id: revision.id, position })) };
 
 test("W06/W07: membership unknown is not unjoined; fork retries the fixed snapshot and survives auto-join failure", async ({ page }) => {
   let failMembershipReads = true; let joined: string[] = []; const forks: Record<string, unknown>[] = [];
   const original = structuredClone(source);
-  const copied = { ...source, id: "copied", created_by: "local-user", forked_from_shelf_id: source.id };
+  const copied = { ...source, id: "copied", is_owned: true, forked_from_shelf_id: source.id };
   await page.route("**/api/**", (route) => {
     const path = new URL(route.request().url()).pathname;
     if (path === "/api/memberships") return failMembershipReads ? route.fulfill({ status: 503, json: { error: "参加状態の読込失敗" } }) : route.fulfill({ json: { shelf_ids: joined } });
@@ -46,7 +46,7 @@ test("W06/W07: membership unknown is not unjoined; fork retries the fixed snapsh
 });
 
 test("W08: add/remove/reorder/undo are one saved placement; draft and unknown save recover after reload", async ({ page }) => {
-  let saved = { ...structuredClone(source), id: "copied", created_by: "local-user", forked_from_shelf_id: "source" };
+  let saved = { ...structuredClone(source), id: "copied", is_owned: true, forked_from_shelf_id: "source" };
   const writes: Record<string, unknown>[] = [];
   await page.route("**/api/**", (route) => {
     const path = new URL(route.request().url()).pathname;
@@ -100,7 +100,7 @@ test("W08: add/remove/reorder/undo are one saved placement; draft and unknown sa
 });
 
 test("W08: conflict keeps changes and requires inspection before a new save operation", async ({ page }) => {
-  const saved = { ...source, created_by: "local-user" }; const writes: Record<string, unknown>[] = [];
+  const saved = { ...source, is_owned: true }; const writes: Record<string, unknown>[] = [];
   await page.route("**/api/**", (route) => {
     const path = new URL(route.request().url()).pathname;
     if (path === "/api/memberships") return route.fulfill({ json: { shelf_ids: [] } });
@@ -167,7 +167,7 @@ test("W06/C06: all long tasks expand without hiding overflow at supported widths
 });
 
 test("C01: a save finishing after navigation does not reopen the old group; its retry survives", async ({ page }) => {
-  let saved = { ...source, created_by: "local-user" }; let calls = 0;
+  let saved = { ...source, is_owned: true }; let calls = 0;
   let release: () => void = () => {};
   await page.route("**/api/**", async (route) => {
     const path = new URL(route.request().url()).pathname;

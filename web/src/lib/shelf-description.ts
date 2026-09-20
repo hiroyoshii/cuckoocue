@@ -43,6 +43,7 @@ export async function generateShelfDescription(input: ShelfDescriptionInput): Pr
   const location = cueEnv.googleCloudLocation();
   const response = await withRetry(() => auth.request<{
     candidates?: { content?: { parts?: { text?: string }[] } }[];
+    usageMetadata?: Record<string, unknown>;
   }>({
     url: `https://${location}-aiplatform.googleapis.com/v1/projects/${cueEnv.projectId()}/locations/${location}/publishers/google/models/${model}:generateContent`,
     method: "POST", timeout: 12000,
@@ -55,6 +56,12 @@ export async function generateShelfDescription(input: ShelfDescriptionInput): Pr
       },
     },
   }), { attempts: 2, timeoutMs: 15000, delayMs: 500 });
+  console.info(JSON.stringify({
+    event: "content.model_usage",
+    stage: "shelf_description",
+    model,
+    usage_metadata: response.data.usageMetadata ?? null,
+  }));
   const text = response.data.candidates?.[0]?.content?.parts?.map(part => part.text || "").join("");
   if (!text) throw new Error("Shelf description returned no content");
   const result = shelfDescriptionSchema.parse(JSON.parse(text));

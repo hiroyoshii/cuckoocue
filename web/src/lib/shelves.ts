@@ -11,7 +11,7 @@ export type PublicRevisionTask = {
   relative_start_day: number | null; relative_end_day: number | null;
 };
 export type PublicRevisionSummary = {
-  id: string; source_cuebook_id: string; title: string; tasks: PublicRevisionTask[];
+  id: string; title: string; tasks: PublicRevisionTask[];
   published_at: string; withdrawn_at: string | null;
 };
 export type PublicRevisionDetail = PublicRevisionSummary & {
@@ -22,22 +22,22 @@ export type PublicRevisionDetail = PublicRevisionSummary & {
 };
 export type ShelfSummary = {
   id: string; title: string; context: string; forked_from_shelf_id: string | null;
-  created_by: string; created_at: string; updated_at: string; item_count: number;
+  is_owned: boolean; created_at: string; updated_at: string; item_count: number;
 };
 export type ShelfDetail = ShelfSummary & {
   items: Array<{ revision_id: string; position: number; revision: PublicRevisionSummary }>;
 };
-const shelfColumns = `id, title, context, forked_from_shelf_id, created_by,
+const shelfColumns = (ownerExpression: string) => `id, title, context, forked_from_shelf_id, ${ownerExpression} AS is_owned,
   FORMAT_TIMESTAMP('%Y-%m-%dT%H:%M:%E6SZ', created_at) AS created_at,
   FORMAT_TIMESTAMP('%Y-%m-%dT%H:%M:%E6SZ', updated_at) AS updated_at,
   ARRAY_LENGTH(items) AS item_count`;
-const revisionColumns = `id, source_cuebook_id, title,
+const revisionColumns = `id, title,
   ARRAY(SELECT AS STRUCT t.id, t.text AS title, t.default_priority, t.relative_start_day, t.relative_end_day FROM UNNEST(tasks) t WITH OFFSET pos ORDER BY pos) AS tasks,
   FORMAT_TIMESTAMP('%Y-%m-%dT%H:%M:%E6SZ', created_at) AS published_at,
   FORMAT_TIMESTAMP('%Y-%m-%dT%H:%M:%E6SZ', withdrawn_at) AS withdrawn_at`;
 
-export async function listShelves(): Promise<ShelfSummary[]> {
-  return bqRead(`SELECT ${shelfColumns} FROM ${bqTable("shelves")} ORDER BY updated_at DESC`);
+export async function listShelves(viewer = ""): Promise<ShelfSummary[]> {
+  return bqRead(`SELECT ${shelfColumns("created_by = @viewer")} FROM ${bqTable("shelves")} ORDER BY updated_at DESC`, { viewer });
 }
 export async function createShelf(owner: string, input: CreateShelfInput): Promise<ShelfSummary> {
   assertPublicCorpusSafe({ title: input.title, context_text: input.context, tasks: [] });
@@ -46,26 +46,26 @@ export async function createShelf(owner: string, input: CreateShelfInput): Promi
     ASSERT NOT EXISTS(SELECT 1 FROM ${bqTable("shelves")} WHERE id = @id) AS 'CUE_CONFLICT';
     INSERT INTO ${bqTable("shelves")} (id, title, context, created_by, created_at, updated_at, items)
     VALUES (@id, @title, @context, @owner, CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(), []);
-    CREATE TEMP TABLE saved AS SELECT ${shelfColumns} FROM ${bqTable("shelves")} WHERE id = @id;
+    CREATE TEMP TABLE saved AS SELECT ${shelfColumns("TRUE")} FROM ${bqTable("shelves")} WHERE id = @id;
     COMMIT TRANSACTION;
     SELECT * FROM saved;
   `, { id: input.operation_id, owner, title: input.title, context: input.context }, async () => {
-    const saved = await getShelfDetail(input.operation_id);
+    const saved = await getShelfDetail(input.operation_id, owner);
     if (!saved) throw new Error("Committed Shelf is unavailable");
     return [saved];
   });
   return rows[0];
 }
 
-export async function getShelfDetail(id: string): Promise<ShelfDetail | null> {
+export async function getShelfDetail(id: string, viewer = ""): Promise<ShelfDetail | null> {
   const rows = await bqRead<ShelfDetail>(`
     WITH revisions AS (SELECT ${revisionColumns} FROM ${bqTable("cuebook_revisions")}),
-    base AS (SELECT ${shelfColumns} FROM ${bqTable("shelves")} WHERE id = @id),
+    base AS (SELECT ${shelfColumns("created_by = @viewer")} FROM ${bqTable("shelves")} WHERE id = @id),
     placements AS (
       SELECT s.id AS shelf_id, ARRAY_AGG(STRUCT(i.revision_id, i.position, r AS revision) ORDER BY i.position) AS items
       FROM ${bqTable("shelves")} s CROSS JOIN UNNEST(s.items) i JOIN revisions r ON r.id = i.revision_id
       WHERE s.id = @id GROUP BY s.id
-    ) SELECT base.*, IFNULL(placements.items, []) AS items FROM base LEFT JOIN placements ON shelf_id = base.id`, { id });
+    ) SELECT base.*, IFNULL(placements.items, []) AS items FROM base LEFT JOIN placements ON shelf_id = base.id`, { id, viewer });
   const shelf = rows[0] ?? null;
   if (shelf && shelf.item_count !== shelf.items.length) {
     throw Response.json({ error: "グループの公開版をすべて取得できませんでした。" }, { status: 503 });
@@ -96,7 +96,7 @@ export async function updateShelf(owner: string, id: string, input: UpdateShelfI
     COMMIT TRANSACTION;
     SELECT @id AS id;
   `, { owner, id, input: JSON.stringify(input), expected: input.expected_updated_at });
-  return (await getShelfDetail(id))!;
+  return (await getShelfDetail(id, owner))!;
 }
 
 export async function publishCuebookRevision(owner: string, input: PublishCuebookRevisionInput) {
@@ -131,7 +131,7 @@ export async function publishCuebookRevision(owner: string, input: PublishCueboo
     SELECT @id AS id;
   `, { owner, id: input.revision_id, source: cuebook.id, expected: input.expected_source_updated_at, shelf: input.shelf_id, searchText, embedding: JSON.stringify(embedding) });
   invalidateTaskListDomains();
-  return { revision: (await getRevisionById(input.revision_id))!, shelf: (await getShelfDetail(input.shelf_id))! };
+  return { revision: (await getRevisionById(input.revision_id))!, shelf: (await getShelfDetail(input.shelf_id, owner))! };
 }
 
 export async function forkShelf(owner: string, sourceId: string, input: { operation_id: string; expected_updated_at: string; title?: string; context?: string }): Promise<ShelfDetail> {
@@ -146,7 +146,7 @@ export async function forkShelf(owner: string, sourceId: string, input: { operat
     COMMIT TRANSACTION;
     SELECT @id AS id;
   `, { owner, id: input.operation_id, source: sourceId, expected: input.expected_updated_at, title: input.title ?? "", context: input.context ?? "" });
-  return (await getShelfDetail(input.operation_id))!;
+  return (await getShelfDetail(input.operation_id, owner))!;
 }
 
 export async function getRevisionById(id: string): Promise<PublicRevisionSummary | null> {

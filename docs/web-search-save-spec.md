@@ -1,6 +1,6 @@
 # CuckooCue Web Search/Save Spec
 
-Last updated: 2026-09-04
+Last updated: 2026-09-20
 
 > This document records the current Web search/save implementation. The planned
 > Cuebook, source-binding, revision, Shelf, and Outcome contract is defined in
@@ -30,7 +30,7 @@ Each row is one user-reviewed reusable completed task list.
 | `owner_user_id` | `STRING` | Saving user provenance. Not a search scope. |
 | `title` | `STRING` | User-visible original title. |
 | `tasks` | `ARRAY<STRUCT<text STRING, default_priority INT64, relative_start_day INT64, relative_end_day INT64>>` | Reusable task template. Relative days are anchored to the future target day chosen at import time. |
-| `domain` | `STRING` | Coarse activity domain, e.g. `引っ越し`, `旅行準備`. |
+| `domain` | `STRING` | Coarse activity domain, e.g. `引っ越し`, `旅行準備`. Values are canonical labels from [検索 domain 管理語彙](search-domain-managed-vocabulary.md). |
 | `context_text` | `STRING` | Reusable task-list context: locale, institutions, service categories, constraints, and other details that distinguish similar domains. |
 | `task_groupings` | `ARRAY<STRUCT<label STRING, task_offsets ARRAY<INT64>>>` | LLM-generated grouping over task array offsets. Used by the Web corpus for search and display. |
 | `search_text` | `STRING` | Tokenized projection used by BigQuery `SEARCH`. Generated from user-approved title/tasks/domain/context/groupings. |
@@ -134,6 +134,8 @@ Important intent:
 - `context_text` carries the detailed reusable situation.
 - Scores are diagnostics. Production UI does not show numeric scores.
 
+The source of truth is the versioned managed catalog. Search intersects active catalog values with domains that currently have public revisions; it does not derive vocabulary from `DISTINCT domain`. Save APIs reject values outside the catalog and aliases are never persisted.
+
 Current API returns:
 
 - `searchDomain`
@@ -204,6 +206,8 @@ BigQuery result pagination should be used for search result paging.
 ## Implementation Status
 
 The following list is the implementation backlog as of 2026-09-05. Priority is based on whether the issue blocks deployment, corrupts data semantics, or leaves a required data path disconnected.
+
+The current Web-only remaining-task list is maintained in [Web 残タスク](web-remaining-tasks.md). The historical checklist below is retained for traceability and should not be used to re-open completed work.
 
 ### P0: deployment, identity, and data correctness
 

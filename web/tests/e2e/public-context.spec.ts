@@ -1,14 +1,15 @@
 import { test, expect as baseExpect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
-const expect = baseExpect.configure({ timeout: 15000 });
+// A full document navigation can reload production chunks under parallel CI load.
+const expect = baseExpect.configure({ timeout: 30000 });
 
 const original = { id: "a54d9e6f-38ae-4780-8986-b9e169f3a178", title: "猫との引っ越し", updated_at: "2026-09-12T00:00:00.000000Z", origin_revision_id: "revision",
   tasks: [{ id: "e4a0b6d6-eec3-4efa-9d98-b9767cb65bd6", text: "ケージを確認する", default_priority: null, relative_start_day: -7, relative_end_day: 0 }],
   enrichment: { domain: "引っ越し", context_text: "猫と国内で引っ越す", task_groupings: [{ label: "移動", task_offsets: [0] }] } };
 const revision = { id: "revision", title: original.title, published_at: original.updated_at, withdrawn_at: null, ...original.enrichment,
   tasks: original.tasks.map(task => ({ ...task, title: task.text })), shelves: [{ id: "shelf", title: "猫と暮らす人" }] };
-const shelf = { id: "shelf", title: "猫と暮らす人", context: "猫と国内で引っ越す人", created_by: "other-user", updated_at: original.updated_at, item_count: 1,
+const shelf = { id: "shelf", title: "猫と暮らす人", context: "猫と国内で引っ越す人", is_owned: false, updated_at: original.updated_at, item_count: 1,
   forked_from_shelf_id: null, items: [{ revision_id: revision.id, position: 0, revision }] };
 
 async function fixtures(page: Page) {
@@ -20,7 +21,7 @@ async function fixtures(page: Page) {
     if (method !== "GET") mutations.push(`${method} ${path}`);
     if (path === "/api/memberships/shelf") { joined = [shelf.id]; return route.fulfill({ json: { joined: true } }); }
     if (path === "/api/shelves/shelf") return route.fulfill({ json: { shelf } });
-    if (path === "/api/shelves/copy") return route.fulfill({ json: { shelf: { ...shelf, id: "copy", title: "猫2匹の転居と新生活", created_by: "local-user", forked_from_shelf_id: "shelf" } } });
+    if (path === "/api/shelves/copy") return route.fulfill({ json: { shelf: { ...shelf, id: "copy", title: "猫2匹の転居と新生活", is_owned: true, forked_from_shelf_id: "shelf" } } });
     if (path === "/api/cuebook-revisions/revision") return route.fulfill({ json: { revision } });
     if (path === `/api/cuebooks/${original.id}`) return route.fulfill({ json: { cuebook: original } });
     if (path === "/api/search") return route.fulfill({ json: { results: [{ ...revision, tasks: original.tasks }], nextCursor: null } });

@@ -6,8 +6,17 @@ import ts from "typescript";
 import { z } from "zod";
 import { buildSearchText, tokenize } from "../src/lib/search-text.ts";
 import * as plans from "../src/lib/search-plan.ts";
+import { activeDomainLabels, managedDomains, resolveDomainLabel } from "../src/lib/domain-catalog.ts";
 
 const plan = (overrides = {}) => ({ domain: "引っ越し", required_tasks: [], required_context: [], excluded_tasks: [], ...overrides });
+test("managed domain catalog has 30 unique canonical values and aliases never become stored values", () => {
+  assert.equal(managedDomains.length, 30);
+  assert.equal(new Set(managedDomains.map(domain => domain.id)).size, 30);
+  assert.equal(new Set(managedDomains.map(domain => domain.label_ja)).size, 30);
+  assert.equal(activeDomainLabels().length, 30);
+  assert.equal(resolveDomainLabel("引越し"), "引っ越し");
+  assert.equal(resolveDomainLabel("未知の分類"), null);
+});
 test("purpose alternatives are OR; separate purposes are AND", () => {
   const filter = plans.compileSearchPlan(plan({ required_tasks: [["転校", "転入学"], ["猫"]] }));
   assert.equal(filter.params.searchConcept0, '"転校" OR "転入学"');
@@ -68,15 +77,19 @@ test("one-character subjects and all document tasks are retained in the derived 
 });
 async function interpreter(payload) {
   const source = await readFile(new URL("../src/lib/search-domain.ts", import.meta.url), "utf8");
+  const requests = [];
+  const logs = [];
   const dependencies = {
     zod: { z },
-    "google-auth-library": { GoogleAuth: class { async request() { return { data: payload }; } } },
+    "google-auth-library": { GoogleAuth: class { async request(options) { requests.push(options); return { data: payload }; } } },
     "./search-plan": plans,
     "./env": { cueEnv: { googleCloudLocation: () => "asia-northeast1", projectId: () => "test" } },
     "./resilience": { withRetry: operation => operation() },
   };
-  const runtime = { exports: {}, process, require: name => dependencies[name] };
+  const runtime = { exports: {}, process, console: { info: value => logs.push(value) }, require: name => dependencies[name] };
   vm.runInNewContext(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, runtime);
+  runtime.exports.__requests = requests;
+  runtime.exports.__logs = logs;
   return runtime.exports;
 }
 async function interpret(payload) { return (await interpreter(payload)).interpretSearchQuery("子どもの転校を伴う引っ越し", ["引っ越し", "旅行"]); }
@@ -105,4 +118,72 @@ test("no profile and no domain skip profile LLM; failure is not a silent fallbac
   assert.equal((await api.selectSearchProfileAttributes("検索", [], plan())).length, 0);
   assert.equal((await api.selectSearchProfileAttributes("検索", ["first"], plan({ domain: null }))).length, 0);
   await assert.rejects(api.selectSearchProfileAttributes("検索", ["first"], plan()));
+});
+test("search LLM calls use the 128-token budgets and log native usage metadata", async () => {
+  const usageMetadata = { promptTokenCount: 12, candidatesTokenCount: 8, thoughtsTokenCount: 4 };
+  const interpretation = await interpreter({ ...response(plan()), usageMetadata });
+  await interpretation.interpretSearchQuery("検索", ["引っ越し"]);
+  assert.equal(interpretation.__requests[0].data.generationConfig.thinkingConfig.thinkingBudget, 128);
+  assert.deepEqual(JSON.parse(interpretation.__logs[0]), {
+    event: "search.model_usage",
+    stage: "interpret",
+    model: "gemini-2.5-flash",
+    usage_metadata: usageMetadata,
+  });
+
+  const profile = await interpreter({ ...response([0]), usageMetadata });
+  await profile.selectSearchProfileAttributes("検索", ["属性"], plan());
+  assert.equal(profile.__requests[0].data.generationConfig.thinkingConfig.thinkingBudget, 128);
+  assert.equal(JSON.parse(profile.__logs[0]).stage, "profile_selection");
+});
+
+test("search BigQuery jobs are capped at one GiB", async () => {
+  const source = await readFile(new URL("../src/lib/bigquery.ts", import.meta.url), "utf8");
+  const createdJobs = [];
+  const directQueries = [];
+  const job = { id: "job", getQueryResults: async () => [[], {}] };
+  class BigQuery {
+    async createQueryJob(options) { createdJobs.push(options); return [job]; }
+    async query(options) { directQueries.push(options); return [[]]; }
+  }
+  const dependencies = {
+    "@google-cloud/bigquery": { BigQuery },
+    "./env": { cueEnv: { projectId: () => "test", dataset: () => "dataset", table: () => "table", googleCloudLocation: () => "asia-northeast1" } },
+    "./bq-store": { bqTable: name => `\`test.dataset.${name}\``, digest: () => "owner" },
+    "./task-list-embeddings": { buildSearchContextEmbeddingText: () => "query", buildTaskListContextEmbeddingText: () => "document", embedText: async () => [1] },
+    "./task-list-enrichment": { enrichTaskList: async () => ({}) },
+    "./resilience": { withRetry: operation => operation() },
+    "./search-text": { buildSearchText: () => "" },
+    "./search-plan": plans,
+    "./domain-catalog": { activeDomainLabels: () => ["引っ越し"] },
+  };
+  const runtime = { exports: {}, Buffer, Date, Response, console: { info: () => {} }, require: name => dependencies[name] };
+  vm.runInNewContext(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, runtime);
+
+  await runtime.exports.searchTaskListEntries("検索", [], plan(), 20);
+  await runtime.exports.listTaskListDomains();
+  assert.equal(createdJobs[0].maximumBytesBilled, "1073741824");
+  assert.equal(directQueries[0].maximumBytesBilled, "1073741824");
+});
+
+test("paid-input schemas reject oversized payloads and unmanaged domains before service calls", async () => {
+  const schemaSource = await readFile(new URL("../src/lib/schema.ts", import.meta.url), "utf8");
+  const schemaRuntime = {
+    exports: {},
+    require: name => ({
+      zod: { z },
+      "./domain-catalog": { isActiveDomainLabel: value => activeDomainLabels().includes(value) },
+    })[name],
+  };
+  vm.runInNewContext(ts.transpileModule(schemaSource, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, schemaRuntime);
+  const schemas = schemaRuntime.exports;
+  const task = { text: "確認する" };
+
+  assert.equal(schemas.searchTaskListsSchema.safeParse({ message: "あ".repeat(500) }).success, true);
+  assert.equal(schemas.searchTaskListsSchema.safeParse({ message: "あ".repeat(501) }).success, false);
+  assert.equal(schemas.searchTaskListsSchema.safeParse({ cursor: "a".repeat(4097) }).success, false);
+  assert.equal(schemas.taskListDraftSchema.safeParse({ title: "上限", tasks: Array.from({ length: 201 }, () => task) }).success, false);
+  assert.equal(schemas.memoryEventInputSchema.safeParse({ event_id: "event", kind: "android_task_added", text: "あ".repeat(1201), occurred_at: "2026-09-20T00:00:00Z" }).success, false);
+  assert.equal(schemas.memoryEventInputSchema.safeParse({ event_id: "event", kind: "android_task_added", text: "確認", occurred_at: "not-a-date" }).success, false);
+  assert.equal(schemas.saveTaskListSchema.safeParse({ title: "管理外", tasks: [task], operation_id: "00000000-0000-4000-8000-000000000000", domain: "自由分類" }).success, false);
 });

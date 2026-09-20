@@ -40,7 +40,7 @@ const shelfDetail = {
   title: "猫と暮らす人の引っ越し",
   context: "猫と暮らしながら賃貸を退去し、県外へ引っ越す人向け。",
   forked_from_shelf_id: null,
-  created_by: "another-user",
+  is_owned: false,
   created_at: "2026-09-06T00:00:00.000Z",
   updated_at: "2026-09-06T00:00:00.000Z",
   item_count: 2,
@@ -185,7 +185,7 @@ test("public contexts fork into an independently editable shelf", async ({ page 
       ...currentShelf,
       id: "forked-shelf",
       title: `${shelfDetail.title}の派生`,
-      created_by: "local-user",
+      is_owned: true,
       forked_from_shelf_id: "shelf-1",
     };
     await route.fulfill({ status: 201, json: { shelf: currentShelf } });
@@ -263,7 +263,7 @@ test("G14: fork retries the confirmed version after reload and source updates", 
       source = { ...source, updated_at: "2026-09-12T01:00:00.000Z", items: [] };
       return route.fulfill({ status: 503, json: { error: "保存結果を確認できませんでした。" } });
     }
-    return route.fulfill({ status: 201, json: { shelf: { ...shelfDetail, id: "forked-shelf", created_by: "local-user", forked_from_shelf_id: source.id } } });
+    return route.fulfill({ status: 201, json: { shelf: { ...shelfDetail, id: "forked-shelf", is_owned: true, forked_from_shelf_id: source.id } } });
   });
   await page.goto("/");
   await page.getByLabel("Search query").fill("猫と引っ越す");
@@ -291,7 +291,6 @@ function shelfItem(revisionId: string, title: string, position: number) {
     position,
     revision: {
       id: revisionId,
-      source_cuebook_id: `cuebook-${revisionId}`,
       revision: 1,
       title,
       published_at: "2026-09-06T00:00:00.000Z",

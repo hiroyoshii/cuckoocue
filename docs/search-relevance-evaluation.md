@@ -19,7 +19,7 @@
 
 | 要素 | 判断 |
 | --- | --- |
-| domain | BQの既存粗分類から検索文だけで1件を選ぶ。部分作業を別domainへ移さない。日次cache、同一プロセスで公開成功時は破棄 |
+| domain | 管理カタログのactive値かつ公開Revisionが1件以上ある候補から、検索文だけで1件を選ぶ。部分作業を別domainへ移さない。候補は日次cache、同一プロセスで公開成功時は破棄 |
 | 全文検索 | タスク本文と、有効なタスク参照を持つ既存task_groupingsの名前を検索する。タイトルやcontextに語があるだけでは作業を含む証拠にしない |
 | 条件の組み方 | 一つの目的の同義語/表記ゆれはOR、独立した複数目的はAND。一般動詞やdomain語を重ねて必須化しない |
 | 通常の地域・経路 | 類似度に残す。他地域の再利用可能な事例を落とさない |
@@ -99,13 +99,34 @@
 
 文書生成は元の25件中2件（札幌→仙台、福岡→広島）でdomainを学校手続きと判定し、保存時確認で引っ越しへ修正した。全件のtask_groupingsが全タスクを参照した。検索評価の合格を、LLMだけで未確認公開できるという判断に広げない。
 
+thinking budgetを128へ変更後、同じ既存評価を再実行し、通常48/48・追加反例22/22の合計70/70が再度合格した。さらに管理語彙30件について各positive 2件・negative 2件、合計120境界queryを実Vertexで実行し120/120合格した。これは30 domainの境界と初期corpusの受入結果であり、未知の自然文全体の精度保証ではない。
+
 詳細な実行証跡:
 
 - [最終48ケース](review-screenshots/web/search-relevance/acceptance-full.json)、[反例等22ケース](review-screenshots/web/search-relevance/acceptance-challenges.json): 全入力・応答・順位・採用属性・検索条件・SQL・Job情報
+- [budget 128での最終48ケース](review-screenshots/web/search-relevance/p0-128-regular-final.json)、[budget 128での反例22ケース](review-screenshots/web/search-relevance/p0-128-challenges-final.json)、[管理語彙120境界query](review-screenshots/web/search-relevance/managed-domain-boundaries-128.json)
 - [最終25件の保存状態](review-screenshots/web/search-relevance/preparation-v4.json)、[追加4件の生成/保存/公開](review-screenshots/web/search-relevance/preparation-challenges.json)。最初の25件の再生成過程はv3、国内範囲の表記前に生成した2件の再確認はv4に記録
 - [実際の公開競合からの再試行](review-screenshots/web/search-relevance/publication-retry.json): 未コミットの失敗Jobから再送し、公開版1件・配置1件で回復
 - [キャッシュなしのSQL再実行](review-screenshots/web/search-relevance/uncached-search.json): 3条件とも同じ全順位。各380,645 bytesを処理、課金対象は20 MiB。最初の検証用上限10 MBでは2テーブル分の最低課金量を下回ったため、検証上限を30 MBに変更して実行
 - [実UIの記録](review-screenshots/web/search-relevance/screenshots.json)、[desktop検索](review-screenshots/web/search-relevance/search-desktop-viewport.png)、[mobile検索](review-screenshots/web/search-relevance/search-mobile-viewport.png)、[desktop詳細](review-screenshots/web/search-relevance/detail-desktop.png)、[mobile詳細](review-screenshots/web/search-relevance/detail-mobile.png)。API応答の差し替えなし。開発用UIDだけを付与し、各7件・横はみ出しなし・ページ内例外なしを確認
+
+### Thinking budget 比較（2026-09-20）
+
+固定した改善用16検索文について、実Vertex `gemini-2.5-flash` の条件解釈だけを1024、128、0で各1回実行した。入力、prompt、domain候補、response schemaは同一である。これは検索結果のrecall/precision評価や、プロフィール属性選択の評価ではない。
+
+| budget | domain一致 | エラー | 1024とplan完全一致 | thought token合計 | 全token合計 | 中央応答時間 |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1024 | 16/16 | 0 | 16/16 | 5,256 | 23,992 | 1,946 ms |
+| 128 | 16/16 | 0 | 14/16 | 2,307 | 21,047 | 1,324 ms |
+| 0 | 16/16 | 0 | 14/16 | 0 | 18,741 | 519 ms |
+
+128は1024比でthought tokenを56.1%、全tokenを12.3%削減した。現行Standard料金（入力$0.30/100万token、responseとreasoning出力$2.50/100万token）で、この16件の条件解釈は約$0.0198から$0.0124、1回平均では約$0.00124から$0.00078となる。10万回の条件解釈へ単純換算した差は約$46で、プロフィール属性選択、embedding、BQは含まない。
+
+128の差分は`school-lexical`で同義語集合に「在学証明書」「学校」が増え、`internet`で一般語「回線」が減った2件。domain誤りや構造エラーではないが、「学校」の追加は実コーパスでfalse positiveを増やし得るため、全検索評価を未実施のまま「精度同等」とは扱わない。0では別の1件でAND条件が増えた。128を初期値とし、0への変更は保留する。
+
+`thinkingBudget`はsoft limitなので、128指定でも1呼び出し最大213 thought tokenを観測した。生の`usageMetadata`を検索段階・モデルとともにログへ残し、本番分布で再評価する。
+
+証跡は`thinking-1024.json`、`thinking-128.json`、`thinking-0.json`。再集計は`web/scripts/summarize-thinking-eval.mjs`を使う。
 
 単体21件、実BQの条件分離24ケース、検索UI回帰10件、公開関連UI回帰6件、lint/buildが成功。UI回帰には応答差し替えを含むため、実サービスの証拠とは分ける。
 

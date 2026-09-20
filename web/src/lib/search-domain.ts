@@ -10,9 +10,30 @@ type GenerateContentResponse = {
       parts?: Array<{ text?: string }>;
     };
   }>;
+  usageMetadata?: Record<string, unknown>;
 };
 
 let authClient: GoogleAuth | null = null;
+const DefaultSearchThinkingBudget = 128;
+
+function searchThinkingConfig(
+  model: string,
+  environmentVariable: "CUE_SEARCH_INTERPRET_THINKING_BUDGET" | "CUE_SEARCH_PROFILE_THINKING_BUDGET",
+) {
+  if (!["gemini-2.5-flash", "gemini-2.5-pro"].includes(model)) return {};
+
+  const configured = process.env[environmentVariable];
+  const thinkingBudget = configured === undefined
+    ? DefaultSearchThinkingBudget
+    : Number(configured);
+  const minimum = model === "gemini-2.5-pro" ? 128 : 0;
+  const maximum = model === "gemini-2.5-pro" ? 32768 : 24576;
+  if (!Number.isInteger(thinkingBudget) || thinkingBudget < minimum || thinkingBudget > maximum) {
+    throw new Error(`${environmentVariable} must be an integer from ${minimum} to ${maximum}`);
+  }
+
+  return { thinkingConfig: { thinkingBudget } };
+}
 
 function googleAuth() {
   authClient ??= new GoogleAuth({
@@ -56,7 +77,7 @@ export async function interpretSearchQuery(
           generationConfig: {
             temperature: model.startsWith("gemini-3") ? 1 : 0,
             responseMimeType: "application/json",
-            ...(["gemini-2.5-flash", "gemini-2.5-pro"].includes(model) ? { thinkingConfig: { thinkingBudget: 1024 } } : {}),
+            ...searchThinkingConfig(model, "CUE_SEARCH_INTERPRET_THINKING_BUDGET"),
             responseSchema: {
               type: "OBJECT",
               properties: {
@@ -74,6 +95,12 @@ export async function interpretSearchQuery(
       }),
     { attempts: 2, timeoutMs: 15000, delayMs: 300 },
   );
+  console.info(JSON.stringify({
+    event: "search.model_usage",
+    stage: "interpret",
+    model,
+    usage_metadata: response.data.usageMetadata ?? null,
+  }));
 
   const text = response.data.candidates?.[0]?.content?.parts?.[0]?.text;
   if (!text) {
@@ -110,6 +137,8 @@ required_tasks:
 - 内側配列は厳密な同義語・表記ゆれのOR。外側配列は独立した目的のAND。
 - 「対象を準備する/移す/運ぶ/予約する」という動詞を検索語へ付けない。対象名だけを返す。
 - 「移動」「運搬」「申請」「手続き」「データ」など対象を失う一般語を代替語にしない。対象の上位カテゴリへ広げない。
+- 複合名詞を一般語だけへ短縮しない。「認証アプリ」に対する「認証」、「入学書類」に対する「書類」は同義語ではない。
+- 製品方式が違っても検索目的が同じ語は候補に含める。例えばネット回線を探す場合は「ネット回線」「インターネット回線」「光回線」を同じORにする。ただし「回線」だけには広げない。
 - 同じ目的の一連の手順は1グループ。独立した複数目的を要求した場合だけ2グループ以上。
 - domainが表す全体活動や一般的な「準備」はここへ重ねない。
 
@@ -117,8 +146,10 @@ required_tasks:
 - 地域・経路・人数・交通手段・端末種類・時期は類似度ソートに使うので必須条件へ入れない。
 - 同行する対象や必要な配慮によって作業が変わる場合、その対象への対応が検索目的になる。
 - 単なる自己紹介の属性は目的ではない。「今回はXだけを探す」なら目的はXのみ。
+- 作業から当然に決まる実施者・対象者を追加目的にしない。「子どもの転校」の目的は転校だけで、子どもを別のAND条件にしない。子連れ旅行のように対象者によって必要作業が変わる場合だけ対象者を目的にする。
 - required_contextは「だけ」「のみ」「限定」「以外は不要」など、他の状況を明確に排除した要求だけ。単に地名があるだけなら必ず[]。
 - 国内で完結する制度・手順に限定する要求は「日本国内」「英国国内」のように範囲を示す語句で検索する。国名だけに広げると、その国を出入りする国際移動まで混ざるので広げない。
+- 「日本国内」の同義語に国名のない「国内」を加えない。他国の「英国国内」などへ部分一致するため、国名付きの範囲を保持する。
 - excluded_tasksは「その作業を含むリストを除外する」と明確に要求した場合だけ。「その作業は探していない」だけなら、同じリストに併載されることを禁止していない。
 
 例:
@@ -160,12 +191,18 @@ required_tasksが空なら、domain全体の段取りに直接関係する属性
       contents: [{ role: "user", parts: [{ text: JSON.stringify({ message, domain: plan.domain, required_tasks: plan.required_tasks, excluded_tasks: plan.excluded_tasks, attributes }) }] }],
       generationConfig: {
         temperature: model.startsWith("gemini-3") ? 1 : 0,
-        ...(["gemini-2.5-flash", "gemini-2.5-pro"].includes(model) ? { thinkingConfig: { thinkingBudget: 1024 } } : {}),
+        ...searchThinkingConfig(model, "CUE_SEARCH_PROFILE_THINKING_BUDGET"),
         responseMimeType: "application/json",
         responseSchema: { type: "ARRAY", maxItems: attributes.length, items: { type: "INTEGER", minimum: 0, maximum: attributes.length - 1 } },
       },
     },
   }), { attempts: 2, timeoutMs: 15000, delayMs: 300 });
+  console.info(JSON.stringify({
+    event: "search.model_usage",
+    stage: "profile_selection",
+    model,
+    usage_metadata: response.data.usageMetadata ?? null,
+  }));
   const text = response.data.candidates?.[0]?.content?.parts?.[0]?.text;
   if (!text) throw new Error("Search profile selection returned no content");
   const indexes = z.array(z.number().int().min(0).max(attributes.length - 1)).max(attributes.length).parse(JSON.parse(text));

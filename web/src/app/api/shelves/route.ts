@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireRegisteredUserId } from "@/lib/auth";
+import { optionalRequestUser, requireRegisteredUserId } from "@/lib/auth";
 import { createShelf, listShelves } from "@/lib/shelves";
 import { createShelfSchema } from "@/lib/schema";
 import { setShelfMembership } from "@/lib/memberships";
 import { dataApiError } from "@/lib/bq-store";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    return NextResponse.json({ shelves: await listShelves() });
+    const viewer = await optionalRequestUser(request);
+    return NextResponse.json({ shelves: await listShelves(viewer?.id) });
   } catch (error) {
     return errorResponse(error);
   }

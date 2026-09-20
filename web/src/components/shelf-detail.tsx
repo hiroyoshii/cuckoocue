@@ -20,7 +20,7 @@ const draftOf = (shelf: ShelfDetail): Draft => ({ title: shelf.title, context: s
 
 export function ShelfDetailView(props: Props) {
   const { shelf, userId } = props;
-  const owner = shelf.created_by === userId;
+  const owner = shelf.is_owned;
   const key = `cuckoo-cue:shelf-editor:${userId}:${shelf.id}`;
   const [draft, setDraft] = useState<Draft>(() => draftOf(shelf));
   const [base, setBase] = useState(shelf.updated_at);

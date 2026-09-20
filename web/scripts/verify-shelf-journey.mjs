@@ -87,7 +87,7 @@ try {
   let copied = (await forkResponse.json()).shelf;
   const copyInput = forkResponse.request().postDataJSON();
   evidence.copyInput = copyInput; evidence.copied = copied;
-  assert.equal(copied.created_by, reader.uid); assert.equal(copied.forked_from_shelf_id, source.id);
+  assert.equal(copied.is_owned, true); assert.equal(copied.forked_from_shelf_id, source.id);
   assert.deepEqual(copied.items, source.items); assert.notEqual(copied.id, source.id);
   assert.deepEqual((await api(author, `/api/shelves/${source.id}`)).shelf, source);
   await expect(page.getByLabel("グループ名", { exact: true })).toHaveValue(copied.title);

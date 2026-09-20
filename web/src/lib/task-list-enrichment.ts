@@ -2,6 +2,7 @@ import { GoogleAuth } from "google-auth-library";
 import { cueEnv } from "./env";
 import { withRetry } from "./resilience";
 import { taskListEnrichmentSchema } from "./schema";
+import { isActiveDomainLabel } from "./domain-catalog";
 
 import type { SaveTaskListInput, TaskListEnrichment } from "./schema";
 
@@ -11,6 +12,7 @@ type GenerateContentResponse = {
       parts?: Array<{ text?: string }>;
     };
   }>;
+  usageMetadata?: Record<string, unknown>;
 };
 
 let authClient: GoogleAuth | null = null;
@@ -61,16 +63,27 @@ export async function enrichTaskList(
     { attempts: 2, timeoutMs: 15000, delayMs: 500 },
   );
 
+  console.info(JSON.stringify({
+    event: "content.model_usage",
+    stage: "task_list_enrichment",
+    model,
+    usage_metadata: response.data.usageMetadata ?? null,
+  }));
+
   const text = response.data.candidates?.[0]?.content?.parts?.[0]?.text;
   if (!text) {
     throw new Error("Task list enrichment returned no content");
   }
 
-  return normalizeEnrichment(JSON.parse(text), input.tasks.length);
+  return normalizeEnrichment(JSON.parse(text), input.tasks.length, existingDomains);
 }
 
-export function normalizeEnrichment(value: unknown, taskCount: number): TaskListEnrichment {
+export function normalizeEnrichment(value: unknown, taskCount: number, allowedDomains?: readonly string[]): TaskListEnrichment {
   const parsed = taskListEnrichmentSchema.parse(value);
+  const candidates = allowedDomains ?? [];
+  if (!isActiveDomainLabel(parsed.domain) || (candidates.length > 0 && !candidates.includes(parsed.domain))) {
+    throw new Error("Task list enrichment returned an unmanaged domain");
+  }
   const usedOffsets = new Set<number>();
   const task_groupings = parsed.task_groupings
     .map((grouping) => ({

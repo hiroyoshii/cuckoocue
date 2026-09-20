@@ -11,11 +11,13 @@ import { withRetry } from "./resilience";
 import { buildSearchText } from "./search-text";
 import { compileSearchPlan, type SearchPlan } from "./search-plan";
 import type { SaveTaskListInput, TaskListEnrichment, TaskListEntry } from "./schema";
+import { activeDomainLabels } from "./domain-catalog";
 
 let bigQueryClient: BigQuery | null = null;
 let domainCache: { expiresAt: number; domains: string[] } | null = null;
 const BigQueryJobTimeoutMs = 30_000;
 const BigQueryCallTimeoutMs = 35_000;
+const SearchMaximumBytesBilled = "1073741824";
 
 function bigQuery() {
   bigQueryClient ??= new BigQuery({ projectId: cueEnv.projectId() });
@@ -41,7 +43,7 @@ export async function insertTaskListEntry(
           context_text: input.context_text,
           task_groupings: input.task_groupings,
         }
-      : await enrichTaskList(input, await listTaskListDomains());
+      : await enrichTaskList(input, activeDomainLabels());
   const contextEmbedding = await embedText(
     buildTaskListContextEmbeddingText(input, enrichment),
     "RETRIEVAL_DOCUMENT",
@@ -172,7 +174,7 @@ export async function searchTaskListEntries(
         )))) AS content_key
       FROM ${bqTable("cuebook_revisions")}
       WHERE withdrawn_at IS NULL
-        AND NORMALIZE_AND_CASEFOLD(TRIM(IFNULL(domain, '')), NFKC) = @searchDomain
+        AND domain = @searchDomain
         AND ARRAY_LENGTH(context_embedding) = ARRAY_LENGTH(@contextEmbedding)
     ),
     filtered AS (
@@ -214,6 +216,7 @@ export async function searchTaskListEntries(
         query,
         labels: { cue_kind: "public_search", cue_owner: digest(owner).slice(0, 63) },
         jobTimeoutMs: BigQueryJobTimeoutMs,
+        maximumBytesBilled: SearchMaximumBytesBilled,
         location: cueEnv.googleCloudLocation(),
         params: {
           ...filter.params,
@@ -233,7 +236,16 @@ export async function searchTaskListEntries(
     { attempts: 2, timeoutMs: BigQueryCallTimeoutMs, delayMs: 500 },
   );
 
-  console.info(JSON.stringify({ event: "search.executed", query_hash: digest(message), plan: searchPlan, context_attribute_hashes: userProfileAttributes.map(attribute => digest(attribute)), job_id: job.id, first_page_count: rows.length }));
+  console.info(JSON.stringify({
+    event: "search.executed",
+    domain: searchPlan.domain,
+    required_task_group_count: searchPlan.required_tasks.length,
+    required_context_group_count: searchPlan.required_context.length,
+    excluded_task_group_count: searchPlan.excluded_tasks.length,
+    selected_profile_attribute_count: userProfileAttributes.length,
+    job_id: job.id,
+    first_page_count: rows.length,
+  }));
 
   return {
     results: rows as SearchResult[],
@@ -318,11 +330,12 @@ export async function listTaskListDomains(): Promise<string[]> {
     return domainCache.domains;
   }
 
+  const candidates = activeDomainLabels();
   const query = `
-    SELECT DISTINCT domain
+    SELECT domain
     FROM ${bqTable("cuebook_revisions")}
-    WHERE withdrawn_at IS NULL AND domain IS NOT NULL
-      AND TRIM(domain) != ''
+    WHERE withdrawn_at IS NULL AND domain IN UNNEST(@candidates)
+    GROUP BY domain
     ORDER BY domain
   `;
 
@@ -331,6 +344,8 @@ export async function listTaskListDomains(): Promise<string[]> {
       bigQuery().query({
         query,
         jobTimeoutMs: BigQueryJobTimeoutMs,
+        maximumBytesBilled: SearchMaximumBytesBilled,
+        params: { candidates },
       }),
     { attempts: 2, timeoutMs: BigQueryCallTimeoutMs, delayMs: 500 },
   );

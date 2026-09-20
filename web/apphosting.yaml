@@ -70,6 +70,16 @@ env:
     availability:
       - RUNTIME
 
+  - variable: CUE_SEARCH_INTERPRET_THINKING_BUDGET
+    value: "128"
+    availability:
+      - RUNTIME
+
+  - variable: CUE_SEARCH_PROFILE_THINKING_BUDGET
+    value: "128"
+    availability:
+      - RUNTIME
+
   - variable: CUE_EMBEDDING_MODEL
     value: text-multilingual-embedding-002
     availability:

@@ -29,7 +29,7 @@ const shelf = {
   title: "猫と暮らす人の引っ越し",
   context: "猫の移動、住環境の切り替え、行政手続きをまとめて確認する状況。",
   forked_from_shelf_id: null,
-  created_by: "another-user",
+  is_owned: false,
   created_at: "2026-09-01T00:00:00.000Z",
   updated_at: "2026-09-07T00:00:00.000Z",
   item_count: 2,
@@ -38,7 +38,6 @@ const shelf = {
     position: index,
     revision: {
       id: `revision-${index + 1}`,
-      source_cuebook_id: `cuebook-${index + 1}`,
       revision: 1,
       title,
       tasks: tasks.slice(index, index + 3).map((task) => ({ title: task.text, ...task, text: undefined })),
@@ -56,7 +55,7 @@ await page.route("**/api/search", (route) => route.fulfill({ json: { results: [s
 await page.route("**/api/shelves", (route) => route.fulfill({ json: { shelves: [{ ...shelf, items: undefined }] } }));
 await page.route("**/api/shelves/cat-moving**", (route) => {
   if (route.request().url().endsWith("/fork")) {
-    return route.fulfill({ status: 201, json: { shelf: { ...shelf, id: "forked-cat-moving", title: `${shelf.title}の派生`, created_by: "local-user", forked_from_shelf_id: shelf.id } } });
+    return route.fulfill({ status: 201, json: { shelf: { ...shelf, id: "forked-cat-moving", title: `${shelf.title}の派生`, is_owned: true, forked_from_shelf_id: shelf.id } } });
   }
   return route.fulfill({ json: { shelf } });
 });

@@ -15,7 +15,7 @@ test("G03/W09/W11/W13: history, private original, conflict, publication recovery
   const publicationRequests: unknown[] = [];
   let conflict = true;
   await page.route("**/api/memberships", (route) => route.fulfill({ json: { shelf_ids: [] } }));
-  await page.route("**/api/shelves", (route) => route.fulfill({ json: { shelves: [{ id: "mine", title: "猫との引っ越し", created_by: "local-user" }] } }));
+  await page.route("**/api/shelves", (route) => route.fulfill({ json: { shelves: [{ id: "mine", title: "猫との引っ越し", is_owned: true }] } }));
   await page.route("**/api/runs", (route) => route.fulfill({ json: { runs: [{ id: "done", title: original.title, task_count: 2, completed_at: Date.parse("2026-09-10") }], nextCursor: null } }));
   await page.route("**/api/cuebooks", (route) => route.fulfill({ json: { cuebooks: [saved], nextCursor: null } }));
   await page.route(`**/api/cuebooks/${id}/revisions`, route => route.fulfill({ json: { revisions: [] } }));
@@ -69,11 +69,11 @@ test("G03/W09/W11/W13: history, private original, conflict, publication recovery
   await expect(page.getByText("公開しました。", { exact: true })).toBeVisible();
   expect(publicationRequests[1]).toEqual(publicationRequests[0]);
   await page.route("**/api/reuse", (route) => {
-    expect(route.request().postDataJSON()).toMatchObject({ source: { type: "cuebook", id }, target_anchor_day: "2026-10-01" });
+    expect(route.request().postDataJSON()).toMatchObject({ source: { type: "cuebook", id }, target_anchor_day: "2027-10-01" });
     return route.fulfill({ json: { runId: "scheduled-result" } });
   });
   await page.getByRole("button", { name: "日程を決めて使う" }).click();
-  await page.getByLabel("最終日", { exact: true }).fill("2026-10-01");
+  await page.getByLabel("最終日", { exact: true }).fill("2027-10-01");
   await capture("private-schedule");
   await page.getByRole("button", { name: "この日程で保存" }).click();
   await expect(page.getByText("日程付きのリストを保存しました。", { exact: true })).toBeVisible();

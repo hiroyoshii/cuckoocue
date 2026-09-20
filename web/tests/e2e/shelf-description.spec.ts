@@ -8,7 +8,7 @@ const original = {
   enrichment: { domain: "引っ越し", context_text: "猫2匹と公共交通で引っ越す", task_groupings: [{ label: "移動", task_offsets: [0] }] },
 };
 const suggestion = { title: "猫2匹と公共交通で引っ越す", context: "猫2匹と公共交通で移動し、新生活を準備する人向け。" };
-const shelf = { id: "shelf", title: "猫との暮らし", context: "猫と暮らす人向け", created_by: "other", updated_at: original.updated_at,
+const shelf = { id: "shelf", title: "猫との暮らし", context: "猫と暮らす人向け", is_owned: false, updated_at: original.updated_at,
   items: [{ revision_id: "revision", position: 0, revision: { id: "revision", title: original.title, published_at: original.updated_at, withdrawn_at: null, tasks: original.tasks.map(task => ({ ...task, title: task.text })) } }] };
 
 test("description contracts reject empty, oversized and extra output fields", () => {
@@ -103,7 +103,7 @@ test("owner can generate and edit text without changing placements or saving aut
   await page.route("**/api/**", route => {
     const path = new URL(route.request().url()).pathname;
     if (route.request().method() !== "GET") mutations.push(path);
-    if (path === "/api/shelves/shelf") return route.fulfill({ json: { shelf: { ...shelf, created_by: "local-user" } } });
+    if (path === "/api/shelves/shelf") return route.fulfill({ json: { shelf: { ...shelf, is_owned: true } } });
     if (path === "/api/shelf-description") return route.fulfill({ json: { description: suggestion } });
     return route.fulfill({ json: { shelves: [], shelf_ids: [] } });
   });
@@ -125,7 +125,7 @@ test("switching to an existing destination cancels generation without blocking p
     const path = new URL(route.request().url()).pathname;
     if (path === "/api/shelf-description") { await released; await route.fulfill({ json: { description: suggestion } }).catch(() => {}); return; }
     if (path === `/api/cuebooks/${original.id}`) return route.fulfill({ json: { cuebook: original } });
-    return route.fulfill({ json: { shelves: [{ ...shelf, created_by: "local-user" }], shelf_ids: [], revisions: [] } });
+    return route.fulfill({ json: { shelves: [{ ...shelf, is_owned: true }], shelf_ids: [], revisions: [] } });
   });
   await page.goto(`/?cuebook_id=${original.id}`);
   await page.getByRole("button", { name: "グループに公開する", exact: true }).click();

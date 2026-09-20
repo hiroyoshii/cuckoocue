@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { taskEntryTaskSchema, taskListEnrichmentSchema } from "./schema";
+import { isActiveDomainLabel } from "./domain-catalog";
 
 export const cuebookTaskSchema = taskEntryTaskSchema.extend({ id: z.string().uuid() });
 export const cuebookContentSchema = z.object({
@@ -16,6 +17,9 @@ export const cuebookContentSchema = z.object({
     }
   });
   if (value.enrichment) {
+    if (!isActiveDomainLabel(value.enrichment.domain)) {
+      ctx.addIssue({ code: "custom", path: ["enrichment", "domain"], message: "管理語彙にないdomainは保存できません。" });
+    }
     const offsets = value.enrichment.task_groupings.flatMap((group) => group.task_offsets);
     if (offsets.length !== value.tasks.length || new Set(offsets).size !== offsets.length || offsets.some((offset) => offset >= value.tasks.length)) {
       ctx.addIssue({ code: "custom", path: ["enrichment", "task_groupings"], message: "すべてのタスクを1つずつまとまりに指定してください。" });

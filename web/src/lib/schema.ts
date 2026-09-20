@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isActiveDomainLabel } from "./domain-catalog";
 
 export const taskEntryTaskSchema = z.object({
   text: z.string().trim().min(1).max(240),
@@ -9,13 +10,13 @@ export const taskEntryTaskSchema = z.object({
 
 export const taskGroupingSchema = z.object({
   label: z.string().trim().min(1).max(80),
-  task_offsets: z.array(z.number().int().nonnegative()).min(1),
+  task_offsets: z.array(z.number().int().nonnegative()).min(1).max(200),
 });
 
 export const taskListEnrichmentSchema = z.object({
-  domain: z.string().trim().min(1),
-  context_text: z.string().trim().min(1),
-  task_groupings: z.array(taskGroupingSchema).min(1),
+  domain: z.string().trim().min(1).max(40),
+  context_text: z.string().trim().min(1).max(1200),
+  task_groupings: z.array(taskGroupingSchema).min(1).max(20),
 });
 
 export const taskListEntrySchema = z.object({
@@ -33,7 +34,7 @@ export const taskListEntrySchema = z.object({
 
 const taskListDraftObjectSchema = z.object({
   title: z.string().trim().min(1).max(240),
-  tasks: z.array(taskEntryTaskSchema).min(1),
+  tasks: z.array(taskEntryTaskSchema).min(1).max(200),
 });
 
 export const taskListDraftSchema = taskListDraftObjectSchema.superRefine(
@@ -49,6 +50,10 @@ export const saveTaskListSchema = taskListDraftObjectSchema
   })
   .superRefine((value, context) => {
     validateTaskList(value, context);
+
+    if (value.domain && !isActiveDomainLabel(value.domain)) {
+      context.addIssue({ code: "custom", path: ["domain"], message: "管理語彙にないdomainは保存できません。" });
+    }
 
     const usedOffsets = new Set<number>();
     value.task_groupings?.forEach((grouping, groupIndex) => {
@@ -94,8 +99,8 @@ function validateTaskList(
 
 export const searchTaskListsSchema = z
   .object({
-    message: z.string().trim().optional(),
-    cursor: z.string().trim().min(1).optional(),
+    message: z.string().trim().min(1).max(500).optional(),
+    cursor: z.string().trim().min(1).max(4096).optional(),
     page_size: z.number().int().min(1).max(20).optional(),
   })
   .refine((value) => Boolean(value.cursor || value.message), {
@@ -113,10 +118,10 @@ export const memoryEventKindSchema = z.enum([
 ]);
 
 export const memoryEventInputSchema = z.object({
-  event_id: z.string().trim().min(1),
+  event_id: z.string().trim().min(1).max(160),
   kind: memoryEventKindSchema,
-  text: z.string().trim().min(1),
-  occurred_at: z.string().trim().min(1),
+  text: z.string().trim().min(1).max(1200),
+  occurred_at: z.string().datetime({ offset: true }),
 });
 
 export const cuebookRevisionTaskSchema = z.object({

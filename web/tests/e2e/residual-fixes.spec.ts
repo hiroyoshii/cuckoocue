@@ -7,7 +7,7 @@ const original = { id: "a54d9e6f-38ae-4780-8986-b9e169f3a178", title: "猫との
   tasks: [{ id: "e4a0b6d6-eec3-4efa-9d98-b9767cb65bd6", text: "ケージを確認する", default_priority: null, relative_start_day: -7, relative_end_day: 0 }],
   enrichment: { domain: "引っ越し", context_text: "猫と国内で引っ越す", task_groupings: [{ label: "移動", task_offsets: [0] }] } };
 const revision = { id: "revision", title: original.title, published_at: original.updated_at, withdrawn_at: null, tasks: original.tasks.map(task => ({ ...task, title: task.text })) };
-const shelf = { id: "shelf", title: "猫と暮らす人", context: "猫と国内で引っ越す人", created_by: "local-user", updated_at: original.updated_at, item_count: 1,
+const shelf = { id: "shelf", title: "猫と暮らす人", context: "猫と国内で引っ越す人", is_owned: true, updated_at: original.updated_at, item_count: 1,
   items: [{ revision_id: revision.id, position: 0, revision }] };
 const result = { ...original, id: revision.id, ...original.enrichment, tasks: Array.from({ length: 5 }, (_, i) => ({ ...original.tasks[0], id: `t${i}`, text: `転居準備${i}` })), shelves: [{ id: shelf.id, title: shelf.title }] };
 
