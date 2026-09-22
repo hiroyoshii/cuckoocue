@@ -1,6 +1,6 @@
 # Mobile仕上げTodo
 
-2026-09-13。Androidの実装・未コミット差分、iOSの現行コード、Web仕様書の最新追記を確認した残件。古い設計書の「未実装」をそのまま復活させない。
+2026-09-13作成、2026-09-22更新。Android・iOSの現行コードとCIを基準に残件を記録する。古い設計書の「未実装」をそのまま復活させない。
 
 ## 固定する前提
 
@@ -10,9 +10,17 @@
 - iOSはAndroidと操作の意味・到達先を揃える。Material部品や可変サイズWidgetをそのまま移植しない。
 - 新しいEntity、検索方式、公開方式をこのTodoの名目で追加しない。
 
+## iOS上位UIの判断記録（2026-09-22）
+
+Run一覧・Task一覧の**操作構造と情報密度はAndroidに揃え、部品とOS固有の挙動はiOSに合わせる**。Run行にTaskの内容を見せ、Run詳細でTaskの追加・本文編集・完了・優先度・開始日・期限・並べ替えを連続して扱えるようにする。NavigationStack、List、Menu、Toggle、DatePicker、swipe action等はiOSのものを使い、独立した一時操作に限ってsheetを使う。「iOSらしさ」は日常的な編集を別sheetへ分離する理由にはならない。
+
+以前のsheet中心の判断は誤りだった。旧Todoの「NavigationStack・sheet・Formを維持」を、各Task編集をsheetに送る制約として読み過ぎた。また、値を編集できるかだけをE2Eで確認し、一覧で実際のTaskを把握できるか、複数Taskを続けて編集できるか、必要なタップ数がAndroidと乖離しないかを受入条件にしていなかった。iOSのプラットフォーム制約を根拠にした設計ではない。今後は「ネイティブ部品の使用」と「操作効率」を別々に評価し、両OSの同一シナリオ・スクリーンショットで確認する。
+
+M02のインライン編集は`670dec3`、`b1025da`、`0f26beb`で`main`へ反映した。UI・モデルテストとアプリスクリーンショットは[CI #57](https://github.com/hiroyoshii/cuckoocue/actions/runs/35522573098)で成功。[CI #58](https://github.com/hiroyoshii/cuckoocue/actions/runs/35523506229)ではアプリ側は成功したが、実ホーム画面Widgetの自動配置テストで全体が失敗した。最終コミットのCI全体を成功扱いしない。
+
 ## Todo一覧
 
-### M01：アプリ上位の入口を確定する【Android実装済み】
+### M01：アプリ上位の入口を確定する【両OS実装済み】
 
 - [x] `表示`タブを廃止し、Widgetプレビュー・文字サイズ・配色をヘッダーのWidget設定アイコンへ移した。
 - [x] Androidの`再利用`タブとPrivate Cuebook導線を廃止した。Web ImportはPrivate Cuebookを作らずRunへ直接展開し、履歴からの再利用はWebへ接続する。
@@ -21,7 +29,7 @@
 - [x] 完了Runは最新1件だけ一覧末尾に残し、その下からWebの完了履歴へ進める。
 - [x] 同じ操作構造をiOSへ反映する。Materialの見た目は移植しない。
 
-完了条件：Androidは達成。iOS反映後、通常利用・設定変更・完了後・Web再利用への入口と戻り先を両OSで説明できる。
+実装上の完了条件：通常利用・設定変更・完了後・Web再利用への入口と戻り先を両OSで説明できる。実Webとの往復確認はM03／M05に残す。
 
 根拠：`android/app/src/main/java/app/cuckoocue/MainActivity.kt`のRunListScreen / ListModeTabs / AppearanceSettingsPanel。機能は既存で、主に情報設計の整理。
 
@@ -35,38 +43,41 @@
 
 完了条件：同じデータを使い、一覧→編集→Widget表示設定→完了→再利用／復元を両OSで比較できる。iOSのNavigationStackとWidget familyは維持し、sheet／Formは独立した一時操作にだけ使う。Run名、Task追加・本文・日付・優先度、並べ替えはRun詳細内で操作できる。
 
-根拠：`ios/CuckooCue/MainTabView.swift`はM01でRun一覧中心・Widget設定sheetへ整理済みだが、Run詳細は追加・完了中心。`ios/Shared/CueStore.swift`に項目編集・Run復元・再利用メソッドはまだない。`archivedAt`フィールドがあることを、復元導線が完成済みの根拠にしない。
+実装箇所：`ios/CuckooCue/MainTabView.swift`、`RunDetailView.swift`、`InlineTaskRow.swift`、`ios/Shared/CueStore.swift`。最終版のアプリ画像はCI #58の`cuckoo-cue-ios-e2e-screenshots` artifactにある。実機での触り心地の確認はM05の最終受入に含める。
 
-### M03：iOSを既存Web受渡し契約へ接続する【実装／残件の中では大きい】
+### M03：iOSを既存Web受渡し契約へ接続する【実装済み・実接続受入は未完】
 
-- [ ] 既存の本人認証とRun取得APIへ接続し、Webで作ったRunを同一ID・同じ日付で受信する。再度の日程入力や別形式のImportを作らない。
-- [ ] 契約に必要なRun／Taskの由来・日程フィールドをApp GroupのJSONモデルへ追加する。iOS専用の新ドメインモデルや、リリース前形式の移行処理は作らない。
-- [ ] 受信失敗・再試行・同じリンクの再オープンで重複やローカル編集の上書きを起こさない。
-- [ ] 実行結果を既存の本人向け保存経路へ反映し、「再利用用に整える」は同期成功後に対象RunをWebで開く。
-- [ ] ログアウト／別アカウントで、別人のローカルRunを送信しないことを確認する。既存Androidの同じ境界も受入で確認し、不備を確認した場合だけ修正する。
+- [x] Firebase本人認証と既存Run取得APIへ接続し、WebのRunを同一ID・同じ日付で受信する。
+- [x] 契約に必要なRun／Taskの由来・日程フィールドをApp GroupのJSONモデルへ追加する。リリース前形式の移行処理は追加しない。
+- [x] 受信失敗・再試行・同じリンクの再オープンを扱い、ローカルRunを安易に上書きしない。
+- [x] ローカル変更をETag付きで本人向け保存経路へ同期し、「再利用用に整える」は同期成功後に対象RunをWebで開く。
+- [x] iOSでは同期メタデータに所有者を固定し、ログアウト／別アカウントでそのRunを再帰属させないガードを実装した。
+- [ ] 実認証・実APIを使い、Web→iOS→Widget→Webの往復と失敗・再試行・別アカウント境界を実機／配布ビルドで受け入れる。Android側の同じ境界も確認する。
 
 完了条件：Web→iOSで同じRunを受信→Widgetで実行→Webの対象履歴／編集へ戻る。実認証・実APIの試験をUIモックの成功で代用しない。
 
-根拠：`ios/Shared/CueStorage.swift`はApp GroupのJSON保存。`MainTabView.swift`のURL処理は`cuckoocue://queue`によるローカルRun遷移だけ。`ios/project.yml`に認証／クラウド連携依存はなく、CueRun/CueTaskにもAndroidの由来フィールドの一部がない。これは確定済み仕様への追随であり、全面的な多端末双方向同期の追加ではない。
+実装箇所：`ios/CuckooCue/RunAuthentication.swift`、`RunTransfer.swift`、`RunTransferController.swift`、`ios/Shared/CueSyncMetadata.swift`、`CueModels.swift`。契約の単体テストは`ios/CuckooCueTests/RunTransferTests.swift`。これは確定済み仕様への追随であり、全面的な多端末双方向同期の追加ではない。モックを使ったテスト成功を、実認証・実APIの受入完了と混同しない。
 
 ### M04：Widget→アプリの往復を両OSで受け入れる【比較・必要箇所のみ修正】
 
 - [ ] 集約表示、Run文脈のfooter、対象Runを開く／一覧を開く、アプリからホームへ戻る操作を同じ表で確認する。
-- [ ] iOSでRun指定なしのqueue URLを受けた場合、以前のRun詳細が残らず一覧へ戻れることを確認・修正する。設定タブ選択中からの復帰も含む。
+- [x] iOSでRun指定なしのqueue URLを受けた場合、NavigationStackのpathを空に戻す処理を実装した。
+- [ ] 実WidgetからRun指定あり／なしのqueue URLを開き、Run詳細／一覧への復帰を確認する。Widget設定sheet表示中からの復帰も含む。
 - [ ] 完了・Undo、アプリ終了後の永続化、再表示、自分のCueと設定プレビューの一致を確認する。
 - [ ] Androidは実設置寸法、iOSはSmall / Medium / Large（既存Lock Screenも回帰）で、長い本文・複数Run・大きい文字・空状態を撮影する。
 
 完了条件：両OSの操作結果が一致する比較表とCI画像がある。既存Widgetの情報設計を全面的に再レビューし直すタスクにはしない。OS差として残す操作は明記する。
 
-根拠：`docs/android-widget-navigation.md`、`docs/widget-preview-review.md`、`ios/WidgetShared/CueWidgetCard.swift`。iOSの現行onOpenURLはrunIDがある場合だけpathを変更する。
+根拠：`docs/android-widget-navigation.md`、`docs/widget-preview-review.md`、`ios/WidgetShared/CueWidgetCard.swift`。iOSのonOpenURLはrunIDなしでpathを空に戻すが、実Widgetからの復帰は未受入。
 
 ### M05：直近Android変更とWeb接続の最終回帰【検証・反映】
 
-- [ ] 未コミットのAndroidブランド差し替え・開始2ボタン・空／完了状態・テスト・スクショを確認してコミット／pushする。
-- [ ] 変更後のAndroid CIを通す。ローカル22件成功をCIやWeb実連携の完了と混同しない。
+- [x] 当初の未コミットAndroid差分はコミット済みで、2026-09-22時点のAndroid作業ツリーに未コミット差分はない。
+- [ ] 現行Android版のCIを成功させる。[直近のAndroid Widget CI](https://github.com/hiroyoshii/cuckoocue/actions/runs/35486222694)はActions budgetによりジョブが開始されず失敗。コードの失敗と断定せず再実行する。ローカルテスト成功をCIやWeb実連携の完了と混同しない。
 - [ ] 実Web→Android受信→Widget実行→「再利用用に整える」の往復を現行版で確認する。認証後に要求した履歴／編集へ復帰することも含む。
 - [ ] 最新のWeb変更は配備状況を照合する。仕様書の第28〜29節は未配備記録なので、ローカルで見えることを本番反映済みとしない。
-- [ ] iOS READMEとProduct Guideの古い説明・画像を現行版へ揃える。特に「アプリ一覧に集約Cueプレビューが出る」というiOS READMEの記述は現行コードと不一致。
+- [ ] Product Guideの古いiOS説明・画像を現行版へ揃える。現状は「項目追加シート」「iOSアプリで完了取消は未実装」「iOSはWeb受渡し未接続」と記述しており、コードと不一致。iOS READMEのWeb受渡し説明は更新済み。
+- [ ] 最新のiOS UIを含む版でE2E全体を再び緑にし、実機の連続編集とTestFlight配布を確認する。TestFlight uploadの[前回成功](https://github.com/hiroyoshii/cuckoocue/actions/runs/35500625991)はインライン編集導入前のcommitなので、新UIの配布証拠ではない。
 
 完了条件：検証したcommit、配布／配備した版、画像の版が追跡でき、古いスクショを現行仕様として見せない。
 
@@ -79,8 +90,8 @@
 
 ## 順番と対象外
 
-M01 → M02・M03 → M04 → M05の最終受入 → M06。M05のAndroid差分整理は先に実施可能。
+M01・M02・M03の実装 → M03実接続受入とM04 → M05の最終回帰・配布確認 → M06。M03の実認証試験はM04／M05と並行してよい。
 
-残りは6つの作業群であり、6個の小修正という意味ではない。Android／Widget／Webの新機能追加は少ないが、iOSのWeb接続を見た目の差し替えとして見積もらない。
+残りはM03の実接続受入、M04のWidget往復比較、M05のCI・実機・Web往復・ドキュメント回帰、M06の配布入口である。M01・M02・M03のコード実装は完了しているが、実サービス・実機の確認が終わるまで製品としての完了とはしない。
 
 今回増やさない：Observation、自動改善、ランキング／SNS、CuebookやRevisionの再設計、全面的な多端末同期、AIによる新しい提案機能。Web検索品質の既知の懸念（仕様書G01/C08）は消えたわけではないが、このMobile UI仕上げとは別枠で維持する。
