@@ -46,7 +46,7 @@ jobs:
         run: |
           set -euo pipefail
           runtime="com.apple.CoreSimulator.SimRuntime.iOS-18-5"
-          device_type="com.apple.CoreSimulator.SimDeviceType.iPhone-16-Pro"
+          device_type="com.apple.CoreSimulator.SimDeviceType.iPhone-16-Pro-Max"
           simulator_id="$(xcrun simctl create 'Cuckoo Cue CI' "$device_type" "$runtime")"
           echo "id=$simulator_id" >> "$GITHUB_OUTPUT"
           xcrun simctl boot "$simulator_id"
@@ -112,7 +112,9 @@ jobs:
             local output="$1"
             shift
             xcrun simctl terminate "$simulator_id" app.cuckoocue.ios 2>/dev/null || true
-            xcrun simctl launch "$simulator_id" app.cuckoocue.ios --ui-testing "$@"
+            xcrun simctl launch "$simulator_id" app.cuckoocue.ios \
+              -AppleLanguages '(ja)' -AppleLocale ja_JP \
+              --ui-testing "$@"
             sleep 2
             xcrun simctl io "$simulator_id" screenshot "build/ios-widget-screenshots/$output.png"
           }
