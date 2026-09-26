@@ -1,6 +1,6 @@
 # Web 残タスク
 
-最終更新: 2026-09-21
+最終更新: 2026-09-27
 
 この文書は、過去の監査履歴ではなく、現行コードを基準にした未完了項目だけを管理する。Web画面、Web API、公開レスポンス、App Hosting設定、Webから使うApp/Universal Linkを範囲とする。Android/iOS内部の実装、全面的な多端末同期、公開停止UIなどは含めない。
 
@@ -11,7 +11,7 @@
 | P0 | 公開APIの内部ID除去、検索ログ最小化、入力上限 | 完了 | 公開レスポンスからUID/私的原本IDを100%除去。検索条件由来の語句・属性hashを成功ログから100%除去。検索500文字、cursor 4,096文字、リスト200件などで固定上限化 |
 | P0 | domainカタログ、検索・保存接続 | 完了 | 管理語彙を33件へ拡張。保存値と検索条件を完全一致にし、分類揺れによる候補漏れを抑制 |
 | P0 | 33 domain・99公開Revision・境界ケース | 本番投入・評価完了 | 各domain 3件、合計99件を本番登録。既120 queryに加え、追加3 domainの12 queryも実Vertexで12/12合格 |
-| P0 | CuckooCueデフォルト5 Shelf・30 Cuebook | BQ本番投入完了、Web配備待ち | 18件のYouTube/ブログ/公式情報から独自編集した150タスク。原文・字幕は複製せず、出典と編集注記を表示 |
+| P0 | CuckooCueデフォルト5 Shelf・30 Cuebook | BQ本番投入・Web公開受入済み、登録ユーザーforkの本人操作待ち | 18件のYouTube/ブログ/公式情報から独自編集した150タスク。原文・字幕は複製せず、出典と編集注記を表示 |
 | P0 | thinking 128/BQ 1 GiBの配備・全体評価 | 実装・評価完了、7日観測中 | 16件実測ではthought token 56.1%減、検索解釈LLM推定費37.2%減、約46 USD/10万解釈。既存検索評価70/70合格。BQは1検索Jobの走査を1 GiB以下に制限 |
 | P1 | 有料APIのrate limit、App Check、429契約 | 250〜450行 + インフラ設定 | 匿名UID・登録UID・network単位で異常消費を遮断。拒否要求のVertex/BQ/Memory Bank呼出しを0回にする |
 | P1 | 公開GETのcache・ページング・BQ上限 | 120〜220行 + テスト80〜140行 | 同一公開データへの反復取得はCDN hit時にBQ呼出しを0回化。ランダムID攻撃は別途network制限で抑制 |
@@ -48,7 +48,7 @@
 - [x] **EDITORIAL-001: 第1弾データを固定する。** 5 Shelf、30 Cuebook/Revision、150タスク、18公開出典、30配置をmanifestに固定した。Runは利用者固有の実行記録のため作らない。
 - [x] **EDITORIAL-002: 出典と編集境界を実装する。** YouTube/ブログは調査根拠とURLを保持し、本文・字幕・画像を公開データへ複製しない。公閏DTOには内部観察メモを出さず、出典メタデータとCuckooCue編集表示だけを返す。
 - [x] **EDITORIAL-003: 安全なseedと表示回帰を用意する。** Cuebook先行作成、Revision不変検査、確認文字列、既存Revisionのembedding再計算回避、レスポンシブ/アクセシビリティE2Eを実装した。
-- [ ] **EDITORIAL-004: 本番投入と公開受入を行う。** schema追加、追加domain seed、editorial seedの順で対象project.datasetを明示して実行する。その後Webを配備し、5 Shelfの出典展開、検索命中、fork後にデフォルト印が継承されないことを確認する。
+- [ ] **EDITORIAL-004: 本番投入と公開受入を行う。** 本番`cuckoocue.cuckoo_cue`の99 managed Revision、30 editorial Revision、5 default Shelf、30配置を2026-09-27に再assertした。App Hosting rollout `rollout-2026-09-20-027`（commit `2f9cd71`）で5 Shelf各6件、PC/mobile表示、出典展開、実検索から関連Shelfへの命中を確認済み。forkは実装上`curation`をINSERTせず、desktop/mobile回帰でも印が非継承だが、本番の登録済みユーザーによるfork 1回だけは本人Googleログインが必要なため未確認。
 
 完了条件: 本番で5 Shelf・30 Revisionが閲覧でき、各Revisionの出典が開け、詳細・Shelf・forkの表示境界がローカルE2Eと一致する。
 
