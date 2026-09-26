@@ -112,6 +112,19 @@ jobs:
             CODE_SIGN_IDENTITY="Apple Distribution" \
             archive | tee artifacts/xcodebuild-archive.log
 
+      - name: Verify archived build number
+        run: |
+          app_info="$ARCHIVE_PATH/Products/Applications/CuckooCue.app/Info.plist"
+          widget_info="$ARCHIVE_PATH/Products/Applications/CuckooCue.app/PlugIns/CuckooCueWidget.appex/Info.plist"
+          for info in "$app_info" "$widget_info"; do
+            actual_build="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$info")"
+            echo "$info: CFBundleVersion=$actual_build"
+            if [[ "$actual_build" != "$BUILD_NUMBER" ]]; then
+              echo "Expected CFBundleVersion $BUILD_NUMBER, got $actual_build"
+              exit 1
+            fi
+          done
+
       - name: Export ipa
         run: |
           set -o pipefail
