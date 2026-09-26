@@ -226,7 +226,7 @@ private struct AccountSheet: View {
                     Link("プライバシーポリシー", destination: URL(string: "https://cuckoocue.hiyozoo.com/privacy")!)
                     Link("利用規約", destination: URL(string: "https://cuckoocue.hiyozoo.com/terms")!)
                     Link("サポート", destination: URL(string: "https://cuckoocue.hiyozoo.com/support")!)
-                    Link("support@cuckoocue.hiyozoo.com", destination: URL(string: "mailto:support@cuckoocue.hiyozoo.com")!)
+                    Link("support@hiyozoo.com", destination: URL(string: "mailto:support@hiyozoo.com")!)
                 }
             }
             .navigationTitle("アカウント")
