@@ -1,9 +1,13 @@
+import { randomUUID } from "node:crypto";
 import { bqTable, bqWrite } from "./bq-store";
 import { adminFirestore } from "./firebase-admin";
 import { purgeUserMemories } from "./memory-bank";
 
 export async function deleteAccountData(owner: string): Promise<void> {
-  await bqWrite(owner, "delete-account", { owner }, `
+  // A newly created account can reuse the same Firebase uid after an earlier deletion.
+  // Keep retries stable within this invocation without making all future deletions share one job.
+  const operation = `delete-account-${randomUUID()}`;
+  await bqWrite(owner, operation, { owner, operation }, `
     BEGIN TRANSACTION;
     CREATE TEMP TABLE owned_revisions AS
       SELECT id FROM ${bqTable("cuebook_revisions")} WHERE owner_user_id = @owner;
