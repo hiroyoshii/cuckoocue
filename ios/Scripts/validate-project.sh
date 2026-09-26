@@ -13,6 +13,8 @@ grep -q 'PRODUCT_BUNDLE_IDENTIFIER: app.cuckoocue.ios.widget$' "$project"
 grep -q 'PROVISIONING_PROFILE_SPECIFIER: Cuckoo Cue' "$project"
 grep -q 'PROVISIONING_PROFILE_SPECIFIER: Cuckoo Cue Widget' "$project"
 grep -q 'applinks:cuckoocue.hiyozoo.com' "$project"
+grep -q 'com.apple.developer.applesignin:' "$project"
+grep -q 'ITSAppUsesNonExemptEncryption: false' "$project"
 
 plutil -lint "$app_entitlements" >/dev/null
 plutil -lint "$widget_entitlements" >/dev/null

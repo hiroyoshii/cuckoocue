@@ -42,7 +42,7 @@ enum RunSyncError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidLink: "リンクが正しくありません。"
-        case .signedOut: "Webと同じGoogleアカウントでログインしてください。"
+        case .signedOut: "Webと同じアカウントでログインしてください。"
         case .configurationMissing: "iOS用のFirebase設定がまだ登録されていません。"
         case .accountChanged: "処理中にアカウントが変更されました。もう一度お試しください。"
         case .ownerMismatch: "別のアカウントのリストは送受信できません。"
@@ -113,6 +113,17 @@ struct RunAPIClient {
             throw statusError(response.statusCode, data: data, receiving: false)
         }
         return response.value(forHTTPHeaderField: "ETag") ?? etag
+    }
+
+    func deleteAccount(token: String) async throws {
+        var request = URLRequest(url: baseURL.appending(path: "api/account"))
+        request.httpMethod = "DELETE"
+        request.timeoutInterval = 30
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        let (data, response) = try await perform(request)
+        guard (200...299).contains(response.statusCode) else {
+            throw statusError(response.statusCode, data: data, receiving: false)
+        }
     }
 
     private func perform(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {

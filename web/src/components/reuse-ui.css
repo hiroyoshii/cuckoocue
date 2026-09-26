@@ -228,6 +228,9 @@
 .account-menu header span { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
 .account-menu > button { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 8px; margin-top: 8px; border: 0; border-radius: 6px; background: transparent; color: var(--ink); text-align: left; font-size: 14px; font-weight: 600; }
 .account-menu > button:hover { background: var(--mint); }
+.account-menu > button.danger { color: #a12622; }
+.account-links { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 10px 8px 4px; border-top: 1px solid var(--line); }
+.account-links a { color: var(--muted); font-size: 12px; text-underline-offset: 2px; }
 .account-error { color: var(--danger); font-size: 13px; padding: 8px; overflow-wrap: anywhere; }
 @media (max-width: 680px) {
   .mobile-navigation { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 24px; border-bottom: 1px solid #d9ddd9; }

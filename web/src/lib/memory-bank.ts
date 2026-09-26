@@ -18,6 +18,7 @@ export type MemoryEvent = {
 type RetrieveProfilesResponse = {
   profiles?: Record<string, { profile?: Record<string, unknown>; schemaId?: string }>;
 };
+type OperationResponse = { name?: string; done?: boolean; error?: { message?: string } };
 
 let authClient: GoogleAuth | null = null;
 
@@ -117,4 +118,28 @@ export async function retrieveUserProfileAttributes(userId: string): Promise<str
     return phrase ? [`${key}: ${phrase}`] : [];
   });
   return Array.from(new Set(attributes));
+}
+
+export async function purgeUserMemories(userId: string): Promise<void> {
+  const escaped = userId.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
+  const response = await googleAuth().request<OperationResponse>({
+    url: `${vertexAiBaseUrl()}/${cueEnv.memoryBankName()}/memories:purge`,
+    method: "POST",
+    timeout: 15_000,
+    data: { filter: `scope.user_id="${escaped}"`, force: true },
+  });
+  if (response.status < 200 || response.status >= 300 || !response.data.name) {
+    throw new Error(`Memory Bank purge failed: ${response.status}`);
+  }
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    const operation = await googleAuth().request<OperationResponse>({
+      url: `${vertexAiBaseUrl()}/${response.data.name}`,
+      method: "GET",
+      timeout: 10_000,
+    });
+    if (operation.data.error) throw new Error(operation.data.error.message ?? "Memory Bank purge failed");
+    if (operation.data.done) return;
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  throw new Error("Memory Bank purge timed out");
 }

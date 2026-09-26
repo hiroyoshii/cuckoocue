@@ -24,6 +24,14 @@ enum CueSyncMetadataStore {
         }
     }
 
+    static func runIDs(ownerID: String) -> [String] {
+        metadataEntries(ownerID: ownerID).map(\.runID)
+    }
+
+    static func remove(ownerID: String) {
+        metadataEntries(ownerID: ownerID).forEach { defaults.removeObject(forKey: key(for: $0.runID)) }
+    }
+
     static func markPending(runID: String) {
         update(runID: runID) { metadata in
             metadata.pending = true
@@ -83,6 +91,15 @@ enum CueSyncMetadataStore {
     }
 
     private static func key(for runID: String) -> String { keyPrefix + runID }
+
+    private static func metadataEntries(ownerID: String) -> [(runID: String, metadata: CueRunSyncMetadata)] {
+        defaults.dictionaryRepresentation().compactMap { key, value in
+            guard key.hasPrefix(keyPrefix), let data = value as? Data,
+                  let metadata = try? JSONDecoder().decode(CueRunSyncMetadata.self, from: data),
+                  metadata.ownerID == ownerID else { return nil }
+            return (String(key.dropFirst(keyPrefix.count)), metadata)
+        }
+    }
 
     private static var defaults: UserDefaults {
         UserDefaults(suiteName: CueStorage.appGroupID) ?? .standard

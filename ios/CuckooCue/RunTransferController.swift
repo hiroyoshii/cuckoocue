@@ -57,6 +57,31 @@ final class RunTransferController: ObservableObject {
         }
     }
 
+    func signInWithApple() async {
+        do {
+            try await auth.signInWithApple()
+        } catch {
+            let runID = pendingRunID ?? ""
+            transferState = .failed(runID: runID, message: error.localizedDescription)
+        }
+    }
+
+    func deleteAccount() async throws {
+        guard let owner = user else { throw RunSyncError.signedOut }
+        syncTasks.values.forEach { $0.cancel() }
+        syncTasks.removeAll()
+        try await auth.prepareAccountDeletion()
+        let token = try await auth.idToken()
+        try await api.deleteAccount(token: token)
+        try await auth.deleteCurrentAccount()
+        let runIDs = CueSyncMetadataStore.runIDs(ownerID: owner.id)
+        store.removeRuns(ids: Set(runIDs))
+        CueSyncMetadataStore.remove(ownerID: owner.id)
+        pendingRunID = nil
+        transferState = .idle
+        backgroundError = nil
+    }
+
     func signOut() {
         do {
             try auth.signOut()

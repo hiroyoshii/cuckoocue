@@ -88,6 +88,31 @@ final class RunTransferTests: XCTestCase {
         XCTAssertTrue(CueSyncMetadataStore.pendingRunIDs(ownerID: "owner-b").isEmpty)
     }
 
+    func testAccountDeletionRequestIsAuthenticated() async throws {
+        var captured: URLRequest?
+        let client = RunAPIClient(baseURL: URL(string: "https://example.test")!) { request in
+            captured = request
+            return (Data("{}".utf8), self.response(for: request, status: 200))
+        }
+
+        try await client.deleteAccount(token: "token")
+
+        XCTAssertEqual(captured?.url?.path, "/api/account")
+        XCTAssertEqual(captured?.httpMethod, "DELETE")
+        XCTAssertEqual(captured?.value(forHTTPHeaderField: "Authorization"), "Bearer token")
+    }
+
+    func testRemovingOwnerMetadataDoesNotTouchOtherAccounts() {
+        XCTAssertTrue(CueSyncMetadataStore.claim(runID: "mine", ownerID: "owner-a"))
+        XCTAssertTrue(CueSyncMetadataStore.claim(runID: "theirs", ownerID: "owner-b"))
+
+        XCTAssertEqual(CueSyncMetadataStore.runIDs(ownerID: "owner-a"), ["mine"])
+        CueSyncMetadataStore.remove(ownerID: "owner-a")
+
+        XCTAssertNil(CueSyncMetadataStore.metadata(for: "mine"))
+        XCTAssertNotNil(CueSyncMetadataStore.metadata(for: "theirs"))
+    }
+
     private func response(for request: URLRequest, status: Int, headers: [String: String] = [:]) -> HTTPURLResponse {
         HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: nil, headerFields: headers)!
     }

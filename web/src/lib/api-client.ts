@@ -19,7 +19,7 @@ export async function cueApiFetch(
     const auth = firebaseAuth();
     const user = auth.currentUser;
     if (!user) {
-      throw new Error("Google アカウントでログインしてください。");
+      throw new Error("アカウントにログインしてください。");
     }
     if (user.uid !== devUserId) throw new Error("アカウントが変更されました。もう一度操作してください。");
     requestedUser = user.uid;

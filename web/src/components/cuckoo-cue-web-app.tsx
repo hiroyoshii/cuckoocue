@@ -11,10 +11,14 @@ import {
 import { FormEvent, type RefObject, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   GoogleAuthProvider,
+  OAuthProvider,
+  deleteUser,
   onAuthStateChanged,
   signInAnonymously,
   signInWithPopup,
   signInWithRedirect,
+  reauthenticateWithPopup,
+  revokeAccessToken,
   signOut,
   type User as FirebaseUser,
 } from "firebase/auth";
@@ -134,7 +138,7 @@ export function CuckooCueWebApp({ importRunId }: { importRunId?: string } = {}) 
   const searchFocus = useRef<{ start: number; end: number } | null>(null);
   const [queuedSearch, setQueuedSearch] = useState(false);
   const [accountMenu, setAccountMenu] = useState<"desktop" | "mobile" | null>(null);
-  const [accountBusy, setAccountBusy] = useState<"login" | "logout" | null>(null);
+  const [accountBusy, setAccountBusy] = useState<"login" | "logout" | "delete" | null>(null);
   const [accountError, setAccountError] = useState<string | null>(null);
   const connecting = useRef<Promise<void> | null>(null);
   const previousUser = useRef<FirebaseUser | null>(null);
@@ -164,11 +168,13 @@ export function CuckooCueWebApp({ importRunId }: { importRunId?: string } = {}) 
       setUser(next); setAuthReady(true);
     });
   }, []);
-  const signIn = async () => {
+  const signIn = async (kind: "google" | "apple" = "google") => {
     if (accountBusy) return false;
     setAccountBusy("login"); setAccountError(null);
     try {
-      const provider = new GoogleAuthProvider(); provider.setCustomParameters({ prompt: "select_account" });
+      const provider = kind === "google" ? new GoogleAuthProvider() : new OAuthProvider("apple.com");
+      if (provider instanceof GoogleAuthProvider) provider.setCustomParameters({ prompt: "select_account" });
+      else { provider.addScope("email"); provider.addScope("name"); }
       if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) await signInWithRedirect(firebaseAuth(), provider);
       else await signInWithPopup(firebaseAuth(), provider);
       return true;
@@ -176,6 +182,30 @@ export function CuckooCueWebApp({ importRunId }: { importRunId?: string } = {}) 
       setAccountError(loginError(error));
       setAccountMenu(window.matchMedia("(max-width: 680px)").matches ? "mobile" : "desktop");
       return false;
+    } finally { setAccountBusy(null); }
+  };
+  const deleteAccount = async () => {
+    if (accountBusy || !user || user.isAnonymous) return;
+    if (!window.confirm("アカウントとすべての本人データを削除します。他の利用者が取り込んだRunは残ります。この操作は取り消せません。")) return;
+    setAccountBusy("delete"); setAccountError(null);
+    try {
+      const providers = new Set(user.providerData.map(item => item.providerId));
+      if (providers.has("apple.com")) {
+        const provider = new OAuthProvider("apple.com"); provider.addScope("email"); provider.addScope("name");
+        const result = await reauthenticateWithPopup(user, provider);
+        const token = OAuthProvider.credentialFromResult(result)?.accessToken;
+        if (token) await revokeAccessToken(firebaseAuth(), token);
+      } else if (providers.has("google.com")) {
+        const provider = new GoogleAuthProvider(); provider.setCustomParameters({ prompt: "select_account" });
+        await reauthenticateWithPopup(user, provider);
+      }
+      const response = await cueApiFetch("/api/account", user.uid, { method: "DELETE" });
+      if (!response.ok) throw new Error((await response.json().catch(() => null))?.error ?? "アカウントを削除できませんでした。");
+      sessionStorage.removeItem(`${WorkspaceStorageKey}:${user.uid}`);
+      await deleteUser(user);
+      setAccountMenu(null);
+    } catch (error) {
+      setAccountError(error instanceof Error ? error.message : "アカウントを削除できませんでした。");
     } finally { setAccountBusy(null); }
   };
   const logOut = async () => {
@@ -190,12 +220,12 @@ export function CuckooCueWebApp({ importRunId }: { importRunId?: string } = {}) 
   const closeMenu = useCallback(() => setAccountMenu(null), []);
   const accountControl = (location: "desktop" | "mobile") => <AccountControl user={user} ready={authReady} busy={accountBusy} error={accountError}
     compact={location === "mobile"} open={accountMenu === location} onToggle={() => setAccountMenu(current => current === location ? null : location)}
-    onClose={closeMenu} onLogin={() => void signIn()} onLogout={() => void logOut()} />;
+    onClose={closeMenu} onGoogleLogin={() => void signIn("google")} onAppleLogin={() => void signIn("apple")} onLogout={() => void logOut()} onDelete={() => void deleteAccount()} />;
   return <AccountWorkspace key={user?.uid ?? devUserId} user={user} authReady={authReady}
     devUserId={user?.uid ?? devUserId} setDevUserId={(id) => { editedSearch.current = false; setSearchMessage(""); setDevUserId(id); }} importRunId={importRunId}
     searchMessage={searchMessage} setSearchMessage={value => { editedSearch.current = true; setSearchMessage(value); }}
     restoreSearch={value => { if (!editedSearch.current) setSearchMessage(value); }} searchFocus={searchFocus}
-    onConnect={connect} onSignIn={signIn} sessionError={error} queuedSearch={queuedSearch}
+    onConnect={connect} onSignIn={() => signIn("google")} sessionError={error} queuedSearch={queuedSearch}
     onQueueSearch={() => { setQueuedSearch(true); if (hasFirebaseClientConfig()) void connect(); }} onConsumeSearch={() => setQueuedSearch(false)}
     desktopAccount={accountControl("desktop")} mobileAccount={accountControl("mobile")} />;
 }

@@ -268,6 +268,12 @@ final class CueStore: ObservableObject {
         if stored != snapshot { snapshot = stored }
     }
 
+    func removeRuns(ids: Set<String>) {
+        guard !ids.isEmpty else { return }
+        snapshot = CueStorage.update { state in state.runs.removeAll { ids.contains($0.id) } }
+        WidgetCenter.shared.reloadAllTimelines()
+    }
+
     private func commit(runID: String? = nil, _ mutation: (inout CueSnapshot) -> Void) {
         let previousRun = runID.flatMap { id in snapshot.runs.first(where: { $0.id == id }) }
         snapshot = CueStorage.update(mutation)

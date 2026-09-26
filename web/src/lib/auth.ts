@@ -46,7 +46,7 @@ export async function requireUserId(request: NextRequest): Promise<string> {
 export async function requireRegisteredUserId(request: NextRequest): Promise<string> {
   const user = await requireRequestUser(request);
   if (user.isAnonymous) {
-    throw authError("この操作には Google ログインが必要です。", 403);
+    throw authError("この操作にはアカウントへのログインが必要です。", 403);
   }
   return user.id;
 }

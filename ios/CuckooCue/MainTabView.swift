@@ -155,11 +155,13 @@ private struct TransferStatusSection: View {
         case .needsSignIn:
             Section("Webから受け取る") {
                 Text(transfer.configurationAvailable
-                     ? "Webで使ったGoogleアカウントでログインすると、このリストを受け取れます。"
+                     ? "Webで使ったアカウントでログインすると、このリストを受け取れます。"
                      : "このビルドにはiOS用のFirebase設定が含まれていないため、リストを受信できません。")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 Button("Googleでログイン") { Task { await transfer.signIn() } }
+                    .disabled(!transfer.configurationAvailable)
+                Button { Task { await transfer.signInWithApple() } } label: { Label("Appleでログイン", systemImage: "apple.logo") }
                     .disabled(!transfer.configurationAvailable)
             }
         case let .failed(_, message):
@@ -169,6 +171,8 @@ private struct TransferStatusSection: View {
                     .foregroundStyle(.secondary)
                 if transfer.user == nil {
                     Button("Googleでログイン") { Task { await transfer.signIn() } }
+                        .disabled(!transfer.configurationAvailable)
+                    Button { Task { await transfer.signInWithApple() } } label: { Label("Appleでログイン", systemImage: "apple.logo") }
                         .disabled(!transfer.configurationAvailable)
                 } else {
                     Button("もう一度試す") { transfer.retryReceive() }
@@ -181,21 +185,36 @@ private struct TransferStatusSection: View {
 private struct AccountSheet: View {
     @EnvironmentObject private var transfer: RunTransferController
     @Environment(\.dismiss) private var dismiss
+    @State private var confirmingDeletion = false
+    @State private var deleting = false
+    @State private var deletionError: String?
 
     var body: some View {
         NavigationStack {
             Form {
                 if let user = transfer.user {
                     Section("ログイン中") {
-                        LabeledContent("アカウント", value: user.displayName ?? user.email ?? "Googleアカウント")
+                        LabeledContent("アカウント", value: user.displayName ?? user.email ?? "ログイン済み")
                         if let email = user.email, user.displayName != nil {
                             LabeledContent("メール", value: email)
                         }
                         Button("ログアウト", role: .destructive) { transfer.signOut() }
                     }
+                    Section("アカウントの削除") {
+                        Text("非公開リスト、同期したRun、公開した版と棚を削除します。他の利用者がすでに取り込んだRunは削除されません。")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                        if let deletionError {
+                            Text(deletionError).foregroundStyle(.red).accessibilityIdentifier("account-deletion-error")
+                        }
+                        Button("アカウントを削除", role: .destructive) { confirmingDeletion = true }
+                            .disabled(deleting)
+                    }
                 } else {
                     Section {
                         Button("Googleでログイン") { Task { await transfer.signIn() } }
+                            .disabled(!transfer.configurationAvailable)
+                        Button { Task { await transfer.signInWithApple() } } label: { Label("Appleでログイン", systemImage: "apple.logo") }
                             .disabled(!transfer.configurationAvailable)
                     } footer: {
                         Text(transfer.configurationAvailable
@@ -203,9 +222,29 @@ private struct AccountSheet: View {
                              : "このビルドにはiOS用のFirebase設定が含まれていません。")
                     }
                 }
+                Section("情報とサポート") {
+                    Link("プライバシーポリシー", destination: URL(string: "https://cuckoocue.hiyozoo.com/privacy")!)
+                    Link("利用規約", destination: URL(string: "https://cuckoocue.hiyozoo.com/terms")!)
+                    Link("サポート", destination: URL(string: "https://cuckoocue.hiyozoo.com/support")!)
+                    Link("support@cuckoocue.hiyozoo.com", destination: URL(string: "mailto:support@cuckoocue.hiyozoo.com")!)
+                }
             }
             .navigationTitle("アカウント")
             .toolbar { Button("閉じる") { dismiss() } }
+            .confirmationDialog("アカウントを削除しますか？", isPresented: $confirmingDeletion, titleVisibility: .visible) {
+                Button("アカウントとデータを削除", role: .destructive) {
+                    deleting = true
+                    deletionError = nil
+                    Task {
+                        do { try await transfer.deleteAccount(); dismiss() }
+                        catch { deletionError = error.localizedDescription }
+                        deleting = false
+                    }
+                }
+                Button("キャンセル", role: .cancel) {}
+            } message: {
+                Text("この操作は取り消せません。続行にはログインの再確認が必要です。")
+            }
         }
     }
 }
