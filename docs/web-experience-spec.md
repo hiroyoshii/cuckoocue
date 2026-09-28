@@ -1151,3 +1151,14 @@ D1〜D4/C04。公開情報をそのまま転載せず、生活条件・制約・
 - 公式CuebookをBQへ先に保存し、実在する`source_cuebook_id`からRevisionを作る。同じRevision IDの再投入で本文が異なる場合は拒否し、既存の不変Revisionを更新しない。Shelfは全Revisionの存在確認後に配置する。
 
 データ検証は`web/scripts/validate-editorial-shelves.mjs`、単体検証は`web/scripts/test-editorial-shelves.mjs`、dry-run/applyは`web/scripts/seed-editorial-shelves.mjs`。applyは既存seedと同じく`CUE_SEED_CONFIRM`で対象project.datasetの完全一致を要求する。seedのBQ処理は行ごとのqueryを廃止し、JSON配列を一括展開する。managed seedは233から5 parent job、editorial seedは69から7 parent jobへ削減し、不変Revision検査、既存embeddingの再利用、全配置先Revisionの存在検査は維持する。2026-09-21に本番`cuckoocue.cuckoo_cue`へ99 managed Revision・33 domain、30 editorial Revision・5 default Shelf・30配置をassertし、バッチ化後の冪等再実行でも新規embedding 0件・同じ件数を確認済み。2026-09-22には本番の5 Shelf各6件、PC/mobile表示、出典展開、実検索による関連Shelf命中を確認した。2026-09-27にも同じ本番件数を再assertした。fork時に`curation`を複製しないSQLとdesktop/mobile回帰は確認済みだが、本番書込の確認には本人のGoogleログインを要する。外部サイトの自動クロールと投稿者との個別許諾取得は実施していない。
+
+## 31. 検索コストの7日間本番観測（2026-09-28）
+
+App Hosting rollout `rollout-2026-09-20-027`（commit `2f9cd71`）の成功時刻から丸7日、2026-09-20 16:39:53Z〜09-27 16:39:53Zを集計した。Cloud Loggingから取得したのはstage、加工していない`usageMetadata`、HTTP status/latency、エラー件数だけで、検索文、UID、IP、prompt本文、token本文は取得していない。
+
+- `/api/search`は1件、HTTP 200、成功率100%、latency P50/P95 4.484秒。`search.failed`は0件。
+- `interpret`は1件。input 1,537、通常output 30、thought 174、total 1,741 token。`profile_selection`は0件。
+- `task_list_enrichment`と`shelf_description`はともに0件。需要のない有料呼出しを評価目的では追加していない。
+- BQの`public_search` labelは1 job、billed 20 MiB。失敗0件、1 GiB上限拒否0件。
+
+実トラフィックはn=1で分布評価には不足する。既存70/70品質評価と16件の128/1024比較を覆す材料がないため、検索のthinking budgetは128を維持し、0への変更は行わない。enrichment/descriptionも標本0のため1024を維持し、実利用が発生してから検索とは別の品質ケースで判断する。

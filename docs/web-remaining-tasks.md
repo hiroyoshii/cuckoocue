@@ -1,6 +1,6 @@
 # Web 残タスク
 
-最終更新: 2026-09-27
+最終更新: 2026-09-28
 
 この文書は、過去の監査履歴ではなく、現行コードを基準にした未完了項目だけを管理する。Web画面、Web API、公開レスポンス、App Hosting設定、Webから使うApp/Universal Linkを範囲とする。Android/iOS内部の実装、全面的な多端末同期、公開停止UIなどは含めない。
 
@@ -12,7 +12,7 @@
 | P0 | domainカタログ、検索・保存接続 | 完了 | 管理語彙を33件へ拡張。保存値と検索条件を完全一致にし、分類揺れによる候補漏れを抑制 |
 | P0 | 33 domain・99公開Revision・境界ケース | 本番投入・評価完了 | 各domain 3件、合計99件を本番登録。既120 queryに加え、追加3 domainの12 queryも実Vertexで12/12合格 |
 | P0 | CuckooCueデフォルト5 Shelf・30 Cuebook | BQ本番投入・Web公開受入済み、登録ユーザーforkの本人操作待ち | 18件のYouTube/ブログ/公式情報から独自編集した150タスク。原文・字幕は複製せず、出典と編集注記を表示 |
-| P0 | thinking 128/BQ 1 GiBの配備・全体評価 | 実装・評価完了、7日観測中 | 16件実測ではthought token 56.1%減、検索解釈LLM推定費37.2%減、約46 USD/10万解釈。既存検索評価70/70合格。BQは1検索Jobの走査を1 GiB以下に制限 |
+| P0 | thinking 128/BQ 1 GiBの配備・全体評価 | 実装・評価・7日観測完了 | 16件実測ではthought token 56.1%減、検索解釈LLM推定費37.2%減、約46 USD/10万解釈。既存検索評価70/70合格。7日間の本番利用は検索1件だけで追加最適化の標本には不足 |
 | P1 | 有料APIのrate limit、App Check、429契約 | 250〜450行 + インフラ設定 | 匿名UID・登録UID・network単位で異常消費を遮断。拒否要求のVertex/BQ/Memory Bank呼出しを0回にする |
 | P1 | 公開GETのcache・ページング・BQ上限 | 120〜220行 + テスト80〜140行 | 同一公開データへの反復取得はCDN hit時にBQ呼出しを0回化。ランダムID攻撃は別途network制限で抑制 |
 | P1 | Web CI、依存更新、security headers | 180〜320行 + lockfile更新 | mainへ入る回帰を自動停止。現時点のproduction依存6件のmoderate advisoryを解消。主要security header適用率を0%から100%へ |
@@ -56,9 +56,9 @@
 
 - [x] **COST-001: 現在の変更をmainへ反映し配備する。** thinking budget 128、BQ 1 GiB上限、生のVertex `usageMetadata`ログをmainへ反映し、App Hosting rollout `rollout-2026-09-20-020`で配備した。匿名本番検索はHTTP 200、6.5秒、正しいdomain、3件取得を確認した。
 - [x] **COST-002: 128で全検索評価を再実行する。** 既存70ケースを再実行し、必要候補・目的外候補・先頭候補・domainの全判定が70/70合格。1024との差分だった学校・インターネット条件をprompt規則と回帰へ固定した。
-- [ ] **COST-003: 本番分布を確認する。** stage別のinput/output/thought token、成功率、P50/P95、検索回数を集計する。検索文、UID、IP、トークン本文は記録しない。128から0への変更はこの結果まで保留する。
+- [x] **COST-003: 本番分布を確認する。** 2026-09-20 16:39:53Z〜09-27 16:39:53Zを、検索文・UID・IP・prompt/token本文を取得せず集計した。検索は1件、HTTP 200、成功率100%、latency P50/P95 4.484秒。`interpret`は1件でinput 1,537、通常output 30、thought 174 token。`profile_selection`は0件。BQ public searchは1 job、20 MiB、失敗・1 GiB上限拒否とも0件。n=1では0 budgetの品質判断ができないため128を維持する。
 - [x] **COST-004: Cloud Billingの予算通知を設定する。** project `cuckoocue`を対象に暫定月額1,000円、50%・80%・100%の既定メール通知を設定した（budget ID `e3a0a05a-8052-4ebc-baee-2f6c6fd46972`）。通知のみで自動停止ではない。異常時はまずApp Hostingの公開を止め、継続する課金要求があればVertex AI APIとBigQuery APIを無効化し、原因修正後に段階復旧する。
-- [ ] **COST-005: 低頻度LLM処理を別に計測する。** `task-list-enrichment`と`shelf-description`にも加工しない`usageMetadata`を記録し、呼出し回数とtoken分布を確認する。両者のthinking budget 1024は検索解釈と品質要件が異なるため、同じ128へ一括変更せず評価ケースを作ってから決める。
+- [x] **COST-005: 低頻度LLM処理を別に計測する。** `task-list-enrichment`と`shelf-description`の加工しない`usageMetadata`ログをstage別に確認した。7日間はいずれも呼出し0件で分布を作れない。需要のない処理を評価目的で有料実行せず、1024を維持する。実利用が発生した後に検索とは別の評価ケースで変更判断する。
 - [x] **COST-006: seedのBQ jobをバッチ化する。** managed seedは233から5 parent job、editorial seedは69から7 parent jobへ削減した（合計302から12、96.0%減）。本番で既存129 Revisionを再利用して新規embedding 0件の冪等実行と全件assertを完了した。2026年9月の請求CSVではBQ Analysisは0.03 TiB・0円で、500円通知の原因はBQではなくVertex AIの累積利用だった。
 
 完了条件: 本番RevisionとGit commitが一致し、匿名・登録済み検索が成功し、1 GiB超過が検索失敗として安全に処理され、最低7日分のstage別usage集計を確認できる。
