@@ -31,7 +31,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `/home/hiroyoshii/.local/share/devbox/global/default/.devbox/nix/profile/default/bin/node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port ${port}`,
+    command: `"${process.execPath}" node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port ${port}`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     env: {
