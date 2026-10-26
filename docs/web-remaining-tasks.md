@@ -1,8 +1,10 @@
 # Web 残タスク
 
-最終更新: 2026-09-28
+最終更新: 2026-10-26
 
 この文書は、過去の監査履歴ではなく、現行コードを基準にした未完了項目だけを管理する。Web画面、Web API、公開レスポンス、App Hosting設定、Webから使うApp/Universal Linkを範囲とする。Android/iOS内部の実装、全面的な多端末同期、公開停止UIなどは含めない。
+
+優先度は次の意味で使う。P1は、現在のmain自動配備または検索・再利用・端末受渡しという中核フローの成立を直接守るため、次に着手するもの。P2は既存機能が成立した後の防御・効率・運用改善。公開拡大前ゲートはストア公開・外部告知・広告等で匿名流入を意図的に増やす前に必須なもの。2026-10-26の全Web残件対応指示により、実装可能な公開拡大前ゲートは前倒しした。条件付きは観測された規模・異常が着手条件を満たすまで残タスクに数えない。
 
 ## 全体サマリ
 
@@ -13,13 +15,19 @@
 | P0 | 33 domain・99公開Revision・境界ケース | 本番投入・評価完了 | 各domain 3件、合計99件を本番登録。既120 queryに加え、追加3 domainの12 queryも実Vertexで12/12合格 |
 | P0 | CuckooCueデフォルト5 Shelf・30 Cuebook | BQ本番投入・Web公開受入済み、登録ユーザーforkの本人操作待ち | 18件のYouTube/ブログ/公式情報から独自編集した150タスク。原文・字幕は複製せず、出典と編集注記を表示 |
 | P0 | thinking 128/BQ 1 GiBの配備・全体評価 | 実装・評価・7日観測完了 | 16件実測ではthought token 56.1%減、検索解釈LLM推定費37.2%減、約46 USD/10万解釈。既存検索評価70/70合格。7日間の本番利用は検索1件だけで追加最適化の標本には不足 |
-| P1 | 有料APIのrate limit、App Check、429契約 | 250〜450行 + インフラ設定 | 匿名UID・登録UID・network単位で異常消費を遮断。拒否要求のVertex/BQ/Memory Bank呼出しを0回にする |
-| P1 | 公開GETのcache・ページング・BQ上限 | 120〜220行 + テスト80〜140行 | 同一公開データへの反復取得はCDN hit時にBQ呼出しを0回化。ランダムID攻撃は別途network制限で抑制 |
-| P1 | Web CI、依存更新、security headers | 180〜320行 + lockfile更新 | mainへ入る回帰を自動停止。現時点のproduction依存6件のmoderate advisoryを解消。主要security header適用率を0%から100%へ |
-| P1 | Firebaseキー分離・運用監視 | 主にCloud設定、設定コード20〜50行 | 漏えい時の利用可能面をplatform/API単位へ限定。費用・失敗率・上限拒否を検知可能にする |
-| P2 | 実認証・実機リンク・ストア・法務ページ | 150〜300行 + 手動受入 | OAuth、インストール有無、release署名、ストア導線、プライバシー説明のリリース事故を低減 |
+| P1 | Web CI | workflow実装済み、required check指定待ち | Web変更がmainへ入る前にlint、build、軽量API回帰、主要E2Eを必須化し、自動配備される回帰を止める |
+| P1受入 | 実Google認証、アカウント切替、Web↔端末受渡し | 手動受入 + 必要箇所の修正 | 開発UID・Auth emulator・UI fixtureで代用できない中核フローと本人データ境界を確定する |
+| P2 | security headers | Report-Only実装済み、本番観測/enforce待ち | CSP Report-Onlyと主要headerを導入し、違反を最小化ログで観測する |
+| P2 | 公開GETのcache・ページング・BQ上限 | 完了 | 公開一覧だけ20件cursor、本人の所有・参加一覧は完全取得、公開/private cache境界、共通BQ 1 GiB上限を固定した |
+| 公開・配布ゲート | Firebaseキー分離、store URL、release link | Web/iOS/debug制限済み、release情報待ち | platform別に制限・停止でき、利用者が正式配布版で受渡しを開始できるようにする |
+| 公開拡大前ゲート | 呼出量alert、quota確認、停止手順 | 完了 | 通常利用を推測で拒否せず、異常な費用・失敗率を検知して運用停止できるようにする |
+| 条件付き | 検索rate limit、App Check、登録者向け有料APIの共通limiter | 現時点では着手しない | 異常トラフィックと通常利用分布を確認してから、誤拒否しない方式を設計する |
 
-行数は新規/変更するTypeScript・テスト・設定の概算で、初期データ本文、Cloud Console操作、レビュー時間は含めない。検索の費用効果は16件の実測比較に基づく。rate limitはbotnetを含む全世界の厳密な費用上限ではなく、Cloud Billing予算通知も自動停止ではない。
+行数は新規/変更するTypeScript・テスト・設定の概算で、初期データ本文、Cloud Console操作、レビュー時間は含めない。検索の費用効果は16件の実測比較に基づく。
+
+検索は、500文字の入力上限、thinking budget 128、1 GiBのBQ上限、20件の結果上限、cursorでの既存Job再利用、timeout、App Hosting最大5 instance、月額1,000円の予算通知を実装済み。匿名検索はMemory Bankとprofile選択LLMを呼ばず、domain不一致時はembedding/BQも呼ばない。16件比較では検索解釈LLM推定費が約46 USD/10万解釈、7日間の本番観測は検索1件・BQ 20 MiBだった。したがって現時点で検索の通常利用コストを高優先度の問題とは扱わない。
+
+匿名UIDを作り直して回数を積み上げられる総量リスクは残るが、根拠のない固定回数で正常利用を拒否しない。dashboard、alert、予算通知、instance上限、1要求ごとの上限を先行し、異常トラフィックと通常利用分布が得られた場合だけrate limitやApp Checkを再評価する。
 
 ## P0: 公開境界・ログ・入力上限
 
@@ -48,7 +56,7 @@
 - [x] **EDITORIAL-001: 第1弾データを固定する。** 5 Shelf、30 Cuebook/Revision、150タスク、18公開出典、30配置をmanifestに固定した。Runは利用者固有の実行記録のため作らない。
 - [x] **EDITORIAL-002: 出典と編集境界を実装する。** YouTube/ブログは調査根拠とURLを保持し、本文・字幕・画像を公開データへ複製しない。公閏DTOには内部観察メモを出さず、出典メタデータとCuckooCue編集表示だけを返す。
 - [x] **EDITORIAL-003: 安全なseedと表示回帰を用意する。** Cuebook先行作成、Revision不変検査、確認文字列、既存Revisionのembedding再計算回避、レスポンシブ/アクセシビリティE2Eを実装した。
-- [ ] **EDITORIAL-004: 本番投入と公開受入を行う。** 本番`cuckoocue.cuckoo_cue`の99 managed Revision、30 editorial Revision、5 default Shelf、30配置を2026-09-27に再assertした。App Hosting rollout `rollout-2026-09-20-027`（commit `2f9cd71`）で5 Shelf各6件、PC/mobile表示、出典展開、実検索から関連Shelfへの命中を確認済み。forkは実装上`curation`をINSERTせず、desktop/mobile回帰でも印が非継承だが、本番の登録済みユーザーによるfork 1回だけは本人Googleログインが必要なため未確認。
+- [ ] **EDITORIAL-004 [P1受入]: 本番投入と公開受入を完了する。** 本番`cuckoocue.cuckoo_cue`の99 managed Revision、30 editorial Revision、5 default Shelf、30配置を2026-09-27に再assertした。App Hosting rollout `rollout-2026-09-20-027`（commit `2f9cd71`）で5 Shelf各6件、PC/mobile表示、出典展開、実検索から関連Shelfへの命中を確認済み。残るのは登録済み本人による本番fork 1回だけ。実装上`curation`をINSERTせず、desktop/mobile回帰でも印が非継承であることは確認済み。
 
 完了条件: 本番で5 Shelf・30 Revisionが閲覧でき、各Revisionの出典が開け、詳細・Shelf・forkの表示境界がローカルE2Eと一致する。
 
@@ -63,44 +71,56 @@
 
 完了条件: 本番RevisionとGit commitが一致し、匿名・登録済み検索が成功し、1 GiB超過が検索失敗として安全に処理され、最低7日分のstage別usage集計を確認できる。
 
-## P1: 検索APIの悪用対策
+## 検索APIの総量制御: 観測を先行する
 
-- [ ] **ABUSE-001: 有料処理前のサーバー側rate limitを実装する。** Firebase UIDとネットワークbackstopを別bucketにし、BigQuery、Vertex、Memory Bankの前で判定する。生UID/IPは保存せず、回転secretによるhashとTTL付きcounterだけを保持する。匿名Firebase UIDは作り直せるため、UID bucketだけで完了にしない。
-- [ ] **ABUSE-002: paginationを別bucketにする。** cursor取得は元Jobを再利用するため、新規検索より高い上限にする。cursor変更や所有者不一致は既存どおり拒否する。
-- [ ] **ABUSE-003: 429契約を実装する。** `Retry-After`と安定したerror codeを返し、UIは入力と既存結果を保持する。拒否された要求が有料APIを一度も呼ばないことをテストする。
-- [ ] **ABUSE-004: App Checkを段階導入する。** reCAPTCHA Enterpriseをmetrics-onlyで開始し、通常検索のvalid coverageが48時間99%以上になった後に`/api/search`だけenforceする。Firebase Authenticationは維持する。
-- [ ] **ABUSE-005: 登録者向け有料APIも同じ基盤で保護する。** `/api/task-list-enrichment`、`/api/shelf-description`、公開時embedding、`/api/memory-events`へ用途別の低い頻度枠を設定する。登録済みであることを費用対策の代わりにしない。
+- [x] **OPS-001 [公開拡大前ゲート]: 呼出量と既存quotaを確認する。** 検索完了・失敗、BQ上限、Vertex stage、BQ billed bytes、App Hosting status/instance/P95 latency、CSP違反をCloud Monitoring dashboardへ設定した。検索失敗、BQ上限、HTTP 5xxには個別alertと通知先を設定した。Vertex、BQ、Firebase Authenticationのquota、App Hosting `maxInstances=5`/concurrency 80、停止・復旧順は[Web運用ベースライン](web-operations-baseline.md)へ記録した。
+- **ABUSE-001 [条件付き・現在の残タスク外]: `/api/search`の総量制御を再評価する。** 異常な自動化が観測され、既存の1要求上限・quota・運用停止では不足する場合だけ対象にする。固定回数を先に置かず、通常利用分布、共有network、匿名UID再作成、limiter自体の障害点を含めて方式を決める。
+- **ABUSE-002 [ABUSE-001と同時]: paginationを別扱いにする。** cursorは既存Jobを再利用しLLM・embedding・新規BQ jobを作らないため、新規検索と同じ制限をかけない。
+- **ABUSE-003 [ABUSE-001と同時]: 拒否時の契約を固定する。** 導入する場合だけ`429`、`Retry-After`、安定したerror code、入力・既存結果保持を回帰対象にする。
+- **ABUSE-004 [条件付き・現在の残タスク外]: App Checkを再評価する。** 自動化された異常トラフィックが確認され、rate limit・service quotaだけでは不十分な場合にmetrics-onlyから始める。通常利用の十分な標本で対応ブラウザを誤拒否しないことを確認するまでenforceしない。App Checkを本人認証、rate limit、費用上限の代わりにしない。
+- **ABUSE-005 [条件付き・現在の残タスク外]: 登録者向け有料APIの共通limiterを再評価する。** `/api/task-list-enrichment`、`/api/shelf-description`、公開時embedding、`/api/memory-events`は7日観測で呼出し0件だった。実利用または異常呼出しが発生するまで、検索用limiterを先回りして全APIへ拡張しない。
 
-初期rate limit値は匿名100回/日、登録済み500回/日、network backstop 1,000回/日を上限側の仮値とし、report-only期間の実測で調整する。これは利用プランではなく、異常消費を止めるfuseである。
+完了条件は「すべての防御を実装すること」ではない。公開拡大前ゲートは現状の呼出量とquotaを把握し、異常時に検知・停止できること。条件付き項目は着手条件が成立しなければ未実装のままでよい。
 
-## P1: 公開GETとBQ読み取り
+## P2: 公開GETとBQ読み取り
 
-- [ ] **PUBLIC-001: 公開レスポンスへcache policyを付ける。** 不変の公開Revisionは長い`public, s-maxage`、更新されるShelf一覧/詳細は短いTTLと`stale-while-revalidate`を設定する。公開停止後に許容する最大stale時間を明記し、private APIには適用しない。
-- [ ] **PUBLIC-002: Shelf一覧をページングする。** 現在の全件返却を固定上限付きcursorへ変更し、初期表示が全Shelfを必要としないようUIを接続する。
-- [ ] **PUBLIC-003: 共通BQ readに1 GiB上限を適用する。** 公開Shelf/Revision/import payloadの`bqRead`にも`maximumBytesBilled`を設定し、上限超過を503ではなく識別可能な運用エラーとして記録する。正常データで発生しないことをdry runで確認する。
+- [x] **PUBLIC-001: 公開レスポンスへcache policyを付ける。** 公開Revision/import payloadは1時間+24時間SWR、Shelf一覧/詳細は60秒+300秒SWRとした。認証付きShelfは`private, no-store`と`Vary: Authorization`を返す。公開停止後の最大stale 25時間と緊急purge/停止を運用ベースラインへ記録した。
+- [x] **PUBLIC-002: 公開Shelf一覧だけをページングする。** `updated_at,id`の固定順で20件+cursorに変更し、UIへ続きを読む操作を接続した。所有・参加Shelfはmembership APIから別取得して公開一覧のページ位置に依存させず、ナビ、ライブラリ、公開先選択を欠落させない。fixture E2Eで公開2ページ目の追記と、公開1ページ目外の所有Shelf表示を確認した。
+- [x] **PUBLIC-003: 共通BQ readに1 GiB上限を適用する。** `bqRead`全体へ`maximumBytesBilled=1 GiB`とlabelを設定し、上限時は`bigquery_read_limit_exceeded`の503と構造化運用ログを返す。軽量回帰で上限指定とエラー契約、本番データのShelf 2ページ取得で正常系を確認した。
 
 完了条件: 同じ公開URLの反復取得がCDN hitになり、一覧は1ページの上限を超えず、全公開read queryに走査上限があり、private responseが共有cacheへ保存されない。
 
-## P1: Firebaseクライアントキー
+## 公開・配布ゲート: Firebaseクライアントキー
 
-- [ ] **KEY-001: Web production、Web local/CI、Android debug/release、iOSを別キーにする。** サーバー側Google Cloudアクセスにはクライアントキーを使わない。
-- [ ] **KEY-002: caller/API restrictionを設定する。** Webは許可origin、Androidはpackageと署名証明書、iOSはbundle IDで制限する。必要APIは実トラフィックから確定する。
-- [ ] **KEY-003: 旧共有キーを段階廃止する。** 新キー配布後7日以上観測し、旧キーの利用が0になってから無効化する。
+- [ ] **KEY-001: Web production、Web local/CI、Android debug/release、iOSを別キーにする。** Web production/local、Android debug、iOSは分離済み。Android release署名のfingerprintと配布用Firebase設定が未提供のため、releaseキーだけ未作成。サーバー処理はservice identityを維持する。
+- [ ] **KEY-002: caller/API restrictionを設定する。** Web productionはcanonical/hosted origin、localはlocalhost、Android debugはpackage+debug SHA-1、iOSはbundle IDへ制限し、APIはIdentity Toolkit/Secure Tokenだけに限定した。Web/Android debug/iOSの各制限headerで匿名認証→削除を確認済み。Android releaseだけRELEASE-001と同じ外部入力待ち。
+- [x] **KEY-003: 旧共有キーを段階廃止する。** 調査時点でplatformは既に別々のFirebase自動生成キーを使っており、全platform共用キーは存在しなかった。既存キーを用途名へ変更して制限し、廃止対象なしと確定した。
 
-## P1: CI・依存・Web防御
+## P1: Web CI
 
-- [ ] **CI-001: Web検証をmainの必須checkにする。** 現在はAndroid/iOS screenshot workflowだけで、Web workflowがない。lint、production build、検索filter/route/write retryの軽量テスト、主要Playwrightを段階分けして実行し、Cloud認証が必要な本番scenarioは手動または保護environmentへ分離する。
-- [ ] **SEC-001: production依存のadvisoryを解消する。** 2026-09-20時点の`npm audit --omit=dev`はhigh/critical 0、moderate 6で、直接依存`firebase-admin@14.3.0`配下の`@google-cloud/storage`、`gaxios`、`uuid`等はfix available。更新後にAuth、Firestore Run、App Hosting buildを回帰確認する。
-- [ ] **SEC-002: security headersをreport-onlyから導入する。** 現在`next.config.ts`はAASAのContent-Typeだけを設定している。CSPはFirebase Auth/Google popup/必要なGoogle APIだけを許可して先にReport-Onlyで観測し、`frame-ancestors`、`nosniff`、`Referrer-Policy`等を確認してenforceする。
-- [ ] **OPS-001: 運用alertを作る。** 5xx率、429率、Vertex失敗、BQ bytes billed/cap拒否、App Hosting instance/latencyをdashboard化し、検索文やUID/IP本文をdimensionに使わない。
+- [ ] **CI-001: Web検証をmainの必須checkにする。** `.github/workflows/web.yml`へlint、production build、34件の軽量回帰、主要desktop/mobile Playwrightを追加した。既存のNode/TypeScript import問題は`tsx` test loaderで解消した。GitHub CLIが未認証のため、workflowの初回実行とbranch protectionのrequired check指定だけが外部操作として残る。
 
-## P2: 本番・リリース受入
+Webはmainの`web/`変更からApp Hostingへ自動配備される。workflow未配置と軽量回帰のNode/TypeScript import問題は解消済みで、残るのはGitHub上のrequired check指定だけである。
+
+## P2: 依存・ブラウザ防御
+
+- [x] **SEC-001: production依存のadvisoryを解消する。** 2026-10-26の再監査で検出したcritical 1、high 8、moderate 6を、Next.js 16.4.3、Firebase 12.19.0、Firebase Admin 14.5.0、Zod 4.6.7と安全な推移的依存へ更新して解消した。Firebase Web SDKが固定する脆弱な`@grpc/grpc-js` 1.9系は、同じ1.xの修正版1.14.6へoverrideした。`npm audit --omit=dev` 0件、production build、lint、34件の軽量回帰、主要desktop/mobile E2E 46ケースを確認した。
+- [ ] **SEC-002: security headersをreport-onlyから導入する。** CSP Report-Only、`frame-ancestors`、`nosniff`、`Referrer-Policy`、Permissions Policy、COOP、X-Frame-Optionsを実装し、CSP reportはURL pathを捨てた構造化ログとdashboardへ接続した。production配備後にGoogle popupを含む違反を観測してCSPをenforceへ切り替える工程が残る。
+
+## P1受入: 実認証・Web↔端末受渡し
 
 - [ ] **ACCEPT-001: 実Google認証を確認する。** 同意、取消、元画面への復帰、AからBへのアカウント切替で、前の利用者の私的workspaceが表示・保存されないことを本人操作で確認する。
 - [ ] **ACCEPT-002: ブラウザ導線を実機確認する。** Android/iOSそれぞれでアプリあり/なし、Googleアカウント選択、App/Universal Link復帰を確認する。AASAは設定済みなので、Apple CDN反映とrelease端末での受信を受入対象にする。
+
+2026-10-26にcanonicalのAASA/assetlinksとApple CDN AASAがHTTP 200で、iOS App ID・Android package/debug署名が一致することを再確認した。残るのはrelease署名と実機でのOS受信だけである。
+
+これは新機能追加ではなく、実装済みの認証・Run受渡し・owner境界が本番構成で成立するかの確認。失敗した場合は配布リンクや説明を進めず、認証復帰またはlink設定を修正する。
+
+## 公開・配布ゲート: release設定と互換経路
+
 - [ ] **RELEASE-001: release署名のApp Linkを確定する。** release SHA-256をFirebaseと`assetlinks.json`へ追加し、release APKでverifiedを再確認する。
 - [ ] **RELEASE-002: 公式ストアURLを設定する。** 実在するApp Store/Google Play URLと許可された公式badgeだけを使用し、QRからインストール、WebからRun受信まで確認する。
-- [ ] **RELEASE-003: Web上の公開文書を用意する。** プライバシーポリシー、利用条件、問い合わせ先をcanonical domain上の固定URLで公開し、Web footer、OAuth同意画面、各store listingの説明とデータ境界を一致させる。
+- [ ] **RELEASE-003: Web上の公開文書を用意する。** `/privacy`、`/terms`、`/support`とWeb内リンクは実装・production公開済み。OAuth同意画面と未作成の各store listingを本人が照合する作業だけが残る。
 - [ ] **CLEANUP-001: 旧Entry互換経路を期限付きで閉じる。** 対応中のAndroid最低versionを確認後、未使用の`CUE_BIGQUERY_TABLE`、常時410の`POST /api/task-list-entries`、`entry_id`/`GET /api/import-payload/[id]`互換、`buildAndroidImportUri`を同じrelease計画で削除する。現行`revision_id`経路は維持する。
 
 ## 規模到達時だけ行う項目

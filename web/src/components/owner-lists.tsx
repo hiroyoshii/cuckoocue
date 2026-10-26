@@ -5,10 +5,21 @@ import { ArrowRight, RotateCcw } from "lucide-react";
 import { cueApiFetch } from "@/lib/api-client";
 
 type ListRow = { id: string; title: string; task_count?: number; tasks?: unknown[]; completed_at?: number };
-export function OwnerLists({ kind, devUserId, onOpen, onSwitch, ownedShelves = [], onShelf }: {
+export function OwnerLists({
+  kind,
+  devUserId,
+  onOpen,
+  onSwitch,
+  ownedShelves = [],
+  onShelf,
+  shelvesCursor = null,
+  shelvesLoading = false,
+  onMoreShelves,
+}: {
   kind: "history" | "library"; devUserId: string;
   onOpen: (id: string) => void; onSwitch: () => void;
   ownedShelves?: { id: string; title: string }[]; onShelf?: (id: string) => void;
+  shelvesCursor?: string | null; shelvesLoading?: boolean; onMoreShelves?: () => void;
 }) {
   const [rows, setRows] = useState<ListRow[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -74,6 +85,6 @@ export function OwnerLists({ kind, devUserId, onOpen, onSwitch, ownedShelves = [
     </button></li>)}</ul>
     {loading ? <p role="status">読み込んでいます</p> : null}
     <div ref={sentinel}>{cursor ? <button type="button" disabled={loading} onClick={() => void load(true)}>続きを読み込む</button> : null}</div>
-    {kind === "library" && ownedShelves.length > 0 ? <section className="publication-panel" aria-label="自分のグループ"><h2>自分のグループ</h2><ul className="owner-list-rows">{ownedShelves.map(shelf => <li key={shelf.id}><button type="button" onClick={() => onShelf?.(shelf.id)}><span>{shelf.title}</span><ArrowRight size={18} /></button></li>)}</ul></section> : null}
+    {kind === "library" && (ownedShelves.length > 0 || shelvesCursor) ? <section className="publication-panel" aria-label="自分のグループ"><h2>自分のグループ</h2><ul className="owner-list-rows">{ownedShelves.map(shelf => <li key={shelf.id}><button type="button" onClick={() => onShelf?.(shelf.id)}><span>{shelf.title}</span><ArrowRight size={18} /></button></li>)}</ul>{shelvesCursor ? <button type="button" className="secondary-action" disabled={shelvesLoading} onClick={onMoreShelves}>さらにグループを読み込む</button> : null}</section> : null}
   </div>;
 }

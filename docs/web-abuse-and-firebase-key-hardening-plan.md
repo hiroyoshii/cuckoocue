@@ -1,105 +1,98 @@
-# Web API abuse prevention and Firebase key hardening plan
+# Web API総量制御とFirebaseキー分離
 
-## Scope and current state
+最終更新: 2026-10-26
 
-The public web app authenticates `/api/search` with a Firebase ID token, including anonymous Firebase users. The endpoint can invoke paid search and model services, but it currently has no App Check enforcement or application-level rate limit. The web and Android clients also appear to share Firebase client-key configuration. Firebase client keys are public identifiers, but unrestricted or shared keys make quota abuse and incident response harder.
+## 結論
 
-This plan keeps anonymous discovery available while adding independent controls at the request, app-attestation, budget, and credential layers.
+`/api/search`はVertex AI、embedding、BigQueryを使うが、現在の通常利用コストを高優先度の問題とは扱わない。1要求あたりの入力・model token・BQ走査・結果件数・実行時間・instance数をすでに制限し、7日間の本番観測は検索1件だった。検索解釈LLMの16件比較では約46 USD/10万解釈、BQ実測は1検索20 MiBであり、現時点で高コスト化の兆候はない。
 
-## 2. Search API abuse and cost controls
+残るのは、匿名UIDを作り直しながら要求回数を積み上げる総量リスク。予算通知は自動停止せず、App Hostingのinstance上限はVertex AIやBQの月額上限ではない。ただし異常利用は観測されておらず、全API共通limiterやApp Checkを先回りして実装する費用対効果も確認できていない。
 
-### Target behavior
+このため、次の順番にする。固定回数を増やすだけでは正常利用の安全を証明できないため、2026-10-26の再精査でrate limitの先行実装は取り下げた。
 
-- Legitimate anonymous users can search without creating an account.
-- Automated traffic is rejected before paid BigQuery or model calls begin.
-- A single user, device, or network cannot consume an unbounded share of the daily budget.
-- Operators can see rejection rates, latency, and estimated paid-call volume without logging raw queries, tokens, or IP addresses.
+1. 呼出量alert、service quota、停止手順を確認した。
+2. 既存の1要求上限と観測を維持する。
+3. rate limit、App Check、登録者向け有料APIの共通limiterは、異常トラフィックと十分な通常利用標本が得られた場合だけ再評価する。
 
-### Phase A: measurement and server-side limits
+## 既存のコスト防御
 
-1. Add structured metrics for request outcome, authentication class, cache hit, downstream call count, duration, and `429` responses. Hash UID and network identifiers with a rotating server secret; never persist raw UID, IP, ID token, App Check token, or query text.
-2. Add billing-budget alerts at 50%, 80%, and 100% of the monthly target. Add a separate operational alert for a sudden rise in search invocations or paid downstream calls.
-3. Add a Firestore transactional limiter at the start of `/api/search`, before BigQuery or model work. Store only hashed keys and fixed-window counters with TTL cleanup.
-4. Start with these configurable limits, then tune from production metrics:
+| 層 | 現在の防御 | 効果と限界 |
+|---|---|---|
+| 認証 | Firebase ID token必須。匿名利用者もtokenを取得する | 無認証の直接要求を拒否する。匿名UIDは作り直せるため回数上限にはならない |
+| 入力 | 検索文500文字、cursor 4,096文字、page size 20件 | 1要求のprompt・応答・BQ結果を固定上限に収める |
+| 検索解釈 | Gemini thinking budget 128、model呼出し1 attempt、timeoutあり | 16件比較でthought token 56.1%、検索解釈LLM推定費37.2%減 |
+| 匿名経路 | Memory Bank取得とprofile選択LLMを呼ばない | 公開検索の標準経路で追加のmodel処理を避ける |
+| no-match | domainが得られなければembeddingとBQを呼ばない | 無関係な入力で後段費用を発生させない |
+| embedding | 入力上限、timeout、限定retry | 1要求あたりの入力と待機時間を制限する。要求総数は制限しない |
+| BigQuery | 1 query jobあたり1 GiB、page size 20、timeout | 実測20 MiB。cursor paginationは同じJobを再利用し、新しいLLM・embedding・query jobを作らない |
+| App Hosting | `minInstances: 0`、`maxInstances: 5`、concurrency 80 | idle computeと無制限scaleを避ける。外部APIの総費用上限ではない |
+| Billing | 月額1,000円、50%・80%・100%通知 | 異常を知らせるが、自動停止しない |
+| 運用 | App Hosting停止後、必要ならVertex AI・BQ APIを停止する手順 | 人が対応すれば追加費用を止められる。夜間等の検知遅延は残る |
 
-   | Caller | Burst limit | Daily limit |
-   | --- | ---: | ---: |
-   | Anonymous Firebase user | 10 / 10 min | 100 / day |
-   | Registered Firebase user | 30 / 10 min | 500 / day |
-   | Hashed network backstop | 40 / 10 min | 1,000 / day |
+seedのBQ jobバッチ化は保守処理の費用削減であり、公開検索の悪用防止には数えない。Firebaseクライアントキーも公開識別子であり、キーを秘匿することを検索の費用防御にしない。
 
-5. Give cursor-only pagination a separate, higher limit because it should reuse the original query path and cost less. Reject changed-query cursors as new searches.
-6. Return `429` with `Retry-After` and a stable machine-readable error code. Keep the entered query and existing results in the UI so retrying does not lose state.
-7. Bound downstream cost with strict timeouts, result caps, duplicate-request coalescing, and an App Hosting maximum-instance ceiling. Treat the instance ceiling as a cost fuse, not the primary rate limiter.
+## 完了: 観測と既存quotaの確認
 
-Implementation areas: `web/src/app/api/search/route.ts`, a new server-only limiter module, Firestore TTL/index configuration, API-client error handling, and metrics configuration. Tests should cover anonymous and registered buckets, concurrent increments, daily rollover, network backstop, pagination, and the guarantee that rejected requests make zero paid downstream calls.
+Cloud Monitoring dashboard、個別alert、quota記録、停止手順を[Web運用ベースライン](web-operations-baseline.md)へ固定した。
 
-### Phase B: Firebase App Check
+- 検索回数、HTTP status、latency、Vertex stage別呼出し・失敗、BQ bytes billed・1 GiB上限拒否をdashboardとalertにする。
+- 検索文、prompt、token本文、生UID、生IPをmetric dimensionへ使わない。
+- Vertex AI、embedding、BigQuery、Firebase Authentication、App Hostingの現在のquotaと上限変更権限を記録する。
+- 予算通知を受けてからApp Hosting、Vertex AI、BQを止める担当・手順・復旧順を確認する。
+- 将来limiterを検討する場合は、Firestore費用・latency・障害点と正常利用の誤拒否を先に評価する。
 
-1. Register the production web app with reCAPTCHA Enterprise and initialize App Check in the browser.
-2. Send the App Check token in `X-Firebase-AppCheck` for search requests and verify it server-side before rate limiting and paid work.
-3. Deploy verification in metrics-only mode for 48–72 hours. Measure missing, valid, invalid, and expired tokens by route and browser class.
-4. Enable enforcement for `/api/search` after valid-token coverage meets the release gate. Use explicit localhost debug tokens for local and CI tests; never accept the debug provider in production.
-5. Keep Firebase Authentication verification in place. App Check proves the request came through an approved client; it does not identify the user or replace authorization.
-6. Add Android Play Integrity support before enabling any project-wide enforcement that would affect Android. Roll out per service or route so the web release cannot break the mobile app.
+この段階の完了条件は、通常費用と異常な呼出増加を区別でき、通知後に停止できること。rate limitやApp Checkの実装完了を条件にしない。
 
-Release gate: at least 99% valid App Check coverage for normal production searches over 48 hours, no supported-browser regression, and a tested emergency switch that disables route enforcement without removing authentication or rate limits.
+## 条件付き: `/api/search`の総量制御
 
-### Rollout and rollback
+現時点ではrate limitを検索経路へ入れない。匿名・登録・networkの固定回数を大きくしても、正常利用への影響がなくなった証拠にはならず、limiter用Firestoreを新しい障害点にもするためである。
 
-Deploy metrics first, then the limiter in report-only mode, then enforce generous thresholds, tune them after one week, and finally enforce App Check. Each control must have an independent configuration switch. Rollback should disable only the failing layer while authentication, metrics, and paid-call bounds remain active.
+異常な自動化が観測された場合は、次を同時に設計する。
 
-## 3. Firebase client-key separation and restrictions
+- 通常利用分布と共有networkの実測を基準にし、推測の固定回数を先に置かない。
+- Firebase UIDだけで完了にせず、匿名UID再作成とnetwork誤判定を両方考慮する。
+- cursor paginationは既存Jobを読むだけなので、新規検索と別扱いにする。
+- 拒否を導入する場合は`429`、`Retry-After`、安定したerror code、入力・既存結果保持を契約にする。
+- 保存が必要なら、生UID/IPではなく回転secretによるhashと期限付きcounterだけを保持する。
+- limiter用storageの障害時に検索全体を停止させない方式と、保護が外れたことを検知するalertを同時に用意する。
 
-### Key layout
+## 条件付き: Firebase App Check
 
-Create separate Google API keys for:
+App Checkは現時点の高優先度タスクではない。正規Webアプリ経由である確率を上げる防御であり、本人認証、rate limit、service quota、費用上限を置き換えない。実ブラウザを使う自動化も完全には止めない。
+
+次の両方を満たす場合だけ再評価する。
+
+1. 自動化された異常トラフィックが確認され、既存の入力・実行上限、service quota、運用停止だけでは不足する。
+2. 対応ブラウザごとのvalid/missing/invalidを判断できるだけの通常利用標本がある。
+
+導入する場合はreCAPTCHA Enterpriseをmetrics-onlyで開始する。十分な期間と件数で通常検索を誤拒否しないこと、localhost/CIのdebug tokenを本番で受け付けないこと、緊急無効化が可能なことを確認してから`/api/search`だけenforceする。Android/iOSへ影響するproject-wide enforcementは行わない。
+
+## 条件付き: 登録者向け有料API
+
+`/api/task-list-enrichment`、`/api/shelf-description`、公開時embedding、`/api/memory-events`は登録済み利用者だけが使う低頻度処理を含む。7日観測ではenrichment/descriptionとも呼出し0件だった。
+
+これらへ共通limiterを先回りして広げない。stage別呼出量または異常利用が観測されたAPIだけを対象に、入力上限・冪等性・既存認可を確認したうえで個別の低頻度枠を検討する。
+
+## Firebaseクライアントキー分離
+
+キー分離は費用対策の主役ではなく、漏えい時の影響範囲と切替単位を小さくするセキュリティ・運用施策として維持する。
+
+維持するキー:
 
 - Web production
 - Web local/preview/CI
-- Android release
+- Android release（release署名情報の提供後に作成）
 - Android debug
-- iOS, when the client exists
+- iOS
 
-Server-side BigQuery, model, and administrative access must continue to use service identities or server secrets and must not be added to these client keys.
+Webは許可origin、Androidはpackageと署名証明書、iOSはbundle IDでcaller restrictionを設定する。API allowlistは実トラフィックから確定し、Firebase Authentication、匿名ログイン、Firestore等を推測で壊さない。サーバー側BigQuery・Vertex AI・管理処理はservice identityを維持し、クライアントキーへ移さない。
 
-### Restrictions
+Web production/local、Android debug、iOSは分離・caller制限・Auth API allowlistを反映済み。既存構成に全platform共用キーはなかったため旧共有キーの廃止対象はない。Android releaseだけはrelease署名fingerprintと配布用設定の確定後に作る。
 
-- Web production: HTTP-referrer restrictions for the custom production domain and the Firebase App Hosting domain. Allow only the exact Firebase browser APIs observed in production.
-- Web local/preview: separate key with localhost and approved preview origins only; use lower quotas where available.
-- Android release: Android-application restriction with the release package name and signing-certificate SHA-1/SHA-256 fingerprints.
-- Android debug: separate Android restriction with the debug certificate and lower quotas.
-- iOS: iOS bundle-ID restriction when introduced.
+## 対象外
 
-Do not assume an API restriction from memory. First collect successful API usage for each client, derive the minimum allowlist, and test authentication, anonymous sign-in, Firestore access, and any storage calls in staging.
-
-### No-downtime migration
-
-1. Inventory every current key, owner, API allowlist, caller restriction, quota, and usage over the previous 30 days.
-2. Create the new restricted keys without changing the existing shared key.
-3. Put each key in its platform-specific configuration and secret-management path. Ensure build logs and generated review artifacts do not print complete keys.
-4. Release web production first and verify the custom and hosted domains. Release Android debug, then Android release, and verify installed builds signed with the intended certificates.
-5. Observe the old shared key for at least seven days. Any remaining traffic must be traced to a known build or integration.
-6. When old-key traffic reaches zero, disable the old key. Keep its configuration record for rollback, then delete it after the agreed observation window.
-
-Rollback consists of restoring the previous client configuration while leaving the newly created keys enabled. Do not remove or rotate the shared key until every active client version has a working replacement.
-
-### Acceptance criteria
-
-- Each production client uses a different key.
-- Every key has both caller and API restrictions appropriate to its platform.
-- Requests from an unapproved origin, package, certificate, or API fail.
-- Web anonymous sign-in, search, pagination, and Android authentication pass after migration.
-- No complete key appears in tracked review artifacts, build output, or application logs.
-- The legacy shared key has zero observed traffic before disablement.
-
-## Recommended execution order
-
-1. Add metrics and budget alerts.
-2. Add and enforce the server-side limiter.
-3. Split and restrict keys without disabling the legacy key.
-4. Add App Check in metrics-only mode.
-5. Enforce App Check for web search.
-6. Disable and later delete the legacy shared key after the observation window.
-
-This order reduces immediate cost exposure first and avoids coupling App Check rollout to credential migration.
+- rate limitを利用プランや課金プランとして設計すること
+- 検索利用がほぼない段階で、評価目的の有料要求を生成すること
+- App Check導入だけで悪用対策完了とすること
+- botnetを完全に防ぐために複雑な識別・追跡基盤を作ること
+- 生の検索文、UID、IP、tokenを長期保存すること

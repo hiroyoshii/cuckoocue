@@ -141,6 +141,25 @@ test("W18-2: paging fails once, retains results, retries only on request, dedupl
   expect(pages).toBe(2);
 });
 
+test("a 429 re-search response keeps the query and existing results", async ({ page }) => {
+  let calls = 0;
+  await page.route("**/api/search", route => {
+    calls += 1;
+    return calls === 1
+      ? route.fulfill({ json: { results: [result], nextCursor: null, searchDomain: "引っ越し" } })
+      : route.fulfill({ status: 429, headers: { "Retry-After": "60" }, json: { error: "検索が続いています。少し待ってから再試行してください。", code: "search_rate_limited" } });
+  });
+  await page.goto("/");
+  await search(page);
+  await expect(page.locator(".search-result-item")).toHaveCount(1);
+  const query = page.getByLabel("Search query");
+  await query.fill("猫2匹で引っ越す準備");
+  await page.locator(".search-composer").getByRole("button", { name: "検索", exact: true }).click();
+  await expect(query).toHaveValue("猫2匹で引っ越す準備");
+  await expect(page.locator(".search-result-item")).toHaveCount(1);
+  await expect(page.locator(".error-banner")).toContainText("少し待ってから再試行");
+});
+
 test("W12-6: direct cells edit, validate, preserve null, reorder independently, undo and restore", async ({ page }, info) => {
   await openEditor(page);
   await expect(page.getByRole("heading", { name: "再利用用に整える" })).toBeVisible();

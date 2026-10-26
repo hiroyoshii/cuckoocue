@@ -1,0 +1,8 @@
+{
+  "displayName": "Cuckoo Cue Web BigQuery read cap",
+  "combiner": "OR",
+  "enabled": true,
+  "documentation": { "content": "A bounded public read reached the 1 GiB maximumBytesBilled cap. Keep the cap and inspect the query plan before changing it.", "mimeType": "text/markdown" },
+  "alertStrategy": { "notificationRateLimit": { "period": "900s" }, "autoClose": "1800s" },
+  "conditions": [{ "displayName": "BigQuery read cap reached", "conditionMatchedLog": { "filter": "resource.type=\"cloud_run_revision\" AND jsonPayload.event=\"bigquery.read_limit_exceeded\"" } }]
+}

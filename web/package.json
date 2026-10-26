@@ -7,8 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint src scripts",
+    "test:light": "node --import tsx --test scripts/test-search-filter.mjs scripts/test-search-route.mjs scripts/test-bq-write-retry.mjs scripts/test-editorial-shelves.mjs scripts/test-seed-query-count.mjs",
     "pretest:e2e": "next build",
     "test:e2e": "playwright test",
+    "test:e2e:critical": "playwright test tests/e2e/reuse-quality.spec.ts tests/e2e/workspace.spec.ts tests/e2e/handoff.spec.ts tests/e2e/owner-cycle.spec.ts",
     "capture:quality": "node scripts/capture-web-quality.mjs",
     "bq:init": "node scripts/create-bq-table.mjs",
     "bq:init-cuebooks": "node scripts/create-bq-cuebooks.mjs",
@@ -25,15 +27,15 @@
   "dependencies": {
     "@google-cloud/bigquery": "^9.0.3",
     "@js-temporal/polyfill": "^0.5.1",
-    "firebase": "^12.18.0",
-    "firebase-admin": "^14.3.0",
+    "firebase": "^12.19.0",
+    "firebase-admin": "^14.5.0",
     "google-auth-library": "^11.0.2",
     "lucide-react": "^1.37.0",
-    "next": "16.3.3",
+    "next": "16.4.3",
     "qrcode.react": "^4.2.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "zod": "^4.5.2"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
@@ -42,7 +44,11 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.3.3",
+    "eslint-config-next": "16.4.3",
+    "tsx": "^4.23.15",
     "typescript": "^5"
+  },
+  "overrides": {
+    "@grpc/grpc-js": "1.14.6"
   }
 }

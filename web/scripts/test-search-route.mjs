@@ -21,10 +21,11 @@ function route(options = {}) {
     },
     "@/lib/bigquery": {
       listTaskListDomains: async () => ["引っ越し"],
+      getSearchTaskListEntriesPage: async () => ({ results: [], nextCursor: null }),
       searchTaskListEntries: async (...args) => { calls.push({ kind: "search", args }); return { results: [], nextCursor: null }; },
     },
   };
-  const runtime = { exports: {}, Response, console: { error: () => {} }, require: name => dependencies[name] };
+  const runtime = { exports: {}, Response, console: { error: () => {}, info: () => {} }, require: name => dependencies[name] };
   vm.runInNewContext(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, runtime);
   return { calls, post: body => runtime.exports.POST(new Request("http://localhost/api/search", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })) };
 }
@@ -32,6 +33,12 @@ test("invalid user input is 400 before any query interpretation", async () => {
   const r = route();
   assert.equal((await r.post({ page_size: 0 })).status, 400);
   assert.equal(r.calls.length, 0);
+});
+test("cursor requests reuse the existing result job and skip interpretation", async () => {
+  const r = route();
+  const response = await r.post({ cursor: "cursor", page_size: 20 });
+  assert.equal(response.status, 200);
+  assert.equal(r.calls.some(c => c.kind === "interpret"), false);
 });
 test("invalid model output and failed profile selection are 503, not empty success or user error", async () => {
   const badOutput = z.object({ domain: z.string() }).safeParse({}).error;

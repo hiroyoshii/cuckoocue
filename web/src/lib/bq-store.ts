@@ -5,6 +5,7 @@ import { withRetry } from "./resilience";
 
 const client = new BigQuery({ projectId: cueEnv.projectId() });
 const location = () => cueEnv.googleCloudLocation();
+export const BigQueryReadMaximumBytesBilled = "1073741824";
 export const digest = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
 
 export function bqTable(name: "cuebooks" | "cuebook_revisions" | "shelves") {
@@ -15,8 +16,32 @@ export function bqTable(name: "cuebooks" | "cuebook_revisions" | "shelves") {
 }
 
 export async function bqRead<T>(query: string, params: Query["params"] = {}): Promise<T[]> {
-  const [rows] = await withRetry(() => client.query({ query, params, location: location(), jobTimeoutMs: 30_000 }), { timeoutMs: 40_000 });
-  return rows as T[];
+  try {
+    const [rows] = await withRetry(() => client.query({
+      query,
+      params,
+      location: location(),
+      jobTimeoutMs: 30_000,
+      maximumBytesBilled: BigQueryReadMaximumBytesBilled,
+      labels: { cue_kind: "bounded_read" },
+    }), { timeoutMs: 40_000 });
+    return rows as T[];
+  } catch (error) {
+    if (isMaximumBytesBilledError(error)) {
+      console.error(JSON.stringify({ event: "bigquery.read_limit_exceeded", limit_bytes: BigQueryReadMaximumBytesBilled }));
+      throw Response.json(
+        { error: "公開データの読み取り上限を超えました。時間をおいて再試行してください。", code: "bigquery_read_limit_exceeded" },
+        { status: 503 },
+      );
+    }
+    throw error;
+  }
+}
+
+function isMaximumBytesBilledError(error: unknown) {
+  const candidate = error as { code?: number; message?: string; errors?: Array<{ reason?: string; message?: string }> };
+  const messages = [candidate.message, ...(candidate.errors ?? []).map((item) => item.message)].filter(Boolean).join(" ");
+  return candidate.code === 400 && /maximumBytesBilled|bytes billed limit|maximum bytes billed|limit for bytes billed/i.test(messages);
 }
 
 // A stable job ID prevents concurrent retries of an INSERT from creating two rows.

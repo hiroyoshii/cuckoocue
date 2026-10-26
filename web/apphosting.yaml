@@ -35,6 +35,11 @@ env:
     availability:
       - RUNTIME
 
+  - variable: CUE_CSP_REPORTING
+    value: "true"
+    availability:
+      - BUILD
+
   - variable: CUE_BIGQUERY_DATASET
     value: cuckoo_cue
     availability:

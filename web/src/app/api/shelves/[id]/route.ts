@@ -16,7 +16,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
     if (!shelf) {
       return NextResponse.json({ error: "Shelf not found" }, { status: 404 });
     }
-    return NextResponse.json({ shelf });
+    return NextResponse.json({ shelf }, { headers: viewer
+      ? { "Cache-Control": "private, no-store", Vary: "Authorization" }
+      : { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300", Vary: "Authorization" } });
   } catch (error) {
     return errorResponse(error);
   }

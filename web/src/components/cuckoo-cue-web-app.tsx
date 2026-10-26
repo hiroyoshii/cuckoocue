@@ -276,6 +276,8 @@ function AccountWorkspace({ user, authReady, devUserId, setDevUserId, importRunI
   const [isAndroidDevice] = useState(() => typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent));
   const [saveOperationId, setSaveOperationId] = useState(() => crypto.randomUUID());
   const [shelves, setShelves] = useState<Shelf[]>([]);
+  const [personalShelves, setPersonalShelves] = useState<Shelf[]>([]);
+  const [shelvesCursor, setShelvesCursor] = useState<string | null>(null);
   const [selectedShelf, setSelectedShelf] = useState<Shelf | null>(null);
   const [shelfReadVersion, setShelfReadVersion] = useState(0);
   const [newShelfTitle, setNewShelfTitle] = useState("");
@@ -305,7 +307,7 @@ function AccountWorkspace({ user, authReady, devUserId, setDevUserId, importRunI
       setView("explore"); setSaveTitle(""); setTasks([emptyTask()]); setEnrichment(null);
       setSavedTitle(null); setCompletedReview(null); setReviewingCompleted(false);
       setSavedCuebook(null); setPendingPrivateSave(null); setCuebookConflict(null); setCuebookId(crypto.randomUUID()); setCuebookTaskIds([]);
-      setMemberships([]); setMembershipReady(false); setSelectedShelf(null); loadedRunId.current = null;
+      setMemberships([]); setMembershipReady(false); setSelectedShelf(null); setShelves([]); setPersonalShelves([]); setShelvesCursor(null); setShelvesLoaded(false); loadedRunId.current = null;
       pendingShelfRead.current?.abort();
       setFailedRunRead(false);
       try {
@@ -471,6 +473,10 @@ function AccountWorkspace({ user, authReady, devUserId, setDevUserId, importRunI
   const canPrepareSave = saveTitle.trim().length > 0 && tasks.length > 0 && tasks.every((task) => !Object.values(taskErrors(task)).some(Boolean)) && busyAction === null;
   const canSave = canPrepareSave && isReviewableEnrichment(enrichment, cleanedTasks.length);
   const currentUserId = user?.uid ?? devUserId;
+  const availableShelves = useMemo(() => {
+    const publicIds = new Set(shelves.map((shelf) => shelf.id));
+    return [...shelves, ...personalShelves.filter((shelf) => !publicIds.has(shelf.id))];
+  }, [shelves, personalShelves]);
 
   useEffect(() => {
     if (!authReady || workspaceOwner !== identity || !registered) return;
@@ -478,7 +484,12 @@ function AccountWorkspace({ user, authReady, devUserId, setDevUserId, importRunI
     void cueApiFetch("/api/memberships", devUserId).then(async (response) => {
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || "参加グループを読み込めませんでした。");
-      if (!cancelled) { setMemberships(body.shelf_ids); setMembershipReady(true); setMembershipError(false); }
+      if (!cancelled) {
+        setMemberships(body.shelf_ids);
+        setPersonalShelves(body.shelves ?? []);
+        setMembershipReady(true);
+        setMembershipError(false);
+      }
     }).catch((error) => { if (!cancelled) { setErrorMessage(error.message); setMembershipError(true); } });
     return () => { cancelled = true; };
   }, [authReady, workspaceOwner, identity, registered, devUserId, shelvesLoaded, membershipAttempt]);
@@ -495,6 +506,9 @@ function AccountWorkspace({ user, authReady, devUserId, setDevUserId, importRunI
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || "参加状態を変更できませんでした。");
       setMemberships((current) => joined ? [...new Set([...current, id])] : current.filter((value) => value !== id));
+      setPersonalShelves((current) => joined
+        ? [selectedShelf, ...current.filter((shelf) => shelf.id !== id)]
+        : selectedShelf.is_owned ? current : current.filter((shelf) => shelf.id !== id));
     } catch (error) { setErrorMessage(error instanceof Error ? error.message : "参加状態を変更できませんでした。"); }
     finally { setBusyAction(null); }
   }
@@ -521,6 +535,11 @@ function AccountWorkspace({ user, authReady, devUserId, setDevUserId, importRunI
       });
       const body = await response.json();
       if (pendingSearch.current !== controller) return;
+      if (response.status === 429) {
+        setSearchRetry("search");
+        setErrorMessage(body.error || "検索が続いています。少し待ってから再試行してください。");
+        return;
+      }
       if (!response.ok) throw new Error(humanizeApiError(response.status, body.error, "検索に失敗しました。"));
       setResults(body.results ?? []);
       setSearchDomain(body.searchDomain ?? null);
@@ -674,16 +693,19 @@ function AccountWorkspace({ user, authReady, devUserId, setDevUserId, importRunI
     return () => cancelAnimationFrame(frame);
   }, [queuedSearch, canRequest, workspaceOwner, identity]);
 
-  const loadShelves = useCallback(async () => {
+  const loadShelves = useCallback(async (more = false) => {
+    if (more && !shelvesCursor) return;
     setBusySeconds(0);
     setShelvesLoading(true);
     setShelvesFailed(false);
     setErrorMessage(null);
     try {
-      const response = await cueApiFetch("/api/shelves", devUserId);
+      const response = await cueApiFetch(`/api/shelves${more ? `?cursor=${encodeURIComponent(shelvesCursor!)}` : ""}`, devUserId);
       const body = await response.json();
       if (!response.ok) throw new Error(humanizeApiError(response.status, body.error, "状況を読み込めませんでした。"));
-      setShelves(body.shelves ?? []);
+      const incoming: Shelf[] = body.shelves ?? [];
+      setShelves((current) => more ? [...current, ...incoming.filter((shelf) => !current.some((item) => item.id === shelf.id))] : incoming);
+      setShelvesCursor(body.nextCursor ?? null);
       setShelvesLoaded(true);
     } catch (error) {
       setShelvesFailed(true);
@@ -691,7 +713,7 @@ function AccountWorkspace({ user, authReady, devUserId, setDevUserId, importRunI
     } finally {
       setShelvesLoading(false);
     }
-  }, [devUserId]);
+  }, [devUserId, shelvesCursor]);
 
   useEffect(() => {
     if (!authReady || workspaceOwner !== identity || !registered || shelvesLoaded || shelvesLoading || shelvesFailed) return;
@@ -766,6 +788,7 @@ function AccountWorkspace({ user, authReady, devUserId, setDevUserId, importRunI
   function shelfSaved(shelf: ShelfDetail, joined = false) {
     setSelectedShelf(shelf);
     setShelves((current) => [shelf, ...current.filter((item) => item.id !== shelf.id)]);
+    if (shelf.is_owned || joined) setPersonalShelves((current) => [shelf, ...current.filter((item) => item.id !== shelf.id)]);
     if (joined) setMemberships((current) => [...new Set([...current, shelf.id])]);
     const url = new URL(window.location.href);
     url.searchParams.set("shelf_id", shelf.id);
@@ -845,7 +868,7 @@ function AccountWorkspace({ user, authReady, devUserId, setDevUserId, importRunI
           </button>
           <button className={view === "history" || view === "library" || view === "publish" ? "active" : ""} onClick={() => changeView("history")}><History size={18} aria-hidden="true" />完了履歴</button>
           <button className={view === "apps" ? "active" : ""} aria-current={view === "apps" ? "page" : undefined} onClick={() => changeView("apps")}><Smartphone size={18} aria-hidden="true" />タスク管理</button>
-          {memberships.length ? <section className="joined-groups"><h2>参加グループ</h2>{shelves.filter((shelf) => memberships.includes(shelf.id)).map((shelf) => <button key={shelf.id} onClick={() => { setView("explore"); void openShelf(shelf.id); }}><Library size={18} aria-hidden="true" />{shelf.title}</button>)}</section> : null}
+          {memberships.length ? <section className="joined-groups"><h2>参加グループ</h2>{availableShelves.filter((shelf) => memberships.includes(shelf.id)).map((shelf) => <button key={shelf.id} onClick={() => { setView("explore"); void openShelf(shelf.id); }}><Library size={18} aria-hidden="true" />{shelf.title}</button>)}</section> : null}
         </nav>
         <div className="rail-account">{hasFirebaseClientConfig() ? desktopAccount : <details className="connection-panel">
           <summary><User size={17} aria-hidden="true" />接続</summary><label>Dev user<input value={devUserId} onChange={event => setDevUserId(event.target.value)} /></label>
@@ -858,7 +881,7 @@ function AccountWorkspace({ user, authReady, devUserId, setDevUserId, importRunI
           <button type="button" aria-current={view === "explore" ? "page" : undefined} onClick={() => changeView("explore")}><Search size={17} />探す</button>
           <button type="button" aria-current={view === "history" || view === "library" ? "page" : undefined} onClick={() => changeView("history")}><History size={17} />完了履歴</button>
           <button type="button" aria-current={view === "apps" ? "page" : undefined} onClick={() => changeView("apps")}><Smartphone size={17} aria-hidden="true" />タスク管理</button>
-          {memberships.length ? <details><summary>参加グループ</summary>{shelves.filter((shelf) => memberships.includes(shelf.id)).map((shelf) => <button type="button" key={shelf.id} onClick={() => { setView("explore"); void openShelf(shelf.id); }}>{shelf.title}</button>)}</details> : null}
+          {memberships.length ? <details><summary>参加グループ</summary>{availableShelves.filter((shelf) => memberships.includes(shelf.id)).map((shelf) => <button type="button" key={shelf.id} onClick={() => { setView("explore"); void openShelf(shelf.id); }}>{shelf.title}</button>)}</details> : null}
         </nav>
         {errorMessage || sessionError ? (
           <div className="error-banner" role="alert">
@@ -904,7 +927,10 @@ function AccountWorkspace({ user, authReady, devUserId, setDevUserId, importRunI
               nextCursor={nextCursor} onMore={loadMoreResults}
               busySeconds={busySeconds}
               isAndroidDevice={isAndroidDevice}
-              shelves={shelves.filter((shelf) => results.some((result) => result.shelves?.some((related) => related.id === shelf.id)))}
+              shelves={availableShelves.filter((shelf) => results.some((result) => result.shelves?.some((related) => related.id === shelf.id)))}
+              shelvesCursor={shelvesCursor}
+              shelvesLoading={shelvesLoading}
+              onMoreShelves={() => void loadShelves(true)}
               currentUserId={currentUserId}
               onOpenShelf={openShelf}
               newShelfTitle={newShelfTitle}
@@ -925,7 +951,7 @@ function AccountWorkspace({ user, authReady, devUserId, setDevUserId, importRunI
           <SignInRequired title={view === "history" ? "完了履歴" : view === "library" ? "自分のリスト" : "再利用用に整える"} onBack={() => changeView("explore")} onSignIn={signInWithGoogle} />
         ) : view === "history" || view === "library" ? (
           <OwnerLists key={`${identity}:${view}`} kind={view} devUserId={devUserId} onOpen={(id) => void openOwnedList(id)} onSwitch={() => changeView(view === "history" ? "library" : "history")}
-            ownedShelves={shelves.filter(shelf => shelf.is_owned)} onShelf={id => void openShelf(id)} />
+            ownedShelves={availableShelves.filter(shelf => shelf.is_owned)} onShelf={id => void openShelf(id)} shelvesCursor={shelvesCursor} shelvesLoading={shelvesLoading} onMoreShelves={() => void loadShelves(true)} />
         ) : reviewingCompleted && completedReview ? (
           <CompletedRunReview state={completedReview} onChange={setCompletedReview} devUserId={devUserId}
             onBack={() => changeView("history")} onEdit={(selected) => { setTasks(selected); setCuebookTaskIds(selected.map(() => crypto.randomUUID())); setEnrichment(null); setReviewingCompleted(false); }} />
@@ -939,7 +965,7 @@ function AccountWorkspace({ user, authReady, devUserId, setDevUserId, importRunI
             source={saveSource}
             scheduleUnavailable={completedReview?.run.source_anchor_day === null}
             savedTitle={savedTitle} onPrepare={prepareSave} onSave={saveTaskList} onReset={resetSave}
-            savedCuebook={savedCuebook} devUserId={devUserId} ownedShelves={shelves.filter((shelf) => shelf.is_owned)}
+            savedCuebook={savedCuebook} devUserId={devUserId} ownedShelves={availableShelves.filter((shelf) => shelf.is_owned)}
             onPublished={() => { setShelvesLoaded(false); }}
             onReloadOriginal={() => void openOwnedList(cuebookId, false)}
             onLibrary={() => changeView("library")}
@@ -1005,8 +1031,9 @@ function ExploreWorkspace(props: ExploreWorkspaceProps) {
         currentUserId={props.currentUserId} onSignIn={props.onSignIn}
         onOpenShelf={props.onOpenShelf}
       />
-      {props.shelves.length || props.showCreateForm ? <ShelfWorkspace
+      {props.shelves.length || props.shelvesCursor || props.showCreateForm ? <ShelfWorkspace
         shelves={props.shelves}
+        shelvesLoading={props.shelvesLoading}
         busyAction={props.busyAction}
         busySeconds={props.busySeconds}
         onOpenShelf={props.onOpenShelf}
@@ -1020,6 +1047,8 @@ function ExploreWorkspace(props: ExploreWorkspaceProps) {
         createSubmitted={props.createSubmitted}
         canManage={props.canManage}
         onSignIn={props.onSignIn}
+        shelvesCursor={props.shelvesCursor}
+        onMoreShelves={props.onMoreShelves}
         embedded
       /> : null}
     </div>
@@ -1173,6 +1202,9 @@ function EmptySearch({ hasSearched }: { hasSearched: boolean }) {
 type ShelfWorkspaceProps = {
   createSubmitted: boolean;
   shelves: Shelf[];
+  shelvesCursor: string | null;
+  shelvesLoading: boolean;
+  onMoreShelves: () => void;
   busyAction: string | null;
   busySeconds: number;
   onOpenShelf: (id: string) => void;
@@ -1206,7 +1238,7 @@ function ShelfWorkspace(props: ShelfWorkspaceProps) {
           <div>{!props.createSubmitted ? <button type="button" className="secondary-action" onClick={() => props.setShowCreateForm(false)}>キャンセル</button> : null}<button type="submit" className="primary-action" disabled={props.busyAction !== null}>{props.createSubmitted ? "作成を再試行" : "作成"}</button></div>
         </form>
       ) : null}
-      {props.busyAction === "shelves" ? <ProgressNotice label={`状況を読み込んでいます${props.busySeconds > 1 ? "" : ""}`} /> : null}
+      {props.shelvesLoading ? <ProgressNotice label="状況を読み込んでいます" /> : null}
       <section className="cue-surface" aria-label="状況一覧">
         {props.shelves.length ? (
           <div className="shelf-list">
@@ -1225,6 +1257,7 @@ function ShelfWorkspace(props: ShelfWorkspaceProps) {
           </div>
         )}
       </section>
+      {props.shelvesCursor ? <button type="button" className="secondary-action" disabled={props.shelvesLoading || props.busyAction !== null} onClick={props.onMoreShelves}>さらに状況を読み込む</button> : null}
     </div>
   );
 }

@@ -16,9 +16,9 @@ export async function POST(request: NextRequest) {
     if (!parsed.success) return NextResponse.json({ error: "検索条件を確認してください。" }, { status: 400 });
     const input = parsed.data;
     const pageSize = input.page_size ?? 20;
-
     if (input.cursor) {
       const page = await getSearchTaskListEntriesPage(input.cursor, pageSize, user.id);
+      console.info(JSON.stringify({ event: "search.completed", pagination: true, result_count: page.results.length }));
       return NextResponse.json({
         memoryFacts: [],
         userProfileAttributes: [],
@@ -51,6 +51,7 @@ export async function POST(request: NextRequest) {
       pageSize,
       user.id,
     );
+    console.info(JSON.stringify({ event: "search.completed", pagination: false, result_count: results.results.length }));
 
     return NextResponse.json({
       memoryFacts: userProfileAttributes,

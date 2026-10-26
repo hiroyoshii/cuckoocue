@@ -10,6 +10,31 @@ const tasks = [
 const original = { id, title: "猫2匹と東京から名古屋へ引っ越す", origin_revision_id: null, updated_at: "2026-09-12T00:00:00.000000Z", tasks,
   enrichment: { domain: "引っ越し", context_text: "猫2匹と賃貸の住み替え。東京から名古屋へ。", task_groupings: [{ label: "猫の移動と新居", task_offsets: [0, 1] }] } };
 
+test("owned shelves can be paged from the private library", async ({ page }) => {
+  const requestedCursors: (string | null)[] = [];
+  await page.route("**/api/memberships", route => route.fulfill({ json: {
+    shelf_ids: ["owned-outside-public-page"],
+    shelves: [{ id: "owned-outside-public-page", title: "公開一覧外の所有グループ", is_owned: true }],
+  } }));
+  await page.route("**/api/cuebooks", route => route.fulfill({ json: { cuebooks: [], nextCursor: null } }));
+  await page.route(/\/api\/shelves(?:\?.*)?$/, route => {
+    const cursor = new URL(route.request().url()).searchParams.get("cursor");
+    requestedCursors.push(cursor);
+    return route.fulfill({ json: cursor
+      ? { shelves: [{ id: "second", title: "二つ目のグループ", is_owned: true }], nextCursor: null }
+      : { shelves: [{ id: "first", title: "最初のグループ", is_owned: true }], nextCursor: "page-2" } });
+  });
+
+  await page.goto("/?view=library");
+  const groups = page.getByRole("region", { name: "自分のグループ" });
+  await expect(groups).toContainText("最初のグループ");
+  await expect(groups).toContainText("公開一覧外の所有グループ");
+  await groups.getByRole("button", { name: "さらにグループを読み込む" }).click();
+  await expect(groups).toContainText("二つ目のグループ");
+  await expect(groups.getByRole("button", { name: "さらにグループを読み込む" })).toHaveCount(0);
+  expect(requestedCursors).toEqual([null, "page-2"]);
+});
+
 test("G03/W09/W11/W13: history, private original, conflict, publication recovery and reuse", async ({ page }, info) => {
   let saved = structuredClone(original);
   const publicationRequests: unknown[] = [];

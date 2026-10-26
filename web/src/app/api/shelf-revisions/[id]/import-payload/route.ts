@@ -32,7 +32,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
         origin_revision_id: revision.id,
         tasks: revision.tasks,
       },
-    });
+    }, { headers: { "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400" } });
   } catch (error) {
     return errorResponse(error);
   }

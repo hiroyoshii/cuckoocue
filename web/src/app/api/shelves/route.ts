@@ -8,7 +8,10 @@ import { dataApiError } from "@/lib/bq-store";
 export async function GET(request: NextRequest) {
   try {
     const viewer = await optionalRequestUser(request);
-    return NextResponse.json({ shelves: await listShelves(viewer?.id) });
+    const page = await listShelves(viewer?.id, request.nextUrl.searchParams.get("cursor") ?? "");
+    return NextResponse.json(page, { headers: viewer
+      ? { "Cache-Control": "private, no-store", Vary: "Authorization" }
+      : { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300", Vary: "Authorization" } });
   } catch (error) {
     return errorResponse(error);
   }

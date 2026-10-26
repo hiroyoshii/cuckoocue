@@ -40,6 +40,8 @@ export type ShelfSummary = {
 export type ShelfDetail = ShelfSummary & {
   items: Array<{ revision_id: string; position: number; revision: PublicRevisionSummary }>;
 };
+export type ShelfPage = { shelves: ShelfSummary[]; nextCursor: string | null };
+const ShelfPageSize = 20;
 const shelfColumns = (ownerExpression: string) => `id, title, context, forked_from_shelf_id, ${ownerExpression} AS is_owned,
   FORMAT_TIMESTAMP('%Y-%m-%dT%H:%M:%E6SZ', created_at) AS created_at,
   FORMAT_TIMESTAMP('%Y-%m-%dT%H:%M:%E6SZ', updated_at) AS updated_at,
@@ -58,8 +60,46 @@ const revisionColumns = `id, title,
       FROM UNNEST(provenance.sources) source WITH OFFSET pos ORDER BY pos) AS sources
   )) AS provenance`;
 
-export async function listShelves(viewer = ""): Promise<ShelfSummary[]> {
-  return bqRead(`SELECT ${shelfColumns("created_by = @viewer")} FROM ${bqTable("shelves")} ORDER BY updated_at DESC`, { viewer });
+export async function listShelves(viewer = "", cursor = ""): Promise<ShelfPage> {
+  const boundary = cursor ? decodeShelfCursor(cursor) : null;
+  const rows = await bqRead<ShelfSummary>(`
+    SELECT ${shelfColumns("created_by = @viewer")} FROM ${bqTable("shelves")}
+    WHERE NOT @hasCursor OR updated_at < TIMESTAMP(@cursorUpdated)
+      OR (updated_at = TIMESTAMP(@cursorUpdated) AND id < @cursorId)
+    ORDER BY updated_at DESC, id DESC
+    LIMIT ${ShelfPageSize + 1}`, {
+    viewer,
+    hasCursor: Boolean(boundary),
+    cursorUpdated: boundary?.updatedAt ?? "1970-01-01T00:00:00.000Z",
+    cursorId: boundary?.id ?? "",
+  });
+  const shelves = rows.slice(0, ShelfPageSize);
+  const last = shelves.at(-1);
+  return {
+    shelves,
+    nextCursor: rows.length > ShelfPageSize && last
+      ? Buffer.from(JSON.stringify({ updatedAt: last.updated_at, id: last.id })).toString("base64url")
+      : null,
+  };
+}
+
+export async function listPersonalShelves(viewer: string, membershipIds: string[]): Promise<ShelfSummary[]> {
+  const membershipFilter = membershipIds.length ? " OR id IN UNNEST(@membershipIds)" : "";
+  return bqRead<ShelfSummary>(`
+    SELECT ${shelfColumns("created_by = @viewer")} FROM ${bqTable("shelves")}
+    WHERE created_by = @viewer${membershipFilter}
+    ORDER BY updated_at DESC, id DESC`, membershipIds.length ? { viewer, membershipIds } : { viewer });
+}
+
+function decodeShelfCursor(cursor: string) {
+  if (cursor.length > 512) throw Response.json({ error: "一覧の続き位置が不正です。" }, { status: 400 });
+  try {
+    const value = JSON.parse(Buffer.from(cursor, "base64url").toString("utf8")) as { updatedAt?: unknown; id?: unknown };
+    if (typeof value.updatedAt !== "string" || !Number.isFinite(Date.parse(value.updatedAt)) || typeof value.id !== "string" || !/^[A-Za-z0-9_-]{1,160}$/.test(value.id)) throw new Error("invalid");
+    return { updatedAt: value.updatedAt, id: value.id };
+  } catch {
+    throw Response.json({ error: "一覧の続き位置が不正です。" }, { status: 400 });
+  }
 }
 export async function createShelf(owner: string, input: CreateShelfInput): Promise<ShelfSummary> {
   assertPublicCorpusSafe({ title: input.title, context_text: input.context, tasks: [] });

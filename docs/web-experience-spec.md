@@ -1162,3 +1162,18 @@ App Hosting rollout `rollout-2026-09-20-027`（commit `2f9cd71`）の成功時�
 - BQの`public_search` labelは1 job、billed 20 MiB。失敗0件、1 GiB上限拒否0件。
 
 実トラフィックはn=1で分布評価には不足する。既存70/70品質評価と16件の128/1024比較を覆す材料がないため、検索のthinking budgetは128を維持し、0への変更は行わない。enrichment/descriptionも標本0のため1024を維持し、実利用が発生してから検索とは別の品質ケースで判断する。
+
+## 32. 検索API総量制御の優先度再評価（2026-10-26）
+
+第31節までの実装・計測を踏まえ、rate limitとApp Checkを一括した高優先度タスクとして扱わない。検索は入力500文字、結果20件、thinking budget 128、BQ 1 GiB、timeout、cursorによる既存Job再利用、App Hosting最大5 instance、予算通知を実装済み。匿名検索はMemory Bankとprofile選択LLMを呼ばず、domain不一致ならembedding/BQも呼ばない。16件比較では検索解釈LLM推定費約46 USD/10万解釈、7日観測は検索1件・BQ 20 MiBであり、通常利用コストの高騰を示す証拠はない。
+
+未解消なのは、匿名UIDを作り直して要求回数を積み上げる総量リスク。予算通知は自動停止ではなく、instance上限もVertex AI/BQの月額上限ではないため、リスク自体を解消済みとはしない。一方、異常利用がない段階で全API共通limiterを実装すると、Firestore read/write、latency、障害点、運用設定を先に増やす。
+
+以後は次の順番とする。
+
+1. 検索回数・Vertex stage別呼出し・BQ bytes billed/上限拒否のdashboard/alert、現在のservice quota、停止手順を2026-10-26に確認し、運用ベースラインへ固定した。
+2. 固定回数を増やすだけでは正常利用への無影響を証明できず、limiter用storageも障害点になるため、rate limitの先行実装は取り下げた。異常トラフィックと通常利用分布が得られた場合だけ、新規検索と既存Jobを読むcursorを分けて再設計する。
+3. App Checkも、自動化された異常トラフィックがあり、通常ブラウザのvalid coverageを判断できる十分な標本が得られた場合だけmetrics-onlyから再評価する。本人認証、service quota、費用上限の代わりにはしない。
+4. enrichment、shelf description、公開時embedding、memory eventは実利用または異常呼出しが観測されたAPIだけを個別に制御し、検索用limiterを先回りして全APIへ拡張しない。
+
+具体的な着手条件と非対象は[Web API総量制御とFirebaseキー分離](web-abuse-and-firebase-key-hardening-plan.md)、現在の優先度は[Web残タスク](web-remaining-tasks.md)を正本とする。
