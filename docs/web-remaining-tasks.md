@@ -4,6 +4,8 @@
 
 この文書は、過去の監査履歴ではなく、現行コードを基準にした未完了項目だけを管理する。Web画面、Web API、公開レスポンス、App Hosting設定、Webから使うApp/Universal Linkを範囲とする。Android/iOS内部の実装、全面的な多端末同期、公開停止UIなどは含めない。
 
+2026-10-26時点で、Web単独で実施できるP0/P1/P2と公開拡大前ゲートは完了した。今すぐ着手できる未完了checkboxはなく、通常の残件はAndroid/iOSのrelease情報・実機・store公開に依存する配布ゲートだけである。規模到達時の条件付き項目は、着手条件が成立するまで残タスクに数えない。
+
 優先度は次の意味で使う。P1は、現在のmain自動配備または検索・再利用・端末受渡しという中核フローの成立を直接守るため、次に着手するもの。P2は既存機能が成立した後の防御・効率・運用改善。公開拡大前ゲートはストア公開・外部告知・広告等で匿名流入を意図的に増やす前に必須なもの。2026-10-26の全Web残件対応指示により、実装可能な公開拡大前ゲートは前倒しした。条件付きは観測された規模・異常が着手条件を満たすまで残タスクに数えない。
 
 ## 全体サマリ
@@ -16,8 +18,8 @@
 | P0 | CuckooCueデフォルト5 Shelf・30 Cuebook | BQ本番投入・Web公開受入・登録ユーザーfork済み | 18件のYouTube/ブログ/公式情報から独自編集した150タスク。原文・字幕は複製せず、出典と編集注記を表示 |
 | P0 | thinking 128/BQ 1 GiBの配備・全体評価 | 実装・評価・7日観測完了 | 16件実測ではthought token 56.1%減、検索解釈LLM推定費37.2%減、約46 USD/10万解釈。既存検索評価70/70合格。7日間の本番利用は検索1件だけで追加最適化の標本には不足 |
 | 完了 | Web CI | workflow実装・全job成功済み | Web変更時にlint、build、軽量API回帰、主要E2Eを実行する。branch protectionのrequired check化は採用しない |
-| P1受入 | 実Google認証、アカウント切替、Web↔端末受渡し | 手動受入 + 必要箇所の修正 | 開発UID・Auth emulator・UI fixtureで代用できない中核フローと本人データ境界を確定する |
-| P2 | security headers | Report-Only実装済み、本番観測/enforce待ち | CSP Report-Onlyと主要headerを導入し、違反を最小化ログで観測する |
+| P1受入 | 実Google認証、アカウント切替、Web↔端末受渡し | Web認証・本人データ境界は完了、端末受渡しは実機待ち | 開発UID・Auth emulator・UI fixtureで代用できない中核フローと本人データ境界を確定する |
+| P2 | security headers | 本番enforce・受入完了 | CSPと主要headerを強制し、違反を最小化ログで観測する |
 | P2 | 公開GETのcache・ページング・BQ上限 | 完了 | 公開一覧だけ20件cursor、本人の所有・参加一覧は完全取得、公開/private cache境界、共通BQ 1 GiB上限を固定した |
 | 公開・配布ゲート | Firebaseキー分離、store URL、release link | Web/iOS/debug制限済み、release情報待ち | platform別に制限・停止でき、利用者が正式配布版で受渡しを開始できるようにする |
 | 公開拡大前ゲート | 呼出量alert、quota確認、停止手順 | 完了 | 通常利用を推測で拒否せず、異常な費用・失敗率を検知して運用停止できるようにする |
@@ -92,8 +94,8 @@
 
 ## 公開・配布ゲート: Firebaseクライアントキー
 
-- [ ] **KEY-001: Web production、Web local/CI、Android debug/release、iOSを別キーにする。** Web production/local、Android debug、iOSは分離済み。Android release署名のfingerprintと配布用Firebase設定が未提供のため、releaseキーだけ未作成。サーバー処理はservice identityを維持する。
-- [ ] **KEY-002: caller/API restrictionを設定する。** Web productionはcanonical、App Hosting既定domain、Firebase Auth handlerの`cuckoocue.firebaseapp.com`、localはlocalhost、Android debugはpackage+debug SHA-1、iOSはbundle IDへ制限し、APIはIdentity Toolkit/Secure Tokenだけに限定した。Firebase Auth popupはhandler originからIdentity Toolkitを呼ぶため、そのoriginも必要になる。本番Webで匿名認証と実Google popup認証、Android debug/iOSの各制限headerで匿名認証→削除を確認済み。Android releaseだけRELEASE-001と同じ外部入力待ち。
+- [ ] **KEY-001 [Android release待ち]: Web production、Web local/CI、Android debug/release、iOSを別キーにする。** Web production/local、Android debug、iOSは分離済み。Android release署名のfingerprintと配布用Firebase設定が未提供のため、releaseキーだけ未作成。サーバー処理はservice identityを維持する。
+- [ ] **KEY-002 [Android release待ち]: caller/API restrictionを設定する。** Web productionはcanonical、App Hosting既定domain、Firebase Auth handlerの`cuckoocue.firebaseapp.com`、localはlocalhost、Android debugはpackage+debug SHA-1、iOSはbundle IDへ制限し、APIはIdentity Toolkit/Secure Tokenだけに限定した。Firebase Auth popupはhandler originからIdentity Toolkitを呼ぶため、そのoriginも必要になる。本番Webで匿名認証と実Google popup認証、Android debug/iOSの各制限headerで匿名認証→削除を確認済み。Android releaseだけRELEASE-001と同じ外部入力待ち。
 - [x] **KEY-003: 旧共有キーを段階廃止する。** 調査時点でplatformは既に別々のFirebase自動生成キーを使っており、全platform共用キーは存在しなかった。既存キーを用途名へ変更して制限し、廃止対象なしと確定した。
 
 ## Web CI
@@ -105,12 +107,12 @@ Webはmainの`web/`変更からApp Hostingへ自動配備される。workflow未
 ## P2: 依存・ブラウザ防御
 
 - [x] **SEC-001: production依存のadvisoryを解消する。** 2026-10-26の再監査で検出したcritical 1、high 8、moderate 6を、Next.js 16.4.3、Firebase 12.19.0、Firebase Admin 14.5.0、Zod 4.6.7と安全な推移的依存へ更新して解消した。Firebase Web SDKが固定する脆弱な`@grpc/grpc-js` 1.9系は、同じ1.xの修正版1.14.6へoverrideした。`npm audit --omit=dev` 0件、production build、lint、34件の軽量回帰、主要desktop/mobile E2E 46ケースを確認した。
-- [ ] **SEC-002: security headersをreport-onlyから導入する。** CSP Report-Only、`frame-ancestors`、`nosniff`、`Referrer-Policy`、Permissions Policy、COOP、X-Frame-Optionsを実装し、CSP reportはURL pathを捨てた構造化ログとdashboardへ接続した。production配備後にGoogle popupを含む違反を観測してCSPをenforceへ切り替える工程が残る。
+- [x] **SEC-002: security headersをenforceする。** commit `2a0c17c`でCSPをReport-Onlyからenforceへ切り替え、App Hosting build `build-2026-10-26-008`へ配備した。`frame-ancestors`、`nosniff`、`Referrer-Policy`、Permissions Policy、COOP、X-Frame-Optionsも本番responseで確認済み。通常Chromeで匿名検索4件とGoogle popupの起動・取消を再確認した。切替後のCSPログはCDP受入中の`script-src eval` 1件だけで、アプリ資源のscript/connect/frame許可先違反はなかった。
 
 ## P1受入: 実認証・Web↔端末受渡し
 
-- [ ] **ACCEPT-001: 実Google認証を確認する。** 2026-10-26に通常のChromeと本番Google popupでA→B→Aを本人操作し、元画面への復帰を確認した。Aで作成したRunはBから404、公開ShelfはBで`is_owned: false`となり、Aへ戻すと同じRunが200、Shelfが`is_owned: true`へ戻った。受入データは削除済み。残るのはpopupで同意を取り消した場合のUI復帰表示の明示確認だけである。
-- [ ] **ACCEPT-002: ブラウザ導線を実機確認する。** Android/iOSそれぞれでアプリあり/なし、Googleアカウント選択、App/Universal Link復帰を確認する。AASAは設定済みなので、Apple CDN反映とrelease端末での受信を受入対象にする。
+- [x] **ACCEPT-001: 実Google認証を確認する。** 2026-10-26に通常のChromeと本番Google popupでA→B→Aを本人操作し、元画面への復帰を確認した。Aで作成したRunはBから404、公開ShelfはBで`is_owned: false`となり、Aへ戻すと同じRunが200、Shelfが`is_owned: true`へ戻った。popupを閉じた場合も元URLを維持し、「ログイン画面が閉じられました。」を表示して再試行可能だった。受入データと専用browser profileは削除済み。
+- [ ] **ACCEPT-002 [モバイル実機待ち]: ブラウザ導線を実機確認する。** Android/iOSそれぞれでアプリあり/なし、Googleアカウント選択、App/Universal Link復帰を確認する。AASAは設定済みなので、Apple CDN反映とrelease端末での受信を受入対象にする。
 
 2026-10-26にcanonicalのAASA/assetlinksとApple CDN AASAがHTTP 200で、iOS App ID・Android package/debug署名が一致することを再確認した。残るのはrelease署名と実機でのOS受信だけである。
 
@@ -118,10 +120,10 @@ Webはmainの`web/`変更からApp Hostingへ自動配備される。workflow未
 
 ## 公開・配布ゲート: release設定と互換経路
 
-- [ ] **RELEASE-001: release署名のApp Linkを確定する。** release SHA-256をFirebaseと`assetlinks.json`へ追加し、release APKでverifiedを再確認する。
-- [ ] **RELEASE-002: 公式ストアURLを設定する。** 実在するApp Store/Google Play URLと許可された公式badgeだけを使用し、QRからインストール、WebからRun受信まで確認する。
-- [ ] **RELEASE-003: Web上の公開文書を用意する。** `/privacy`、`/terms`、`/support`とWeb内リンクは実装・production公開済み。OAuth同意画面と未作成の各store listingを本人が照合する作業だけが残る。
-- [ ] **CLEANUP-001: 旧Entry互換経路を期限付きで閉じる。** 対応中のAndroid最低versionを確認後、未使用の`CUE_BIGQUERY_TABLE`、常時410の`POST /api/task-list-entries`、`entry_id`/`GET /api/import-payload/[id]`互換、`buildAndroidImportUri`を同じrelease計画で削除する。現行`revision_id`経路は維持する。
+- [ ] **RELEASE-001 [Android待ち]: release署名のApp Linkを確定する。** release SHA-256をFirebaseと`assetlinks.json`へ追加し、release APKでverifiedを再確認する。
+- [ ] **RELEASE-002 [モバイルstore待ち]: 公式ストアURLを設定する。** 実在するApp Store/Google Play URLと許可された公式badgeだけを使用し、QRからインストール、WebからRun受信まで確認する。
+- [x] **RELEASE-003: Web上の公開文書を用意する。** `/privacy`、`/terms`、`/support`とWeb内リンクをproduction公開し、通常Chromeの公式Google OAuth popupからA/Bの認証とAuth handler復帰が成立することを確認した。未作成の各store listingとの照合はRELEASE-002へ含める。
+- [ ] **CLEANUP-001 [Android最低version待ち]: 旧Entry互換経路を期限付きで閉じる。** 対応中のAndroid最低versionを確認後、未使用の`CUE_BIGQUERY_TABLE`、常時410の`POST /api/task-list-entries`、`entry_id`/`GET /api/import-payload/[id]`互換、`buildAndroidImportUri`を同じrelease計画で削除する。現行`revision_id`経路は維持する。
 
 ## 規模到達時だけ行う項目
 

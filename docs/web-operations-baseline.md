@@ -17,9 +17,11 @@ Cloud Monitoringの `Cuckoo Cue Web operations` dashboardで次を確認する�
 - App Hosting HTTP status、P95 latency、instance数
 - Vertex検索stage呼出し
 - BigQuery billed bytes
-- CSP Report-Only違反
+- CSP enforce違反
 
 検索失敗、BQ read上限到達、App Hosting HTTP 5xxには個別alertを設定した。通知先はCloud MonitoringのWeb運用用email channelとし、検索文、prompt、token本文、UID、IPをmetric labelや通知本文へ含めない。
+
+CSPは2026-10-26から本番でenforceしている。違反reportはURL pathを捨て、directive、blocked origin、document origin、disposition、statusだけを構造化ログへ保存する。Google popupと匿名検索を切替後に再受入済みである。
 
 Vertex AI、BigQuery、Firebase Authenticationの有効quotaはCloud Consoleと`gcloud alpha services quota list`で確認した。サービスquotaは費用上限ではない。App Hosting側の最大instanceは5だが、Vertex/BQの月額を直接制限しない。
 
