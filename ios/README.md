@@ -69,6 +69,9 @@ provisioning profiles in a temporary keychain, archives and validates the IPA,
 then uploads it to App Store Connect. Configure these repository secrets before
 running it:
 
+The current production acceptance evidence and remaining physical-device checks
+are recorded in [`docs/ios-production-acceptance.md`](../docs/ios-production-acceptance.md).
+
 - `GOOGLE_SERVICE_INFO_PLIST_BASE64`
 - `APPLE_DISTRIBUTION_CERTIFICATE_P12_BASE64`
 - `APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD`
