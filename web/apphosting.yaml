@@ -7,7 +7,7 @@ runConfig:
 
 env:
   - variable: NEXT_PUBLIC_FIREBASE_API_KEY
-    value: AIzaSyAbXhblajj_8RNPEMGLlM6R-rQr66Y9KUU
+    value: AIzaSyARDwO9e-2QdSxPyMjPKuFVqkPtjiUBuSM
     availability:
       - BUILD
       - RUNTIME
