@@ -15,7 +15,7 @@
 | P0 | 33 domain・99公開Revision・境界ケース | 本番投入・評価完了 | 各domain 3件、合計99件を本番登録。既120 queryに加え、追加3 domainの12 queryも実Vertexで12/12合格 |
 | P0 | CuckooCueデフォルト5 Shelf・30 Cuebook | BQ本番投入・Web公開受入済み、登録ユーザーforkの本人操作待ち | 18件のYouTube/ブログ/公式情報から独自編集した150タスク。原文・字幕は複製せず、出典と編集注記を表示 |
 | P0 | thinking 128/BQ 1 GiBの配備・全体評価 | 実装・評価・7日観測完了 | 16件実測ではthought token 56.1%減、検索解釈LLM推定費37.2%減、約46 USD/10万解釈。既存検索評価70/70合格。7日間の本番利用は検索1件だけで追加最適化の標本には不足 |
-| P1 | Web CI | workflow実装済み、required check指定待ち | Web変更がmainへ入る前にlint、build、軽量API回帰、主要E2Eを必須化し、自動配備される回帰を止める |
+| P1 | Web CI | workflow成功済み、required check指定待ち | Web変更がmainへ入る前にlint、build、軽量API回帰、主要E2Eを必須化し、自動配備される回帰を止める |
 | P1受入 | 実Google認証、アカウント切替、Web↔端末受渡し | 手動受入 + 必要箇所の修正 | 開発UID・Auth emulator・UI fixtureで代用できない中核フローと本人データ境界を確定する |
 | P2 | security headers | Report-Only実装済み、本番観測/enforce待ち | CSP Report-Onlyと主要headerを導入し、違反を最小化ログで観測する |
 | P2 | 公開GETのcache・ページング・BQ上限 | 完了 | 公開一覧だけ20件cursor、本人の所有・参加一覧は完全取得、公開/private cache境界、共通BQ 1 GiB上限を固定した |
@@ -98,7 +98,7 @@
 
 ## P1: Web CI
 
-- [ ] **CI-001: Web検証をmainの必須checkにする。** `.github/workflows/web.yml`へlint、production build、34件の軽量回帰、主要desktop/mobile Playwrightを追加した。既存のNode/TypeScript import問題は`tsx` test loaderで解消した。GitHub CLIが未認証のため、workflowの初回実行とbranch protectionのrequired check指定だけが外部操作として残る。
+- [ ] **CI-001: Web検証をmainの必須checkにする。** `.github/workflows/web.yml`へlint、production build、34件の軽量回帰、主要desktop/mobile Playwrightを追加した。既存のNode/TypeScript import問題は`tsx` test loaderで解消した。commit `7ad93a2`の[初回全体実行](https://github.com/hiroyoshii/cuckoocue/actions/runs/40269116904)は2 jobとも成功した。残るのはGitHub branch protectionで`Lint, API regression, and production build`と`Critical desktop and mobile journeys`をrequired checkに指定する管理操作だけである。
 
 Webはmainの`web/`変更からApp Hostingへ自動配備される。workflow未配置と軽量回帰のNode/TypeScript import問題は解消済みで、残るのはGitHub上のrequired check指定だけである。
 

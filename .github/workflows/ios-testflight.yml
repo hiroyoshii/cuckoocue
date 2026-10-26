@@ -2,6 +2,9 @@ name: iOS TestFlight Upload
 
 on:
   workflow_dispatch:
+  push:
+    tags:
+      - "ios-testflight-*"
 
 permissions:
   contents: read

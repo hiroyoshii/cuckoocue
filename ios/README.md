@@ -61,7 +61,9 @@ Medium, Large, Lock Screen, scoped-run, paged, and multi-run Widget states, and
 uploads them with logs and result bundles as the
 `cuckoo-cue-ios-e2e-screenshots` artifact.
 
-`iOS TestFlight Upload` is manual-only. It injects Firebase configuration,
+`iOS TestFlight Upload` runs manually or when an `ios-testflight-*` tag is pushed.
+The tag path provides an auditable SSH-only release trigger when the GitHub API
+is unavailable. It injects Firebase configuration,
 installs an Apple Distribution certificate and the app/Widget App Store
 provisioning profiles in a temporary keychain, archives and validates the IPA,
 then uploads it to App Store Connect. Configure these repository secrets before
