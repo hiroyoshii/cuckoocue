@@ -135,3 +135,15 @@ test("W11: originals without an origin do not invent provenance", async ({ page 
   await expect(page.getByRole("link", { name: "借りた公開リストを見る" })).toHaveCount(0);
   expect(mutations).toEqual([]);
 });
+
+
+test("D4: a result without placements never inherits unrelated groups from the catalog", async ({ page }) => {
+  await fixtures(page);
+  await page.route("**/api/search", route => route.fulfill({ json: { results: [{ ...revision, tasks: original.tasks, shelves: [] }], nextCursor: null } }));
+  await page.goto("/");
+  await page.getByLabel("Search query").fill("猫との引っ越し");
+  await page.getByRole("button", { name: "検索", exact: true }).click();
+  await expect(page.locator(".search-result-item")).toBeVisible();
+  await expect(page.locator(".search-result-item .result-shelves")).toHaveCount(0);
+  await expect(page.locator(".context-preset-contents, .related-contexts")).toHaveCount(0);
+});

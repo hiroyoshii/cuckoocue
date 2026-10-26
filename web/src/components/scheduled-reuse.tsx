@@ -108,6 +108,11 @@ function ScheduleDialogContent({ source, title, tasks, devUserId, onSignIn, onSa
   }
   async function save() {
     if (submitLock.current || !valid || draft.proposedDay !== null || (past && !pastConfirmed && !draft.pending)) return;
+    if (hasFirebaseClientConfig() && !firebaseAuth().currentUser) {
+      setNeedsAuth(true);
+      setError("保存するにはアカウントにログインしてください。");
+      return;
+    }
     submitLock.current = true;
     const input: ScheduledReuseInput = draft.pending ?? { operation_id: crypto.randomUUID(), source, target_anchor_day: draft.day, time_zone: draft.zone, task_dates: dates };
     const pendingDraft = { ...draft, pending: input };
@@ -132,7 +137,7 @@ function ScheduleDialogContent({ source, title, tasks, devUserId, onSignIn, onSa
   }
   function signIn() {
     // Only the explicitly selected public content crosses an anonymous login.
-    if (source.type === "revision" && hasFirebaseClientConfig() && firebaseAuth().currentUser?.isAnonymous) {
+    if (source.type === "revision" && hasFirebaseClientConfig() && (!firebaseAuth().currentUser || firebaseAuth().currentUser?.isAnonymous)) {
       try {
         sessionStorage.setItem(resumeKey, JSON.stringify({ id: source.id, title, tasks, draft: { ...draft, pending: null } }));
       } catch { setError("日程を保持できません。ログイン後にもう一度日程を選んでください。"); return; }
@@ -141,7 +146,7 @@ function ScheduleDialogContent({ source, title, tasks, devUserId, onSignIn, onSa
     onSignIn?.();
   }
   return <dialog ref={dialog} className="run-schedule-dialog" aria-labelledby="schedule-title" onCancel={(event) => { event.preventDefault(); if (!busy) onClose(); }}>
-    <header><div><h2 id="schedule-title">最終日を選ぶ</h2><p>{title}</p></div><button type="button" className="icon-button" aria-label="閉じる" title="閉じる" disabled={busy} onClick={onClose}><X size={20} /></button></header>
+    <header><div><span className="schedule-destination">自分用のリスト · 非公開</span><h2 id="schedule-title">最終日を選ぶ</h2><p>{title}</p></div><button type="button" className="icon-button" aria-label="閉じる" title="閉じる" disabled={busy} onClick={onClose}><X size={20} /></button></header>
     <form onSubmit={(event) => { event.preventDefault(); void save(); }}>
       <div className="run-schedule-body">
         {storageWarning ? <p role="alert">このブラウザでは日程の一時保存を使えません。再読込せずに保存してください。</p> : null}

@@ -305,3 +305,5 @@
 .shelf-picker form button { justify-self: end; }
 .shelf-picker h2 { font-size: 18px; }
 .shelf-picker h3 { font-size: 16px; overflow-wrap: anywhere; }
+
+.schedule-destination { display: block; color: var(--muted); font-size: 13px; margin-bottom: 8px; }

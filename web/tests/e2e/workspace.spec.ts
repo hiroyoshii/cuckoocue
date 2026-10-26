@@ -66,7 +66,8 @@ test.beforeEach(async ({ page }) => {
 test("search is scannable, accessible, and restored after reload", async ({ page }) => {
   await page.goto("/");
   await expect(page.locator('img[alt="Cuckoo Cue"]:visible')).toBeVisible();
-  await expect(page.getByRole("region", { name: /探して、選んで、\s*スマホで管理する。/ }).getByRole("img", { name: /使い方の例/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "状況に合う手順を探す", exact: true })).toBeVisible();
+  await expect(page.locator(".context-preset-option")).toHaveCount(5);
   await expect(page.locator(".brand-empty")).toHaveCount(0);
   await expect(page.locator("#target-anchor-day")).toHaveCount(0);
   await page.getByLabel("Search query").fill("東京から名古屋へ引っ越す。役所とライフラインを整理したい");
@@ -192,10 +193,10 @@ test("public contexts fork into an independently editable shelf", async ({ page 
   });
 
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: /探して、選んで、\s*スマホで管理する。/, exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "状況に合う手順を探す", exact: true })).toBeVisible();
   await page.getByLabel("Search query").fill("猫と引っ越す");
   await page.locator(".search-composer").getByRole("button", { name: "検索", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "状況から探す" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "状況から探す" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "完了履歴" })).toBeVisible();
   await expect(page.locator('a[href^="intent://"]')).toHaveCount(0);
   await page.locator(".result-shelves").getByRole("button", { name: shelfDetail.title, exact: true }).click();

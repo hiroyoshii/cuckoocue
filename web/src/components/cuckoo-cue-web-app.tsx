@@ -29,7 +29,8 @@ import { TaskManagement } from "./task-management";
 import { BrandLockup } from "./brand-mark";
 import { AccountControl } from "./account-control";
 import { SearchResultItem } from "./search/search-result";
-import { SearchIntroduction } from "./search/search-introduction";
+import { ContextPresetChoices, ContextPresetContents } from "./search/context-presets";
+import { contextPresets, type ContextPreset } from "@/lib/context-presets";
 import { TaskEditor } from "./tasks/task-editor";
 import { CompletedRunReview, type CompletedReviewState } from "./tasks/completed-run-review";
 import { RunHandoff } from "./run-handoff";
@@ -105,6 +106,7 @@ type PersistedWorkspace = {
   searchDomain: string | null;
   nextCursor: string | null;
   hasSearched: boolean;
+  searchFailure?: { message: string; query: string; kind: "search" | "more" } | null;
   saveTitle: string;
   tasks: TaskDraft[];
   enrichment: EnrichmentDraft | null;
@@ -262,6 +264,7 @@ function AccountWorkspace({ user, authReady, devUserId, setDevUserId, importRunI
   const [androidImportUri, setAndroidImportUri] = useState<string | null>(null);
   const [targetAnchorDay, setTargetAnchorDay] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [searchFailure, setSearchFailure] = useState<PersistedWorkspace["searchFailure"]>(null);
   const [searchRetry, setSearchRetry] = useState<"search" | "more" | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
   const [savedTitle, setSavedTitle] = useState<string | null>(null);
@@ -309,7 +312,7 @@ function AccountWorkspace({ user, authReady, devUserId, setDevUserId, importRunI
       setSavedCuebook(null); setPendingPrivateSave(null); setCuebookConflict(null); setCuebookId(crypto.randomUUID()); setCuebookTaskIds([]);
       setMemberships([]); setMembershipReady(false); setSelectedShelf(null); setShelves([]); setPersonalShelves([]); setShelvesCursor(null); setShelvesLoaded(false); loadedRunId.current = null;
       pendingShelfRead.current?.abort();
-      setFailedRunRead(false);
+      setFailedRunRead(false); setSearchFailure(null); setSearchRetry(null);
       try {
         const stored = hasFirebaseClientConfig() && !user ? null : sessionStorage.getItem(`${WorkspaceStorageKey}:${identity}`);
         if (stored) {
@@ -323,6 +326,7 @@ function AccountWorkspace({ user, authReady, devUserId, setDevUserId, importRunI
             if (Array.isArray(restored.results)) setResults(restored.results);
             if (typeof restored.searchDomain === "string" || restored.searchDomain === null) setSearchDomain(restored.searchDomain);
             if (typeof restored.nextCursor === "string" || restored.nextCursor === null) setNextCursor(restored.nextCursor);
+            if (restored.searchFailure) { setSearchFailure(restored.searchFailure); setSearchRetry(restored.searchFailure.kind); }
             if (typeof restored.hasSearched === "boolean") setHasSearched(restored.hasSearched);
             if (typeof restored.saveTitle === "string") setSaveTitle(restored.saveTitle);
             if (Array.isArray(restored.tasks)) setTasks(restored.tasks);
@@ -379,7 +383,7 @@ function AccountWorkspace({ user, authReady, devUserId, setDevUserId, importRunI
       results,
       searchDomain,
       nextCursor,
-      hasSearched,
+      hasSearched, searchFailure,
       saveTitle,
       tasks,
       enrichment,
@@ -401,7 +405,7 @@ function AccountWorkspace({ user, authReady, devUserId, setDevUserId, importRunI
       return () => window.clearTimeout(notice);
     }
   }, [
-    androidImportUri, enrichment, hasSearched, nextCursor, preparedImport,
+    androidImportUri, enrichment, hasSearched, searchFailure, nextCursor, preparedImport,
     results, saveOperationId, savedTitle, saveSource, saveTitle, searchDomain, searchMessage, targetAnchorDay,
     tasks, view, workspaceRestored, completedReview, reviewingCompleted,
     cuebookId, cuebookTaskIds, savedCuebook, pendingPrivateSave, workspaceOwner, identity, user,
@@ -513,16 +517,16 @@ function AccountWorkspace({ user, authReady, devUserId, setDevUserId, importRunI
     finally { setBusyAction(null); }
   }
 
-  async function searchTaskLists(event?: FormEvent<HTMLFormElement>) {
+  async function searchTaskLists(event?: FormEvent<HTMLFormElement>, query = searchMessage) {
     event?.preventDefault();
-    if (!searchMessage.trim()) return;
+    if (!query.trim()) return;
     if (!canRequest || workspaceOwner !== identity) { onQueueSearch(); return; }
     pendingSearch.current?.abort();
     const controller = new AbortController();
     pendingSearch.current = controller;
     setBusySeconds(0);
     setBusyAction("search");
-    setErrorMessage(null);
+    setSearchFailure(null);
     setSearchRetry(null);
     setPreparedImport(null);
     setAndroidImportUri(null);
@@ -531,13 +535,13 @@ function AccountWorkspace({ user, authReady, devUserId, setDevUserId, importRunI
       const response = await cueApiFetch("/api/search", devUserId, {
         method: "POST",
         signal: controller.signal,
-        body: JSON.stringify({ message: searchMessage, page_size: 20 }),
+        body: JSON.stringify({ message: query, page_size: 20 }),
       });
       const body = await response.json();
       if (pendingSearch.current !== controller) return;
       if (response.status === 429) {
         setSearchRetry("search");
-        setErrorMessage(body.error || "検索が続いています。少し待ってから再試行してください。");
+        setSearchFailure({ message: body.error || "検索が続いています。少し待ってから再試行してください。", query, kind: "search" });
         return;
       }
       if (!response.ok) throw new Error(humanizeApiError(response.status, body.error, "検索に失敗しました。"));
@@ -550,7 +554,7 @@ function AccountWorkspace({ user, authReady, devUserId, setDevUserId, importRunI
       setSearchDomain(null);
       setNextCursor(null);
       setSearchRetry("search");
-      setErrorMessage(error instanceof Error ? error.message : "検索に失敗しました。");
+      setSearchFailure({ message: error instanceof Error ? error.message : "検索に失敗しました。", query, kind: "search" });
     } finally {
       if (pendingSearch.current === controller) {
         pendingSearch.current = null;
@@ -565,7 +569,7 @@ function AccountWorkspace({ user, authReady, devUserId, setDevUserId, importRunI
     pendingSearch.current = controller;
     setBusySeconds(0);
     setBusyAction("more");
-    setErrorMessage(null);
+    setSearchFailure(null);
     setSearchRetry(null);
     try {
       const response = await cueApiFetch("/api/search", devUserId, {
@@ -582,7 +586,7 @@ function AccountWorkspace({ user, authReady, devUserId, setDevUserId, importRunI
     } catch (error) {
       if (pendingSearch.current !== controller || controller.signal.aborted) return;
       setSearchRetry("more");
-      setErrorMessage(error instanceof Error ? error.message : "続きを読み込めませんでした。");
+      setSearchFailure({ message: error instanceof Error ? error.message : "続きを読み込めませんでした。", query: searchMessage, kind: "more" });
     } finally {
       if (pendingSearch.current === controller) {
         pendingSearch.current = null;
@@ -887,7 +891,7 @@ function AccountWorkspace({ user, authReady, devUserId, setDevUserId, importRunI
           <div className="error-banner" role="alert">
             <AlertCircle size={18} aria-hidden="true" />
             <span><strong>処理を完了できませんでした</strong><small>{errorMessage || sessionError}</small></span>
-            {view === "explore" && (searchRetry || sessionError) ? (
+            {view === "explore" && sessionError ? (
               <button type="button" onClick={() => {
                 const params = new URLSearchParams(window.location.search);
                 if (sessionError && (params.has("shelf_id") || params.has("revision_id"))) void onConnect();
@@ -920,7 +924,8 @@ function AccountWorkspace({ user, authReady, devUserId, setDevUserId, importRunI
               searchMessage={searchMessage} setSearchMessage={setSearchMessage}
               targetAnchorDay={targetAnchorDay} setTargetAnchorDay={setTargetAnchorDay}
               canSearch={canSearch && !queuedSearch} busyAction={queuedSearch ? "search" : busyAction} onSearch={searchTaskLists}
-              searchRetry={searchRetry}
+              searchRetry={searchRetry} searchError={searchFailure?.message ?? null} failedQuery={searchFailure?.query ?? ""}
+              onRetrySearch={() => { if (searchFailure?.kind === "more") void loadMoreResults(); else if (searchFailure) void searchTaskLists(undefined, searchFailure.query); }}
               searchDomain={searchDomain} hasSearched={hasSearched}
               results={results} onImport={finishScheduledImport}
               preparedImport={preparedImport} androidImportUri={androidImportUri}
@@ -1009,13 +1014,13 @@ type ExploreWorkspaceProps = SearchWorkspaceProps & ShelfWorkspaceProps;
 function ExploreWorkspace(props: ExploreWorkspaceProps) {
   return (
     <div className="explore-stack">
-      <SearchWorkspace
+      <SearchWorkspace key={props.currentUserId}
         searchMessage={props.searchMessage}
         setSearchMessage={props.setSearchMessage}
         targetAnchorDay={props.targetAnchorDay}
         setTargetAnchorDay={props.setTargetAnchorDay}
         canSearch={props.canSearch}
-        searchRetry={props.searchRetry}
+        searchRetry={props.searchRetry} searchError={props.searchError} failedQuery={props.failedQuery} onRetrySearch={props.onRetrySearch}
         busyAction={props.busyAction}
         onSearch={props.onSearch}
         searchDomain={props.searchDomain}
@@ -1031,8 +1036,8 @@ function ExploreWorkspace(props: ExploreWorkspaceProps) {
         currentUserId={props.currentUserId} onSignIn={props.onSignIn}
         onOpenShelf={props.onOpenShelf}
       />
-      {props.shelves.length || props.shelvesCursor || props.showCreateForm ? <ShelfWorkspace
-        shelves={props.shelves}
+      {props.showCreateForm ? <ShelfWorkspace
+        shelves={[]}
         shelvesLoading={props.shelvesLoading}
         busyAction={props.busyAction}
         busySeconds={props.busySeconds}
@@ -1047,7 +1052,7 @@ function ExploreWorkspace(props: ExploreWorkspaceProps) {
         createSubmitted={props.createSubmitted}
         canManage={props.canManage}
         onSignIn={props.onSignIn}
-        shelvesCursor={props.shelvesCursor}
+        shelvesCursor={null}
         onMoreShelves={props.onMoreShelves}
         embedded
       /> : null}
@@ -1060,6 +1065,7 @@ type SearchWorkspaceProps = {
   targetAnchorDay: string; setTargetAnchorDay: (value: string) => void;
   canSearch: boolean; busyAction: string | null;
   searchRetry: "search" | "more" | null;
+  searchError: string | null; failedQuery: string; onRetrySearch: () => void;
   onSearch: (event?: FormEvent<HTMLFormElement>) => void;
   searchDomain: string | null; hasSearched: boolean;
   results: SearchResult[]; onImport: (id: string, input: ScheduledReuseInput, runId: string) => void;
@@ -1071,6 +1077,45 @@ type SearchWorkspaceProps = {
 };
 
 function SearchWorkspace(props: SearchWorkspaceProps) {
+  const [example, setExample] = useState<{ id: string | null; revisions: Record<string, string> }>({ id: null, revisions: {} });
+  const [editingContext, setEditingContext] = useState(false);
+  const preset = contextPresets.find(item => item.id === example.id) ?? null;
+  const presetStorageKey = `cuckoo-cue:examples:v2:${props.currentUserId}`;
+  const changeContextButton = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      try {
+        const saved = JSON.parse(sessionStorage.getItem(presetStorageKey) ?? "null");
+        if (saved && contextPresets.some(item => item.id === saved.id)) {
+          const revisions: Record<string, string> = {};
+          for (const entry of contextPresets) if (typeof saved.revisions?.[entry.id] === "string") revisions[entry.id] = saved.revisions[entry.id];
+          setExample({ id: saved.id, revisions });
+        }
+      } catch { /* Examples do not depend on browser storage. */ }
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [presetStorageKey]);
+  function rememberExample(value: typeof example) {
+    setExample(value);
+    try { sessionStorage.setItem(presetStorageKey, JSON.stringify(value)); } catch { /* Keep the in-memory selection. */ }
+  }
+  function selectPreset(selected: ContextPreset) {
+    rememberExample({ ...example, id: selected.id });
+    setEditingContext(false);
+    requestAnimationFrame(() => changeContextButton.current?.focus({ preventScroll: true }));
+  }
+  function closeExample() {
+    rememberExample({ ...example, id: null });
+    setEditingContext(false);
+    requestAnimationFrame(() => document.querySelector<HTMLTextAreaElement>('[aria-label="Search query"]')?.focus());
+  }
+  function searchContext(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!props.searchMessage.trim() || !props.canSearch) return;
+    rememberExample({ ...example, id: null });
+    setEditingContext(false);
+    props.onSearch(event);
+  }
   const inputMounted = useRef(false);
   const mountQuery = (field: HTMLTextAreaElement | null) => {
     if (!field || inputMounted.current) return;
@@ -1111,7 +1156,7 @@ function SearchWorkspace(props: SearchWorkspaceProps) {
 
   useEffect(() => {
     const node = pagingSentinel.current;
-    if (!node || !nextCursor || busyAction !== null || props.searchRetry) return;
+    if (!node || !nextCursor || busyAction !== null || props.searchRetry || preset || editingContext) return;
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) onMore();
@@ -1120,7 +1165,7 @@ function SearchWorkspace(props: SearchWorkspaceProps) {
     );
     observer.observe(node);
     return () => observer.disconnect();
-  }, [nextCursor, busyAction, onMore, props.searchRetry]);
+  }, [nextCursor, busyAction, onMore, props.searchRetry, preset, editingContext]);
 
   useEffect(() => {
     if (!props.preparedImport || !handoffPanel.current) return;
@@ -1129,22 +1174,27 @@ function SearchWorkspace(props: SearchWorkspaceProps) {
   }, [props.preparedImport]);
 
   return (
-    <div className={`workspace${!props.hasSearched ? " search-landing" : ""}`}>
-      {!props.hasSearched ? (
-        <section className="search-welcome" aria-labelledby="search-welcome-title">
-          <header>
-            <p className="search-welcome-eyebrow">暮らしのやることリスト</p>
-            <h1 id="search-welcome-title">探して、選んで、<br />スマホで管理する。</h1>
-          </header>
-          <SearchIntroduction />
-        </section>
-      ) : <header className="workspace-heading"><h1>探す</h1></header>}
-      <form className="search-composer" onSubmit={props.onSearch} autoComplete="off">
-        <label><span>{!props.hasSearched ? "どんなことの準備をしますか？" : "目的や条件"}</span><textarea ref={mountQuery} aria-label="Search query" value={props.searchMessage} onChange={(event) => props.setSearchMessage(event.target.value)} placeholder="猫と一緒に引っ越す" rows={2} /></label>
-        <div>
-          <button className="primary-action" type="submit" disabled={!props.canSearch}>{props.busyAction === "search" ? <Loader2 className="spin" size={18} /> : <Search size={18} />}検索</button>
-        </div>
+    <div className={`workspace context-search-workspace${preset || !props.hasSearched || editingContext ? " context-search-wide" : ""}`}>
+      <header className="workspace-heading"><h1>状況に合う手順を探す</h1></header>
+      <form className="search-composer context-composer" onSubmit={searchContext} autoComplete="off">
+        <label><span>あなたの状況・やりたいこと</span><textarea ref={mountQuery} aria-label="Search query" value={props.searchMessage} onChange={(event) => props.setSearchMessage(event.target.value)} placeholder="例：一泊ソロキャンプで、雨の日の食事に備えたい" rows={2} /></label>
+        <div><button className="primary-action" type="submit" disabled={!props.canSearch}>{props.busyAction === "search" ? <Loader2 className="spin" size={18} /> : <Search size={18} />}検索</button></div>
       </form>
+      {preset && !editingContext ? <div className="example-toolbar">
+        <span>運営が用意した例</span>
+        <div><button ref={changeContextButton} type="button" className="text-action" onClick={() => setEditingContext(true)}>他の例を見る</button>
+        <button type="button" className="text-action" onClick={closeExample}>{props.hasSearched ? "検索結果に戻る" : "例を閉じる"}</button></div>
+      </div> : <>
+        {editingContext || !props.hasSearched ? <ContextPresetChoices selectedId={example.id} disabled={props.busyAction !== null} onSelect={selectPreset} /> : <button type="button" className="text-action example-open" onClick={() => setEditingContext(true)}>運営が用意した例を見る</button>}
+        {editingContext ? <button type="button" className="text-action context-cancel" onClick={() => { setEditingContext(false); requestAnimationFrame(() => changeContextButton.current?.focus()); }}>{preset ? "閲覧中の例に戻る" : "検索結果に戻る"}</button> : null}
+      </>}
+      {preset ? <div hidden={editingContext}><ContextPresetContents key={preset.id} preset={preset} selectedId={example.revisions[preset.id] ?? null}
+        onSelectRevision={id => rememberExample({ ...example, revisions: { ...example.revisions, [preset.id]: id } })}
+        disabled={props.busyAction !== null} onUse={setSelectedImport} /></div> : null}
+      {!preset && !editingContext && props.searchError ? <div className="error-banner" role="alert">
+        <AlertCircle size={18} aria-hidden="true" /><span><strong>{props.searchError}</strong><small>検索条件：{props.failedQuery}</small></span>
+        <button type="button" onClick={props.onRetrySearch} disabled={props.busyAction !== null}><RotateCcw size={16} aria-hidden="true" />{props.searchRetry === "more" ? "続きを再読込" : "再検索"}</button>
+      </div> : null}
       {props.busyAction === "search" ? (
         <ProgressNotice label={progressLabel("search")} />
       ) : null}
@@ -1169,10 +1219,10 @@ function SearchWorkspace(props: SearchWorkspaceProps) {
           {props.preparedImport.tasks.length > 3 ? <small className="handoff-rest">ほか{props.preparedImport.tasks.length - 3}件</small> : null}
         </section>
       ) : null}
-      {props.results.length > 0 ? (
+      {!preset && !editingContext && props.results.length > 0 ? (
         <div className="result-heading"><span>{props.results.length}件</span>{props.searchDomain ? <span>{props.searchDomain}</span> : null}</div>
       ) : null}
-      <section className="cue-surface" aria-label="検索結果" hidden={!props.hasSearched} aria-busy={props.busyAction === "search"}>
+      <section className="cue-surface" aria-label="検索結果" hidden={!props.hasSearched || Boolean(preset) || editingContext} aria-busy={props.busyAction === "search"}>
         {props.busyAction === "search" ? <div className="search-skeleton" aria-hidden="true"><span /><span /><span /></div> : props.results.length === 0 ? (props.searchRetry ? null : <EmptySearch hasSearched={props.hasSearched} />) : (
           <div className="cue-stack">
             {props.results.map((result) => <SearchResultItem key={result.id} result={result} disabled={props.busyAction !== null} onImport={() => setSelectedImport(result)} onOpenShelf={props.onOpenShelf} expanded={expandedResults.has(result.id)} onExpand={(expanded) => expandResult(result.id, expanded)} />)}
