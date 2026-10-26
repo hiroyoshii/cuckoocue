@@ -13,7 +13,7 @@
 | P0 | 公開APIの内部ID除去、検索ログ最小化、入力上限 | 完了 | 公開レスポンスからUID/私的原本IDを100%除去。検索条件由来の語句・属性hashを成功ログから100%除去。検索500文字、cursor 4,096文字、リスト200件などで固定上限化 |
 | P0 | domainカタログ、検索・保存接続 | 完了 | 管理語彙を33件へ拡張。保存値と検索条件を完全一致にし、分類揺れによる候補漏れを抑制 |
 | P0 | 33 domain・99公開Revision・境界ケース | 本番投入・評価完了 | 各domain 3件、合計99件を本番登録。既120 queryに加え、追加3 domainの12 queryも実Vertexで12/12合格 |
-| P0 | CuckooCueデフォルト5 Shelf・30 Cuebook | BQ本番投入・Web公開受入済み、登録ユーザーforkの本人操作待ち | 18件のYouTube/ブログ/公式情報から独自編集した150タスク。原文・字幕は複製せず、出典と編集注記を表示 |
+| P0 | CuckooCueデフォルト5 Shelf・30 Cuebook | BQ本番投入・Web公開受入・登録ユーザーfork済み | 18件のYouTube/ブログ/公式情報から独自編集した150タスク。原文・字幕は複製せず、出典と編集注記を表示 |
 | P0 | thinking 128/BQ 1 GiBの配備・全体評価 | 実装・評価・7日観測完了 | 16件実測ではthought token 56.1%減、検索解釈LLM推定費37.2%減、約46 USD/10万解釈。既存検索評価70/70合格。7日間の本番利用は検索1件だけで追加最適化の標本には不足 |
 | 完了 | Web CI | workflow実装・全job成功済み | Web変更時にlint、build、軽量API回帰、主要E2Eを実行する。branch protectionのrequired check化は採用しない |
 | P1受入 | 実Google認証、アカウント切替、Web↔端末受渡し | 手動受入 + 必要箇所の修正 | 開発UID・Auth emulator・UI fixtureで代用できない中核フローと本人データ境界を確定する |
@@ -56,7 +56,7 @@
 - [x] **EDITORIAL-001: 第1弾データを固定する。** 5 Shelf、30 Cuebook/Revision、150タスク、18公開出典、30配置をmanifestに固定した。Runは利用者固有の実行記録のため作らない。
 - [x] **EDITORIAL-002: 出典と編集境界を実装する。** YouTube/ブログは調査根拠とURLを保持し、本文・字幕・画像を公開データへ複製しない。公閏DTOには内部観察メモを出さず、出典メタデータとCuckooCue編集表示だけを返す。
 - [x] **EDITORIAL-003: 安全なseedと表示回帰を用意する。** Cuebook先行作成、Revision不変検査、確認文字列、既存Revisionのembedding再計算回避、レスポンシブ/アクセシビリティE2Eを実装した。
-- [ ] **EDITORIAL-004 [P1受入]: 本番投入と公開受入を完了する。** 本番`cuckoocue.cuckoo_cue`の99 managed Revision、30 editorial Revision、5 default Shelf、30配置を2026-09-27に再assertした。App Hosting rollout `rollout-2026-09-20-027`（commit `2f9cd71`）で5 Shelf各6件、PC/mobile表示、出典展開、実検索から関連Shelfへの命中を確認済み。残るのは登録済み本人による本番fork 1回だけ。実装上`curation`をINSERTせず、desktop/mobile回帰でも印が非継承であることは確認済み。
+- [x] **EDITORIAL-004 [P1受入]: 本番投入と公開受入を完了する。** 本番`cuckoocue.cuckoo_cue`の99 managed Revision、30 editorial Revision、5 default Shelf、30配置を2026-09-27に再assertした。App Hosting rollout `rollout-2026-09-20-027`（commit `2f9cd71`）で5 Shelf各6件、PC/mobile表示、出典展開、実検索から関連Shelfへの命中を確認済み。2026-10-26に登録済み本人が本番のdefault Shelfをforkし、3項目、所有者判定、`forked_from_shelf_id`、`curation`非継承を実レスポンスで確認した。アカウントBでは非所有となることも確認し、受入用ShelfとRunは確認後に削除した。
 
 完了条件: 本番で5 Shelf・30 Revisionが閲覧でき、各Revisionの出典が開け、詳細・Shelf・forkの表示境界がローカルE2Eと一致する。
 
@@ -93,7 +93,7 @@
 ## 公開・配布ゲート: Firebaseクライアントキー
 
 - [ ] **KEY-001: Web production、Web local/CI、Android debug/release、iOSを別キーにする。** Web production/local、Android debug、iOSは分離済み。Android release署名のfingerprintと配布用Firebase設定が未提供のため、releaseキーだけ未作成。サーバー処理はservice identityを維持する。
-- [ ] **KEY-002: caller/API restrictionを設定する。** Web productionはcanonical/hosted origin、localはlocalhost、Android debugはpackage+debug SHA-1、iOSはbundle IDへ制限し、APIはIdentity Toolkit/Secure Tokenだけに限定した。Web/Android debug/iOSの各制限headerで匿名認証→削除を確認済み。Android releaseだけRELEASE-001と同じ外部入力待ち。
+- [ ] **KEY-002: caller/API restrictionを設定する。** Web productionはcanonical、App Hosting既定domain、Firebase Auth handlerの`cuckoocue.firebaseapp.com`、localはlocalhost、Android debugはpackage+debug SHA-1、iOSはbundle IDへ制限し、APIはIdentity Toolkit/Secure Tokenだけに限定した。Firebase Auth popupはhandler originからIdentity Toolkitを呼ぶため、そのoriginも必要になる。本番Webで匿名認証と実Google popup認証、Android debug/iOSの各制限headerで匿名認証→削除を確認済み。Android releaseだけRELEASE-001と同じ外部入力待ち。
 - [x] **KEY-003: 旧共有キーを段階廃止する。** 調査時点でplatformは既に別々のFirebase自動生成キーを使っており、全platform共用キーは存在しなかった。既存キーを用途名へ変更して制限し、廃止対象なしと確定した。
 
 ## Web CI
@@ -109,7 +109,7 @@ Webはmainの`web/`変更からApp Hostingへ自動配備される。workflow未
 
 ## P1受入: 実認証・Web↔端末受渡し
 
-- [ ] **ACCEPT-001: 実Google認証を確認する。** 同意、取消、元画面への復帰、AからBへのアカウント切替で、前の利用者の私的workspaceが表示・保存されないことを本人操作で確認する。
+- [ ] **ACCEPT-001: 実Google認証を確認する。** 2026-10-26に通常のChromeと本番Google popupでA→B→Aを本人操作し、元画面への復帰を確認した。Aで作成したRunはBから404、公開ShelfはBで`is_owned: false`となり、Aへ戻すと同じRunが200、Shelfが`is_owned: true`へ戻った。受入データは削除済み。残るのはpopupで同意を取り消した場合のUI復帰表示の明示確認だけである。
 - [ ] **ACCEPT-002: ブラウザ導線を実機確認する。** Android/iOSそれぞれでアプリあり/なし、Googleアカウント選択、App/Universal Link復帰を確認する。AASAは設定済みなので、Apple CDN反映とrelease端末での受信を受入対象にする。
 
 2026-10-26にcanonicalのAASA/assetlinksとApple CDN AASAがHTTP 200で、iOS App ID・Android package/debug署名が一致することを再確認した。残るのはrelease署名と実機でのOS受信だけである。

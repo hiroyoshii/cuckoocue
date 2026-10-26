@@ -85,9 +85,9 @@ App Checkは現時点の高優先度タスクではない。正規Webアプリ�
 - Android debug
 - iOS
 
-Webは許可origin、Androidはpackageと署名証明書、iOSはbundle IDでcaller restrictionを設定する。API allowlistは実トラフィックから確定し、Firebase Authentication、匿名ログイン、Firestore等を推測で壊さない。サーバー側BigQuery・Vertex AI・管理処理はservice identityを維持し、クライアントキーへ移さない。
+Webは許可origin、Androidはpackageと署名証明書、iOSはbundle IDでcaller restrictionを設定する。Web productionの許可originにはcanonicalとApp Hosting既定domainに加え、Firebase Auth popupがIdentity Toolkitを呼ぶ`cuckoocue.firebaseapp.com`のAuth handler originも含める。API allowlistは実トラフィックから確定し、Firebase Authentication、匿名ログイン、Firestore等を推測で壊さない。サーバー側BigQuery・Vertex AI・管理処理はservice identityを維持し、クライアントキーへ移さない。
 
-Web production/local、Android debug、iOSは分離・caller制限・Auth API allowlistを反映済み。既存構成に全platform共用キーはなかったため旧共有キーの廃止対象はない。Android releaseだけはrelease署名fingerprintと配布用設定の確定後に作る。
+Web production/local、Android debug、iOSは分離・caller制限・Auth API allowlistを反映済み。2026-10-26に本番Webの匿名認証と実Google popup認証を確認し、Auth handler origin不足でGoogle認証が拒否される構成不備を上記許可origin追加で解消した。既存構成に全platform共用キーはなかったため旧共有キーの廃止対象はない。Android releaseだけはrelease署名fingerprintと配布用設定の確定後に作る。
 
 ## 対象外
 
