@@ -1314,3 +1314,15 @@ P1は次の入口実装の受入前に解消、P2は同じ改修で操作・情�
 - 開いたら状況名へfocusを移し、取消時は入口へ戻す。取消・再読み込みで検索文と作成下書きを保持する。応答不明後は入力を固定し、同じ操作ID・内容で再試行する既存の保存契約を維持する。
 - 失敗していたG14の既存2ケースは期待値を変えず成功。検索・配置先への遷移・例の復帰・検索失敗と再試行を含む対象25件が成功、mobile専用ケースのdesktop実行1件をskip。0件時の作成開始・取消・入力復元・キーボードとaxeをPC/mobileで追加確認した。build（TypeScript含む）・lint・diff検査も成功。
 - `residual-fixes.spec.ts`をCIの主要UIテストに追加した。画面テストのAPI応答はfixtureであり、実Googleログインや本番へのグループ作成の証拠とは区別する。[作成下書きPC](review-screenshots/web/group-creation-fix/creation-draft-desktop.png)・[mobile](review-screenshots/web/group-creation-fix/creation-draft-mobile.png)を確認した。
+
+## 39. 作成操作をログイン後に再開する（2026-10-31）
+
+G14 / W15の追加残件。匿名検索後の「新しい状況」はログインを呼ぶだけだったため、認証でAccountWorkspaceが作り直されると作成操作を失っていた。
+
+- 作成入口からのログインだけ、検索文と作成開始の意思をsessionStorageへ一時保存する。日程保存・通常のアカウントログインとは別のcallbackを使い、登録済みアカウントのworkspace全体を引き継がない。
+- Firebaseのredirect結果を処理してからworkspaceを復元する。登録済みユーザーになったら、15分以内の明示操作を一度だけ消費して作成フォームへ戻し、状況名へfocusする。グループの自動作成・公開は行わない。
+- popup失敗、redirect取消・エラー、期限切れでは操作を破棄する。通常ログイン・アカウント切替で過去の作成操作を再発火させない。認証後の下書きは従来どおりそのユーザーだけのworkspaceへ保存する。
+- Firebase SDKのHTTP fixture試験に、画面全体の再読込後の復帰、同じdocument内のセッション変更、取消後の通常ログイン、期限切れ、消費後の別アカウント境界を追加した。実Google OAuthそのものをこの試験の成功で置き換えない。10/26の実Google A→B→A確認は完了記録を維持する。
+- PC/mobileの復帰フォームを撮影し確認した。実機ブラウザでの今回操作の最終受入は[両OSのD01](mobile-device-acceptance.md)に明示する。
+
+検証結果: Firebase設定ありの認証回帰14件と、通常設定の主要回帰66件がPC/mobileで成功。production build（TypeScript含む）、lint、差分検査も成功。認証回帰はHTTP fixture、通常回帰は開発UIDと業務API fixtureであり、実機Googleログインの証拠にはしない。

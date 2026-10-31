@@ -13,6 +13,7 @@ import {
   GoogleAuthProvider,
   OAuthProvider,
   deleteUser,
+  getRedirectResult,
   onAuthStateChanged,
   signInAnonymously,
   signInWithPopup,
@@ -126,6 +127,18 @@ type PersistedWorkspace = {
 
 const WorkspaceStorageKey = "cuckoo-cue:web-workspace:v1";
 const GuestSearchStorageKey = "cuckoo-cue:guest-search:v1";
+// Only an explicit guest action crosses login; never transfer a user's workspace.
+const CreateLoginStorageKey = "cuckoo-cue:create-login:v1";
+function consumeCreateLogin(): string | null {
+  const raw = sessionStorage.getItem(CreateLoginStorageKey);
+  sessionStorage.removeItem(CreateLoginStorageKey);
+  if (!raw) return null;
+  try {
+    const intent = JSON.parse(raw);
+    const age = Date.now() - intent.createdAt;
+    return typeof intent.query === "string" && intent.query.length <= 500 && age >= 0 && age < 15 * 60_000 ? intent.query : null;
+  } catch { return null; }
+}
 
 const emptyTask = (): TaskDraft => ({
   text: "", default_priority: null, relative_start_day: null, relative_end_day: null,
@@ -159,34 +172,54 @@ export function CuckooCueWebApp({ importRunId }: { importRunId?: string } = {}) 
   }, []);
   useEffect(() => {
     if (!hasFirebaseClientConfig()) return;
-    return onAuthStateChanged(firebaseAuth(), (next) => {
-      const field = document.activeElement;
-      if (field instanceof HTMLTextAreaElement && field.getAttribute("aria-label") === "Search query") {
-        searchFocus.current = { start: field.selectionStart, end: field.selectionEnd };
+    let disposed = false;
+    let unsubscribe: (() => void) | undefined;
+    const auth = firebaseAuth();
+    // Redirect completion (including cancellation) must settle before restoring an action.
+    void getRedirectResult(auth).catch(error => {
+      try { sessionStorage.removeItem(CreateLoginStorageKey); } catch { /* Storage may be disabled. */ }
+      setAccountError(loginError(error));
+      setAccountMenu(window.matchMedia("(max-width: 680px)").matches ? "mobile" : "desktop");
+    }).finally(() => {
+      if (disposed) return;
+      if (!auth.currentUser || auth.currentUser.isAnonymous) {
+        try { sessionStorage.removeItem(CreateLoginStorageKey); } catch { /* Storage may be disabled. */ }
       }
-      if (previousUser.current && !previousUser.current.isAnonymous && previousUser.current.uid !== next?.uid) {
-        setSearchMessage(""); editedSearch.current = false; setQueuedSearch(false); searchFocus.current = null;
-      }
-      try {
-        if (next || previousUser.current) {
-          // Once authenticated, only the account's workspace may restore input.
-          sessionStorage.removeItem(GuestSearchStorageKey);
-        } else if (!editedSearch.current) {
-          const draft = sessionStorage.getItem(GuestSearchStorageKey);
-          if (draft !== null) {
-            setSearchMessage(draft);
-            editedSearch.current = true;
-          }
+      unsubscribe = onAuthStateChanged(auth, (next) => {
+        const field = document.activeElement;
+        if (field instanceof HTMLTextAreaElement && field.getAttribute("aria-label") === "Search query") {
+          searchFocus.current = { start: field.selectionStart, end: field.selectionEnd };
         }
-      } catch { /* Keep the current input when browser storage is unavailable. */ }
-      previousUser.current = next;
-      setUser(next); setAuthReady(true);
+        if (previousUser.current && !previousUser.current.isAnonymous && previousUser.current.uid !== next?.uid) {
+          setSearchMessage(""); editedSearch.current = false; setQueuedSearch(false); searchFocus.current = null;
+        }
+        try {
+          if (next || previousUser.current) {
+            // Once authenticated, only the account's workspace may restore input.
+            sessionStorage.removeItem(GuestSearchStorageKey);
+          } else if (!editedSearch.current) {
+            const draft = sessionStorage.getItem(GuestSearchStorageKey);
+            if (draft !== null) {
+              setSearchMessage(draft);
+              editedSearch.current = true;
+            }
+          }
+        } catch { /* Keep the current input when browser storage is unavailable. */ }
+        previousUser.current = next;
+        setUser(next); setAuthReady(true);
+      });
     });
+    return () => { disposed = true; unsubscribe?.(); };
   }, []);
-  const signIn = async (kind: "google" | "apple" = "google") => {
+  const signIn = async (kind: "google" | "apple" = "google", create = false) => {
     if (accountBusy) return false;
     setAccountBusy("login"); setAccountError(null);
     try {
+      if (create && (!user || user.isAnonymous)) {
+        sessionStorage.setItem(CreateLoginStorageKey, JSON.stringify({ query: searchMessage, createdAt: Date.now() }));
+      } else {
+        try { sessionStorage.removeItem(CreateLoginStorageKey); } catch { /* Ordinary login needs no action storage. */ }
+      }
       const provider = kind === "google" ? new GoogleAuthProvider() : new OAuthProvider("apple.com");
       if (provider instanceof GoogleAuthProvider) provider.setCustomParameters({ prompt: "select_account" });
       else { provider.addScope("email"); provider.addScope("name"); }
@@ -194,6 +227,7 @@ export function CuckooCueWebApp({ importRunId }: { importRunId?: string } = {}) 
       else await signInWithPopup(firebaseAuth(), provider);
       return true;
     } catch (error) {
+      try { sessionStorage.removeItem(CreateLoginStorageKey); } catch { /* Preserve the visible search. */ }
       setAccountError(loginError(error));
       setAccountMenu(window.matchMedia("(max-width: 680px)").matches ? "mobile" : "desktop");
       return false;
@@ -248,17 +282,17 @@ export function CuckooCueWebApp({ importRunId }: { importRunId?: string } = {}) 
       }
     }}
     restoreSearch={value => { if (!editedSearch.current) setSearchMessage(value); }} searchFocus={searchFocus}
-    onConnect={connect} onSignIn={() => signIn("google")} sessionError={error} queuedSearch={queuedSearch}
+    onConnect={connect} onSignIn={() => signIn("google")} onCreateSignIn={() => signIn("google", true)} sessionError={error} queuedSearch={queuedSearch}
     onQueueSearch={() => { setQueuedSearch(true); if (hasFirebaseClientConfig()) void connect(); }} onConsumeSearch={() => setQueuedSearch(false)}
     desktopAccount={accountControl("desktop")} mobileAccount={accountControl("mobile")} />;
 }
 
 function AccountWorkspace({ user, authReady, devUserId, setDevUserId, importRunId, searchMessage, setSearchMessage, restoreSearch, searchFocus,
-  onConnect, onSignIn: signInWithGoogle, sessionError, queuedSearch, onQueueSearch, onConsumeSearch, desktopAccount, mobileAccount }: {
+  onConnect, onSignIn: signInWithGoogle, onCreateSignIn, sessionError, queuedSearch, onQueueSearch, onConsumeSearch, desktopAccount, mobileAccount }: {
   user: FirebaseUser | null; devUserId: string; setDevUserId: (value: string) => void; importRunId?: string;
   authReady: boolean; searchMessage: string; setSearchMessage: (value: string) => void; restoreSearch: (value: string) => void;
   searchFocus: RefObject<{ start: number; end: number } | null>;
-  onConnect: () => Promise<void>; onSignIn: () => Promise<boolean>; sessionError: string | null; queuedSearch: boolean;
+  onConnect: () => Promise<void>; onSignIn: () => Promise<boolean>; onCreateSignIn: () => Promise<boolean>; sessionError: string | null; queuedSearch: boolean;
   onQueueSearch: () => void; onConsumeSearch: () => void; desktopAccount: ReactNode; mobileAccount: ReactNode;
 }) {
   const [view, setView] = useState<View>("explore");
@@ -376,12 +410,22 @@ function AccountWorkspace({ user, authReady, devUserId, setDevUserId, importRunI
         const entryUrl = new URL(window.location.href);
         const entryView = entryUrl.searchParams.get("view");
         if (entryView === "history" || entryView === "library" || entryView === "apps") setView(entryView);
+        if (user && !user.isAnonymous) {
+          try {
+            const query = consumeCreateLogin();
+            if (query !== null) {
+              restoreSearchRef.current(query);
+              setView("explore"); setShowShelfCreateForm(true);
+              searchFocus.current = null;
+            }
+          } catch { /* Restoring the account must work without browser storage. */ }
+        }
         setWorkspaceRestored(true);
         setWorkspaceOwner(identity);
       }
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [authReady, identity, user]);
+  }, [authReady, identity, user, searchFocus]);
 
   useEffect(() => {
     if (workspaceOwner !== identity || !searchFocus.current) return;
@@ -965,6 +1009,7 @@ function AccountWorkspace({ user, authReady, devUserId, setDevUserId, importRunI
               createSubmitted={shelfCreateSubmitted}
               canManage={!hasFirebaseClientConfig() || Boolean(user && !user.isAnonymous)}
               onSignIn={signInWithGoogle}
+              onCreateSignIn={onCreateSignIn}
             />
           )
         ) : !authReady || workspaceOwner !== identity ? (
@@ -1064,7 +1109,7 @@ function ExploreWorkspace(props: ExploreWorkspaceProps) {
         onCreateShelf={props.onCreateShelf}
         createSubmitted={props.createSubmitted}
         canManage={props.canManage}
-        onSignIn={props.onSignIn}
+        onCreateSignIn={props.onCreateSignIn}
       /> : null}
     </div>
   );
@@ -1270,7 +1315,7 @@ type ShelfCreationProps = {
   setShowCreateForm: (value: boolean) => void;
   onCreateShelf: (event: FormEvent<HTMLFormElement>) => void;
   canManage: boolean;
-  onSignIn: () => void;
+  onCreateSignIn: () => void;
 };
 
 function ShelfCreation(props: ShelfCreationProps) {
@@ -1290,7 +1335,7 @@ function ShelfCreation(props: ShelfCreationProps) {
           requestAnimationFrame(() => trigger.current?.focus());
         }}>キャンセル</button> : null}<button type="submit" className="primary-action" disabled={props.busyAction !== null}>{props.createSubmitted ? "作成を再試行" : "作成"}</button></div>
       </form>
-    </> : <button ref={trigger} type="button" className="text-action" disabled={props.busyAction !== null} onClick={() => props.canManage ? props.setShowCreateForm(true) : props.onSignIn()}>
+    </> : <button ref={trigger} type="button" className="text-action" disabled={props.busyAction !== null} onClick={() => props.canManage ? props.setShowCreateForm(true) : props.onCreateSignIn()}>
       <Plus size={16} aria-hidden="true" />新しい状況
     </button>}
   </section>;

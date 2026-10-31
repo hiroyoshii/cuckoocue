@@ -1,6 +1,6 @@
 # Mobile仕上げTodo
 
-2026-09-13作成、2026-09-22更新。Android・iOSの現行コードとCIを基準に残件を記録する。古い設計書の「未実装」をそのまま復活させない。
+2026-09-13作成、2026-10-31更新。Android・iOSの現行コードとCIを基準に残件を記録する。古い設計書の「未実装」をそのまま復活させない。
 
 ## 固定する前提
 
@@ -10,13 +10,27 @@
 - iOSはAndroidと操作の意味・到達先を揃える。Material部品や可変サイズWidgetをそのまま移植しない。
 - 新しいEntity、検索方式、公開方式をこのTodoの名目で追加しない。
 
+## 残件優先度（2026-10-31再照合）
+
+P1は、実装済みの中核フローをmainの最新コード・実サービス・配布ビルドで成立させる作業だけに限定する。網羅的な比較資料やスクリーンショット更新はP2、正式store URLが必要な作業は公開・配布ゲートとする。
+
+| 優先 | iOS作業 | 完了条件 |
+|---|---|---|
+| 完了 | 現行iOSコードのE2E | [40270605502](https://github.com/hiroyoshii/cuckoocue/actions/runs/40270605502)成功。現行mainまで実装差分なし |
+| P1 | Web→iOS→Widget→Webの実サービス受入 | 実認証・実API・配布ビルドで同じRunを往復し、再試行と別account境界も成立する |
+| P1受入 | TestFlight build 10で実機確認 | upload済み。testerへの表示・実機インストールと連続編集結果を記録する |
+| P2 | OS間比較表、網羅的なWidget状態撮影、Product Guide更新 | 機能成立後に現行仕様と画像を揃える |
+| 公開・配布ゲート | App Store URLとインストール導線 | 正式URL/QRから導入し、WebのRunを受信できる |
+
+Appleログイン、account削除、法務リンク、App Store寸法の日本語画像は2026-09-27までの後続commitで追加済みであり、残件として復活させない。iOSのE2Eとbuild 10のuploadを未実施へ戻さない。実機の開始手順・APK準備・合格条件は[実機検証の開始手順](mobile-device-acceptance.md)、iOSの配布証拠は[iOS本番受入](ios-production-acceptance.md)を参照する。
+
 ## iOS上位UIの判断記録（2026-09-22）
 
 Run一覧・Task一覧の**操作構造と情報密度はAndroidに揃え、部品とOS固有の挙動はiOSに合わせる**。Run行にTaskの内容を見せ、Run詳細でTaskの追加・本文編集・完了・優先度・開始日・期限・並べ替えを連続して扱えるようにする。NavigationStack、List、Menu、Toggle、DatePicker、swipe action等はiOSのものを使い、独立した一時操作に限ってsheetを使う。「iOSらしさ」は日常的な編集を別sheetへ分離する理由にはならない。
 
 以前のsheet中心の判断は誤りだった。旧Todoの「NavigationStack・sheet・Formを維持」を、各Task編集をsheetに送る制約として読み過ぎた。また、値を編集できるかだけをE2Eで確認し、一覧で実際のTaskを把握できるか、複数Taskを続けて編集できるか、必要なタップ数がAndroidと乖離しないかを受入条件にしていなかった。iOSのプラットフォーム制約を根拠にした設計ではない。今後は「ネイティブ部品の使用」と「操作効率」を別々に評価し、両OSの同一シナリオ・スクリーンショットで確認する。
 
-M02のインライン編集は`670dec3`、`b1025da`、`0f26beb`で`main`へ反映した。UI・モデルテストとアプリスクリーンショットは[CI #57](https://github.com/hiroyoshii/cuckoocue/actions/runs/35522573098)で成功。[CI #58](https://github.com/hiroyoshii/cuckoocue/actions/runs/35523506229)ではアプリ側は成功したが、実ホーム画面Widgetの自動配置テストで全体が失敗した。最終コミットのCI全体を成功扱いしない。
+M02のインライン編集は`670dec3`、`b1025da`、`0f26beb`で`main`へ反映した。UI・モデルテストとアプリスクリーンショットは[CI #57](https://github.com/hiroyoshii/cuckoocue/actions/runs/35522573098)で成功。[CI #58](https://github.com/hiroyoshii/cuckoocue/actions/runs/35523506229)ではアプリ側は成功したが、実ホーム画面Widgetの自動配置テストで全体が失敗した。当時のCI全体は失敗だった。その後の全体成功は2026-10-31再照合欄のrunを参照する。
 
 ## Todo一覧
 
@@ -52,7 +66,7 @@ M02のインライン編集は`670dec3`、`b1025da`、`0f26beb`で`main`へ反�
 - [x] 受信失敗・再試行・同じリンクの再オープンを扱い、ローカルRunを安易に上書きしない。
 - [x] ローカル変更をETag付きで本人向け保存経路へ同期し、「再利用用に整える」は同期成功後に対象RunをWebで開く。
 - [x] iOSでは同期メタデータに所有者を固定し、ログアウト／別アカウントでそのRunを再帰属させないガードを実装した。
-- [ ] 実認証・実APIを使い、Web→iOS→Widget→Webの往復と失敗・再試行・別アカウント境界を実機／配布ビルドで受け入れる。Android側の同じ境界も確認する。
+- [ ] **[P1]** 実認証・実APIを使い、Web→iOS→Widget→Webの往復と失敗・再試行・別アカウント境界を実機／配布ビルドで受け入れる。Android側の同じ境界も確認する。
 
 完了条件：Web→iOSで同じRunを受信→Widgetで実行→Webの対象履歴／編集へ戻る。実認証・実APIの試験をUIモックの成功で代用しない。
 
@@ -60,11 +74,11 @@ M02のインライン編集は`670dec3`、`b1025da`、`0f26beb`で`main`へ反�
 
 ### M04：Widget→アプリの往復を両OSで受け入れる【比較・必要箇所のみ修正】
 
-- [ ] 集約表示、Run文脈のfooter、対象Runを開く／一覧を開く、アプリからホームへ戻る操作を同じ表で確認する。
+- [ ] **[P2]** 集約表示、Run文脈のfooter、対象Runを開く／一覧を開く、アプリからホームへ戻る操作を同じ表で確認する。
 - [x] iOSでRun指定なしのqueue URLを受けた場合、NavigationStackのpathを空に戻す処理を実装した。
-- [ ] 実WidgetからRun指定あり／なしのqueue URLを開き、Run詳細／一覧への復帰を確認する。Widget設定sheet表示中からの復帰も含む。
-- [ ] 完了・Undo、アプリ終了後の永続化、再表示、自分のCueと設定プレビューの一致を確認する。
-- [ ] Androidは実設置寸法、iOSはSmall / Medium / Large（既存Lock Screenも回帰）で、長い本文・複数Run・大きい文字・空状態を撮影する。
+- [ ] **[P1]** 実WidgetからRun指定あり／なしのqueue URLを開き、Run詳細／一覧への復帰を確認する。Widget設定sheet表示中からの復帰も含む。
+- [ ] **[P1]** 完了・Undo、アプリ終了後の永続化、再表示、自分のCueと設定プレビューの一致を確認する。
+- [ ] **[P2]** Androidは実設置寸法、iOSはSmall / Medium / Large（既存Lock Screenも回帰）で、長い本文・複数Run・大きい文字・空状態を撮影する。
 
 完了条件：両OSの操作結果が一致する比較表とCI画像がある。既存Widgetの情報設計を全面的に再レビューし直すタスクにはしない。OS差として残す操作は明記する。
 
@@ -73,18 +87,19 @@ M02のインライン編集は`670dec3`、`b1025da`、`0f26beb`で`main`へ反�
 ### M05：直近Android変更とWeb接続の最終回帰【検証・反映】
 
 - [x] 当初の未コミットAndroid差分はコミット済みで、2026-09-22時点のAndroid作業ツリーに未コミット差分はない。
-- [ ] 現行Android版のCIを成功させる。[直近のAndroid Widget CI](https://github.com/hiroyoshii/cuckoocue/actions/runs/35486222694)はActions budgetによりジョブが開始されず失敗。コードの失敗と断定せず再実行する。ローカルテスト成功をCIやWeb実連携の完了と混同しない。
+- [ ] 現行Android版のCIを成功させる。10/31に[41190206862](https://github.com/hiroyoshii/cuckoocue/actions/runs/41190206862)を開始した（`d201b4d`）。9/20のbudgetによる未開始状態を抜け、独立emulatorで実行中。APKのビルド、本番URL・署名照合、emulatorのApp Links `verified` は確認済み。UI回帰と実機受入は別に判定する。
 - [ ] 実Web→Android受信→Widget実行→「再利用用に整える」の往復を現行版で確認する。認証後に要求した履歴／編集へ復帰することも含む。
-- [ ] 最新のWeb変更は配備状況を照合する。仕様書の第28〜29節は未配備記録なので、ローカルで見えることを本番反映済みとしない。
-- [ ] Product Guideの古いiOS説明・画像を現行版へ揃える。現状は「項目追加シート」「iOSアプリで完了取消は未実装」「iOSはWeb受渡し未接続」と記述しており、コードと不一致。iOS READMEのWeb受渡し説明は更新済み。
-- [ ] 最新のiOS UIを含む版でE2E全体を再び緑にし、実機の連続編集とTestFlight配布を確認する。TestFlight uploadの[前回成功](https://github.com/hiroyoshii/cuckoocue/actions/runs/35500625991)はインライン編集導入前のcommitなので、新UIの配布証拠ではない。
+- [x] Web第28〜29節の古い未配備扱いを解消。本番は `cfb2e69` / `build-2026-10-31-002`。通常検索、配置グループ、作成入口の本番確認済み。後続のログイン後作成再開はWeb仕様書の今回記録で追跡する。
+- [ ] **[P2]** Product Guideの古いiOS説明・画像を現行版へ揃える。現状は「項目追加シート」「iOSアプリで完了取消は未実装」「iOSはWeb受渡し未接続」と記述しており、コードと不一致。iOS READMEのWeb受渡し説明は更新済み。
+- [x] iOS現行UIのE2E全体成功とTestFlight upload。E2E `40270605502`、TestFlight `40269809533` / build `10`。public GitHub APIで再照合済みであり、gh未認証を理由に未確認扱いにしない。
+- [ ] **[P1受入]** build 10のtester提供・実機連続編集・実サービス往復を記録する。upload成功は実機合格ではない。
 
 完了条件：検証したcommit、配布／配備した版、画像の版が追跡でき、古いスクショを現行仕様として見せない。
 
 ### M06：配布入口の接続【公開時】
 
-- [ ] Android／iOSの実配布URLが決まったら、Webの既存`NEXT_PUBLIC_ANDROID_APP_URL` / `NEXT_PUBLIC_IOS_APP_URL`へ設定する。
-- [ ] 配布リンク・QR→インストール→WebからのRun受信までを端末で確認する。URL未決の間は「準備中」を維持する。
+- [ ] **[公開・配布ゲート]** Android／iOSの実配布URLが決まったら、Webの既存`NEXT_PUBLIC_ANDROID_APP_URL` / `NEXT_PUBLIC_IOS_APP_URL`へ設定する。
+- [ ] **[公開・配布ゲート]** 配布リンク・QR→インストール→WebからのRun受信までを端末で確認する。URL未決の間は「準備中」を維持する。
 
 完了条件：利用者が実際に入手して一連の操作を開始できる。新しい配布案内ページは作らない。
 
@@ -92,6 +107,12 @@ M02のインライン編集は`670dec3`、`b1025da`、`0f26beb`で`main`へ反�
 
 M01・M02・M03の実装 → M03実接続受入とM04 → M05の最終回帰・配布確認 → M06。M03の実認証試験はM04／M05と並行してよい。
 
-残りはM03の実接続受入、M04のWidget往復比較、M05のCI・実機・Web往復・ドキュメント回帰、M06の配布入口である。M01・M02・M03のコード実装は完了しているが、実サービス・実機の確認が終わるまで製品としての完了とはしない。
+P1はM03の実接続受入、M04の実Widget往復と永続化、M05のAndroid現行CIと実機確認（iOS E2E・TestFlight uploadは完了）。比較表・網羅画像・Product GuideはP2、M06は公開・配布ゲートである。M01・M02・M03のコード実装は完了しているが、実サービス・実機の確認が終わるまで製品としての完了とはしない。
 
 今回増やさない：Observation、自動改善、ランキング／SNS、CuebookやRevisionの再設計、全面的な多端末同期、AIによる新しい提案機能。Web検索品質の既知の懸念（仕様書G01/C08）は消えたわけではないが、このMobile UI仕上げとは別枠で維持する。
+
+## 2026-10-31に明確化した境界
+
+Webの実Google A→B→Aと本人データ境界は10/26に完了している。実機のネイティブGoogle認証、同じRunの受渡し、Widgetの確認は別の受入である。
+
+M03の同期先所有者ガードは実装済みだが、G06のアカウント別ローカル表示分離は両OSとも未完。AのRunをBへアップロードしないことと、Bの画面/WidgetにAのローカルRunを出さないことを同じ合格条件にしない。後者を満たした製品受入は保留とする。既存ローカルRunの移行・所有者不明データの扱いを含むため、この受入準備で暗黙に仕様確定しない。

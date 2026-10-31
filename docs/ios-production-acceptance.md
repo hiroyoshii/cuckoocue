@@ -1,6 +1,6 @@
 # iOS P1 本番受入
 
-最終更新: 2026-10-26
+最終更新: 2026-10-31
 
 実装済みのWeb→iOS→Widget→Webフローを、実サービス・配布ビルド・実機で受け入れるための記録。新機能の追加や全面的な多端末同期は対象外とする。
 
@@ -9,13 +9,17 @@
 - [x] iOS app/model/UI testと実Home Screen Widget配置を含むE2Eが成功した。commit `8e4f03e`、[Actions run 36257175025](https://github.com/hiroyoshii/cuckoocue/actions/runs/36257175025)。このrun以後、TestFlight配布commitまでiOSコード変更はない。
 - [x] 現行コードをApp Store Connectへ検証・uploadした。commit `f7d49f6`、tag `ios-testflight-2026-10-26-1`、build `10`、[Actions run 40269809533](https://github.com/hiroyoshii/cuckoocue/actions/runs/40269809533)。archive、build番号検査、IPA export、App Store Connect検証、TestFlight uploadはすべて成功した。
 
+- [x] 2026-10-31に最新E2E [40270605502](https://github.com/hiroyoshii/cuckoocue/actions/runs/40270605502)も成功と再確認した。app/model/UI testとHome Screen Widgetのstepが成功。build 10から現行mainまでiOS実装差分はない（READMEのみ）。
+
+実機のインストール・操作順・合格条件は[両OS共通の開始手順](mobile-device-acceptance.md)を使う。TestFlight upload済みとtesterへの提供/実機インストール済みは別であり、後者の記録はまだない。
+
 ## 実機で残るP1受入
 
 同じbuild `10`と同じRunを使い、次を1回の受入セッションで確認する。
 
 - [ ] TestFlight build `10`を実機へインストールし、Run詳細で複数Taskの本文・日付・優先度・順序を連続して編集できる。
 - [ ] 実Google認証で同意、取消、要求画面への復帰を確認する。
-- [ ] アカウントAからBへ切り替えたとき、Aの私的workspace、Run、同期状態、draftをBへ表示・保存しない。
+- [ ] アカウントAからBへ切り替えたとき、AのクラウドRunをBが取得・同期・再帰属できない。端末内snapshotの表示分離は既知G06として未実装であり、この項目の成功に含めない。表示分離まで求める受入は保留。
 - [ ] 登録済み本人でデフォルトShelfのRevisionを1回forkし、`curation`等の編集印を私的原本へ継承しない。
 - [ ] Webから作成した同じRun IDをUniversal LinkでiOSへ受信する。同じlinkの再オープンと一時失敗後の再試行でRunを重複・上書きしない。
 - [ ] 実Home Screen WidgetからRun指定あり／なしのqueueを開き、Run詳細／一覧へ復帰する。Widget設定sheet表示中からの復帰も確認する。
