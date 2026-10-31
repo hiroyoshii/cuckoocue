@@ -61,3 +61,15 @@ jobs:
             build/android-widget-screenshots/*.png
           if-no-files-found: warn
           retention-days: 14
+
+      - name: Upload test diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cuckoo-cue-android-test-diagnostics
+          path: |
+            build/android-widget-screenshots/verification.log
+            build/android-widget-screenshots/instrumentation.txt
+            android/app/build/reports/
+          if-no-files-found: warn
+          retention-days: 14

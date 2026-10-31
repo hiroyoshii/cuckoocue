@@ -8,3 +8,6 @@ ios/CuckooCue/GoogleService-Info.plist
 # Local review evidence may contain production configuration and personal data.
 /docs/review-screenshots/
 /output/
+
+# Local downloads of CI test results and build artifacts.
+/artifacts/
