@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { bqWrite, digest } from "../../src/lib/bq-store";
 import type { BigQuery } from "@google-cloud/bigquery";
+import path from "node:path";
 
 const original = { id: "a54d9e6f-38ae-4780-8986-b9e169f3a178", title: "猫との引っ越し", updated_at: "2026-09-12T00:00:00.000000Z", origin_revision_id: null,
   tasks: [{ id: "e4a0b6d6-eec3-4efa-9d98-b9767cb65bd6", text: "ケージを確認する", default_priority: null, relative_start_day: -7, relative_end_day: 0 }],
@@ -129,6 +130,38 @@ test("G14: standalone group creation survives an unknown result and reload", asy
   await page.getByRole("button", { name: "作成を再試行" }).click();
   await expect(page.locator(".shelf-detail-workspace")).toBeVisible();
   expect(requests[1]).toEqual(requests[0]);
+});
+
+test("G14: creation works without group matches and cancellation preserves both drafts", async ({ page }, info) => {
+  let creations = 0;
+  await page.route("**/api/**", route => {
+    const pathname = new URL(route.request().url()).pathname;
+    if (pathname === "/api/shelves" && route.request().method() === "POST") creations++;
+    return route.fulfill({ json: { results: [], shelves: [], shelf_ids: [], nextCursor: null } });
+  });
+  await page.goto("/");
+  await expect(page.getByRole("button", { name: "新しい状況", exact: true })).toHaveCount(0);
+  await page.getByLabel("Search query").fill("猫と電車で移動");
+  await page.getByRole("button", { name: "検索", exact: true }).click();
+  await expect(page.locator(".related-contexts")).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "状況から探す", exact: true })).toHaveCount(0);
+  const entry = page.getByRole("button", { name: "新しい状況", exact: true });
+  await entry.click();
+  await expect(page.getByLabel("状況名", { exact: true })).toBeFocused();
+  await page.getByLabel("状況名", { exact: true }).fill("猫と電車で移動");
+  await page.getByLabel("どんな状況か").fill("猫2匹と電車で引っ越す");
+  await page.getByRole("button", { name: "キャンセル", exact: true }).click();
+  await expect(entry).toBeFocused();
+  await expect(page.getByLabel("Search query")).toHaveValue("猫と電車で移動");
+  await entry.press("Enter");
+  await expect(page.getByLabel("状況名", { exact: true })).toHaveValue("猫と電車で移動");
+  await page.reload();
+  await expect(page.getByLabel("状況名", { exact: true })).toHaveValue("猫と電車で移動");
+  await expect(page.getByLabel("どんな状況か")).toHaveValue("猫2匹と電車で引っ越す");
+  await expect(page.getByLabel("Search query")).toHaveValue("猫と電車で移動");
+  expect(creations).toBe(0);
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  if (process.env.CUE_CAPTURE_DIR) await page.screenshot({ path: path.resolve(process.env.CUE_CAPTURE_DIR, `creation-draft-${info.project.name}.png`), fullPage: true });
 });
 
 test("W20/W14/C02: rejected publication can be reconfirmed, published links and unjoined owned groups are reachable", async ({ page }) => {

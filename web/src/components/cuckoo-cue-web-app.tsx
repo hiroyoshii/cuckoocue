@@ -953,10 +953,6 @@ function AccountWorkspace({ user, authReady, devUserId, setDevUserId, importRunI
               nextCursor={nextCursor} onMore={loadMoreResults}
               busySeconds={busySeconds}
               isAndroidDevice={isAndroidDevice}
-              shelves={availableShelves.filter((shelf) => results.some((result) => result.shelves?.some((related) => related.id === shelf.id)))}
-              shelvesCursor={shelvesCursor}
-              shelvesLoading={shelvesLoading}
-              onMoreShelves={() => void loadShelves(true)}
               currentUserId={currentUserId}
               onOpenShelf={openShelf}
               newShelfTitle={newShelfTitle}
@@ -1030,7 +1026,7 @@ function MobileHeader({ account }: { account: ReactNode }) {
   );
 }
 
-type ExploreWorkspaceProps = SearchWorkspaceProps & ShelfWorkspaceProps;
+type ExploreWorkspaceProps = SearchWorkspaceProps & ShelfCreationProps;
 
 function ExploreWorkspace(props: ExploreWorkspaceProps) {
   return (
@@ -1057,12 +1053,8 @@ function ExploreWorkspace(props: ExploreWorkspaceProps) {
         currentUserId={props.currentUserId} onSignIn={props.onSignIn}
         onOpenShelf={props.onOpenShelf}
       />
-      {props.showCreateForm ? <ShelfWorkspace
-        shelves={[]}
-        shelvesLoading={props.shelvesLoading}
+      {props.hasSearched || props.showCreateForm ? <ShelfCreation
         busyAction={props.busyAction}
-        busySeconds={props.busySeconds}
-        onOpenShelf={props.onOpenShelf}
         newShelfTitle={props.newShelfTitle}
         setNewShelfTitle={props.setNewShelfTitle}
         newShelfContext={props.newShelfContext}
@@ -1073,9 +1065,6 @@ function ExploreWorkspace(props: ExploreWorkspaceProps) {
         createSubmitted={props.createSubmitted}
         canManage={props.canManage}
         onSignIn={props.onSignIn}
-        shelvesCursor={null}
-        onMoreShelves={props.onMoreShelves}
-        embedded
       /> : null}
     </div>
   );
@@ -1270,15 +1259,9 @@ function EmptySearch({ hasSearched }: { hasSearched: boolean }) {
   );
 }
 
-type ShelfWorkspaceProps = {
+type ShelfCreationProps = {
   createSubmitted: boolean;
-  shelves: Shelf[];
-  shelvesCursor: string | null;
-  shelvesLoading: boolean;
-  onMoreShelves: () => void;
   busyAction: string | null;
-  busySeconds: number;
-  onOpenShelf: (id: string) => void;
   newShelfTitle: string;
   setNewShelfTitle: (value: string) => void;
   newShelfContext: string;
@@ -1288,49 +1271,29 @@ type ShelfWorkspaceProps = {
   onCreateShelf: (event: FormEvent<HTMLFormElement>) => void;
   canManage: boolean;
   onSignIn: () => void;
-  embedded?: boolean;
 };
 
-function ShelfWorkspace(props: ShelfWorkspaceProps) {
-  return (
-    <div className="workspace related-contexts" id="related-contexts">
-      <header className={`workspace-heading shelf-list-heading${props.embedded ? " embedded" : ""}`}>
-        <span>
-          {props.embedded ? <h2>状況から探す</h2> : <h1>状況から段取りを探す</h1>}
-        </span>
-        <button type="button" className="text-action" onClick={() => props.canManage ? props.setShowCreateForm(!props.showCreateForm) : props.onSignIn()}>
-          <Plus size={16} />新しい状況
-        </button>
-      </header>
-      {props.showCreateForm && props.canManage ? (
-        <form className="shelf-create-form" onSubmit={props.onCreateShelf}>
-          <label><span>状況名</span><input disabled={props.createSubmitted} value={props.newShelfTitle} onChange={(event) => props.setNewShelfTitle(event.target.value)} required /></label>
-          <label><span>どんな状況か</span><textarea disabled={props.createSubmitted} value={props.newShelfContext} onChange={(event) => props.setNewShelfContext(event.target.value)} required rows={2} /></label>
-          <div>{!props.createSubmitted ? <button type="button" className="secondary-action" onClick={() => props.setShowCreateForm(false)}>キャンセル</button> : null}<button type="submit" className="primary-action" disabled={props.busyAction !== null}>{props.createSubmitted ? "作成を再試行" : "作成"}</button></div>
-        </form>
-      ) : null}
-      {props.shelvesLoading ? <ProgressNotice label="状況を読み込んでいます" /> : null}
-      <section className="cue-surface" aria-label="状況一覧">
-        {props.shelves.length ? (
-          <div className="shelf-list">
-            {props.shelves.map((shelf) => (
-              <button type="button" className="shelf-row" key={shelf.id} onClick={() => props.onOpenShelf(shelf.id)} disabled={props.busyAction !== null}>
-                <span><Library size={18} /><strong>{shelf.title}</strong></span>
-                <small>{shelf.context}</small>
-                <em>{shelf.item_count}件</em>
-              </button>
-            ))}
-          </div>
-        ) : (
-          <div className="empty-state related-empty">
-            <Library size={24} />
-            <span className="empty-copy"><strong>公開されている状況はありません</strong></span>
-          </div>
-        )}
-      </section>
-      {props.shelvesCursor ? <button type="button" className="secondary-action" disabled={props.shelvesLoading || props.busyAction !== null} onClick={props.onMoreShelves}>さらに状況を読み込む</button> : null}
-    </div>
-  );
+function ShelfCreation(props: ShelfCreationProps) {
+  const trigger = useRef<HTMLButtonElement>(null);
+  const title = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (props.showCreateForm && props.canManage && !props.createSubmitted) title.current?.focus();
+  }, [props.showCreateForm, props.canManage, props.createSubmitted]);
+  return <section className="workspace shelf-creation" aria-label="新しい状況">
+    {props.showCreateForm && props.canManage ? <>
+      <header className="workspace-heading"><h2>新しい状況</h2></header>
+      <form className="shelf-create-form" onSubmit={props.onCreateShelf}>
+        <label><span>状況名</span><input ref={title} disabled={props.createSubmitted} value={props.newShelfTitle} onChange={event => props.setNewShelfTitle(event.target.value)} required /></label>
+        <label><span>どんな状況か</span><textarea disabled={props.createSubmitted} value={props.newShelfContext} onChange={event => props.setNewShelfContext(event.target.value)} required rows={2} /></label>
+        <div>{!props.createSubmitted ? <button type="button" className="secondary-action" onClick={() => {
+          props.setShowCreateForm(false);
+          requestAnimationFrame(() => trigger.current?.focus());
+        }}>キャンセル</button> : null}<button type="submit" className="primary-action" disabled={props.busyAction !== null}>{props.createSubmitted ? "作成を再試行" : "作成"}</button></div>
+      </form>
+    </> : <button ref={trigger} type="button" className="text-action" disabled={props.busyAction !== null} onClick={() => props.canManage ? props.setShowCreateForm(true) : props.onSignIn()}>
+      <Plus size={16} aria-hidden="true" />新しい状況
+    </button>}
+  </section>;
 }
 
 type SaveWorkspaceProps = {

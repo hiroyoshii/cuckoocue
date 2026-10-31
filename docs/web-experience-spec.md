@@ -1305,3 +1305,12 @@ P1は次の入口実装の受入前に解消、P2は同じ改修で操作・情�
 - Firebase設定ありの本番ビルドで追加6件（PC/mobile）が成功。入力復元・明示消去・初回の匿名認証と検索・登録済みセッションの復元とログアウトを確認した。認証設定なしの通常ビルド、TypeScript、lintも成功。
 - 既存のcontext-presets / public-context / residual-fixes / reuse-qualityは71件成功、mobile専用のdesktop実行1件をskip、2件失敗。失敗はG14の単独グループ作成で、PC/mobileとも「新しい状況」ボタンを表示できない。修正前から`ExploreWorkspace`が作成フォームを開いた場合だけ`ShelfWorkspace`を描画し、その内部にしか作成開始ボタンがない。前回のトップ変更で入口を失った別件として未解決に残す。今回、この導線やテストの期待値は変更していない。
 - 再読み込み後の[PC画面](review-screenshots/web/guest-search-fix/guest-reload-desktop.png)・[mobile画面](review-screenshots/web/guest-search-fix/guest-reload-mobile.png)を確認。認証ありの回帰テストも開発サーバーではなく、本番ビルド＋startで実行する。
+
+## 38. 単独グループ作成の入口の復元（2026-10-31）
+
+第37節で検出したG14 / C01の作成入口欠落を修正する。検索後に既存の「新しい状況」ボタンを表示し、グループの取得件数や作成フォームの開閉状態に依存せず開始できるようにした。初回トップは状況入力と運営例の構成を維持する。
+
+- 作成操作を`ShelfCreation`に分離し、検索結果の後にボタンまたは既存の作成フォームを表示する。検索結果内の実配置リンク、運営例、検索対象の契約は維持する。作成領域にグループ一覧・推薦を表示しない。
+- 開いたら状況名へfocusを移し、取消時は入口へ戻す。取消・再読み込みで検索文と作成下書きを保持する。応答不明後は入力を固定し、同じ操作ID・内容で再試行する既存の保存契約を維持する。
+- 失敗していたG14の既存2ケースは期待値を変えず成功。検索・配置先への遷移・例の復帰・検索失敗と再試行を含む対象25件が成功、mobile専用ケースのdesktop実行1件をskip。0件時の作成開始・取消・入力復元・キーボードとaxeをPC/mobileで追加確認した。build（TypeScript含む）・lint・diff検査も成功。
+- `residual-fixes.spec.ts`をCIの主要UIテストに追加した。画面テストのAPI応答はfixtureであり、実Googleログインや本番へのグループ作成の証拠とは区別する。[作成下書きPC](review-screenshots/web/group-creation-fix/creation-draft-desktop.png)・[mobile](review-screenshots/web/group-creation-fix/creation-draft-mobile.png)を確認した。

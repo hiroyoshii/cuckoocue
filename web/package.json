@@ -10,7 +10,7 @@
     "test:light": "node --import tsx --test scripts/test-search-filter.mjs scripts/test-search-route.mjs scripts/test-bq-write-retry.mjs scripts/test-editorial-shelves.mjs scripts/test-seed-query-count.mjs",
     "pretest:e2e": "next build",
     "test:e2e": "playwright test",
-    "test:e2e:critical": "playwright test tests/e2e/reuse-quality.spec.ts tests/e2e/workspace.spec.ts tests/e2e/handoff.spec.ts tests/e2e/owner-cycle.spec.ts",
+    "test:e2e:critical": "playwright test tests/e2e/reuse-quality.spec.ts tests/e2e/workspace.spec.ts tests/e2e/handoff.spec.ts tests/e2e/owner-cycle.spec.ts tests/e2e/residual-fixes.spec.ts",
     "test:e2e:auth": "playwright test --config playwright.auth.config.ts",
     "capture:quality": "node scripts/capture-web-quality.mjs",
     "bq:init": "node scripts/create-bq-table.mjs",
