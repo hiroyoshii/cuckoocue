@@ -87,9 +87,9 @@ M02のインライン編集は`670dec3`、`b1025da`、`0f26beb`で`main`へ反�
 ### M05：直近Android変更とWeb接続の最終回帰【検証・反映】
 
 - [x] 当初の未コミットAndroid差分はコミット済みで、2026-09-22時点のAndroid作業ツリーに未コミット差分はない。
-- [ ] 現行Android版のCIを成功させる。10/31に[41190206862](https://github.com/hiroyoshii/cuckoocue/actions/runs/41190206862)を開始した（`d201b4d`）。9/20のbudgetによる未開始状態を抜け、独立emulatorで実行中。APKのビルド、本番URL・署名照合、emulatorのApp Links `verified` は確認済み。UI回帰と実機受入は別に判定する。
+- [x] 現行Android版の[CI 41190206862](https://github.com/hiroyoshii/cuckoocue/actions/runs/41190206862)が10/31に全体成功（`d201b4d`、以後Androidアプリ実装差分なし）。独立emulatorのinstrumentation、Widget検証・撮影、診断artifact保存が成功。APKのビルド、本番URL・署名照合、App Links `verified` も確認済み。実機受入は別に残す。
 - [ ] 実Web→Android受信→Widget実行→「再利用用に整える」の往復を現行版で確認する。認証後に要求した履歴／編集へ復帰することも含む。
-- [x] Web第28〜29節の古い未配備扱いを解消。本番は `cfb2e69` / `build-2026-10-31-002`。通常検索、配置グループ、作成入口の本番確認済み。後続のログイン後作成再開はWeb仕様書の今回記録で追跡する。
+- [x] Web第28〜29節の古い未配備扱いを解消。本番は `3d2f10d` / `build-2026-10-31-004`。通常検索、配置グループ、作成入口、ログイン開始失敗後の入力保持を本番確認済み。作成ログイン復帰の回帰14件と既存主要回帰66件が成功。実機redirectはD01へ残す。
 - [ ] **[P2]** Product Guideの古いiOS説明・画像を現行版へ揃える。現状は「項目追加シート」「iOSアプリで完了取消は未実装」「iOSはWeb受渡し未接続」と記述しており、コードと不一致。iOS READMEのWeb受渡し説明は更新済み。
 - [x] iOS現行UIのE2E全体成功とTestFlight upload。E2E `40270605502`、TestFlight `40269809533` / build `10`。public GitHub APIで再照合済みであり、gh未認証を理由に未確認扱いにしない。
 - [ ] **[P1受入]** build 10のtester提供・実機連続編集・実サービス往復を記録する。upload成功は実機合格ではない。
@@ -107,7 +107,7 @@ M02のインライン編集は`670dec3`、`b1025da`、`0f26beb`で`main`へ反�
 
 M01・M02・M03の実装 → M03実接続受入とM04 → M05の最終回帰・配布確認 → M06。M03の実認証試験はM04／M05と並行してよい。
 
-P1はM03の実接続受入、M04の実Widget往復と永続化、M05のAndroid現行CIと実機確認（iOS E2E・TestFlight uploadは完了）。比較表・網羅画像・Product GuideはP2、M06は公開・配布ゲートである。M01・M02・M03のコード実装は完了しているが、実サービス・実機の確認が終わるまで製品としての完了とはしない。
+P1はM03の実接続受入、M04の実Widget往復と永続化、M05の実機確認（両OSの現行CI・iOS TestFlight uploadは完了）。比較表・網羅画像・Product GuideはP2、M06は公開・配布ゲートである。M01・M02・M03のコード実装は完了しているが、実サービス・実機の確認が終わるまで製品としての完了とはしない。
 
 今回増やさない：Observation、自動改善、ランキング／SNS、CuebookやRevisionの再設計、全面的な多端末同期、AIによる新しい提案機能。Web検索品質の既知の懸念（仕様書G01/C08）は消えたわけではないが、このMobile UI仕上げとは別枠で維持する。
 

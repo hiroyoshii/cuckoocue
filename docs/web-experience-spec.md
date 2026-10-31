@@ -1326,3 +1326,5 @@ G14 / W15の追加残件。匿名検索後の「新しい状況」はログイ�
 - PC/mobileの復帰フォームを撮影し確認した。実機ブラウザでの今回操作の最終受入は[両OSのD01](mobile-device-acceptance.md)に明示する。
 
 検証結果: Firebase設定ありの認証回帰14件と、通常設定の主要回帰66件がPC/mobileで成功。production build（TypeScript含む）、lint、差分検査も成功。認証回帰はHTTP fixture、通常回帰は開発UIDと業務API fixtureであり、実機Googleログインの証拠にはしない。
+
+配備確認: commit `3d2f10d`、App Hosting `build-2026-10-31-004`に100%反映。[CI 41190605956](https://github.com/hiroyoshii/cuckoocue/actions/runs/41190605956)は2 jobとも成功。本番実APIの23項目で失敗・JS例外・HTTPエラーなし。通常検索/実配置リンク/再読込に加え、popupをブロックした際の作成intent破棄と入力保持を確認した。実Googleアカウント選択は行わず、実機redirectはD01に残す。作成した匿名試験ユーザー1件は削除済み。

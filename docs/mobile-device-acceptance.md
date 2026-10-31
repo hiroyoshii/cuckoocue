@@ -6,9 +6,9 @@
 
 | 対象 | 確認済み | 実機で残ること |
 |---|---|---|
-| Web | 本番 `cfb2e69`、App Hosting `build-2026-10-31-002`。通常検索・配置グループ・作成入口を確認済み。10/26の実Google A→B→A、本人データ境界も完了 | 今回修正する「新しい状況」ログイン後復帰の配備確認と、各端末ブラウザからの受渡し |
+| Web | 本番 `3d2f10d`、App Hosting `build-2026-10-31-004`。通常検索・配置グループ・作成入口とpopup開始失敗時の復帰を23項目確認。10/26の実Google A→B→A、本人データ境界も完了 | 「新しい状況」からの実機ブラウザredirect復帰、各端末ブラウザからの受渡し |
 | iOS | [E2E 40270605502](https://github.com/hiroyoshii/cuckoocue/actions/runs/40270605502)成功。app/model/UI、SimulatorのHome Screen Widget配置stepも成功。TestFlight build **10**は[40269809533](https://github.com/hiroyoshii/cuckoocue/actions/runs/40269809533)で検証・upload済み | build 10のtesterへの表示・インストール、実Google認証、実Run往復、実Widget。upload成功だけではtesterへの提供完了を意味しない |
-| Android | 通常ビルドは `app.cuckoocue`、`0.1.0 (1)`。最新CI [35486222694](https://github.com/hiroyoshii/cuckoocue/actions/runs/35486222694)はstep開始前の失敗。前回成功以降に上位UI変更がある | 現行版の再回帰と本番接続debug APKを使った実Google認証・実Run往復・実Widget。正式release署名/Play公開は別ゲート |
+| Android | 通常ビルドは `app.cuckoocue`、`0.1.0 (1)`。現行コードの[CI 41190206862](https://github.com/hiroyoshii/cuckoocue/actions/runs/41190206862)が全体成功（`d201b4d`）。instrumentation・Widget検証/撮影を含む | 本番接続debug APKを使った実Google認証・実Run往復・実Widget。正式release署名/Play公開は別ゲート |
 
 iOSは `8e4f03e`（既存E2E）→`f7d49f6`（build 10）→現在のmainで、`ios/`の実装・依存・project設定は同一。READMEの差分だけであり、今回のWeb修正のためにiOSを再uploadする必要はない。App Storeの新規設定や署名secretの登録をやり直さない。
 
@@ -82,3 +82,11 @@ WSLから端末が見えずWindowsから見える場合は `cue_adb=/mnt/c/Users
 `output/mobile-device-acceptance/`にOSごとに記録する。日時、端末/OS、Webの配備commit、APK hash/build 10、D01〜D10の合否、Run ID、期待/実際、画面、再現手順を残す。個人情報を含む原本はgitへ追加しない。成功した自動テスト件数と実Google/実機の合否を別欄にする。
 
 検証Runだけを対象に片付ける。Web側の削除が端末へ自動伝播する前提は置かず、端末に残る検証用データも確認する。既存のRunやアカウント全体を初期化しない。実機結果は[iOS受入記録](ios-production-acceptance.md)と[Mobile仕上げTodo](mobile-finish-todo.md)へ要約を反映する。
+
+### 2026-10-31の準備検証
+
+- Web: 認証回帰14件、主要PC/mobile回帰66件、build/TypeScript/lintが成功。[CI 41190605956](https://github.com/hiroyoshii/cuckoocue/actions/runs/41190605956)も2 job成功。本番build 004へ100%配備し、実APIの23項目に失敗・JS例外・HTTPエラーなし。Google popupは意図的にブロックして失敗後の状態を確認したもので、実Googleアカウント選択の再検証ではない。試験で作った匿名ユーザー1件を削除済み。
+- Android: app/test APKビルド成功。出力APKは `0.1.0 (1)`、SHA-256 `b9d09755d27ec2713816c0db005b6cb3814dd87ef4625091003346d00128dc3e`。本番URL・本番assetlinksとの署名一致、emulatorのdomain状態 `verified` を確認。APKは `output/mobile-device-acceptance/` に保存した。
+- Androidローカルinstrumentation: 30成功、2スキップ、UI 1件失敗。後続のUI単独試験中にも別アプリが前面になり、この共有端末でのUI成否は受入根拠にしない。2スキップはログアウト前提のUI fixtureと専用Web journey driverが必要な試験で、実サービス受入完了の意味ではない。このローカル失敗をコード不具合と断定せず、独立CIで確認した。
+- iOS: 既存の成功CI/build 10と現行コードの同一性を照合。実機未接続なので実機結果は増やしていない。
+- Android独立CI: [41190206862](https://github.com/hiroyoshii/cuckoocue/actions/runs/41190206862)が全体成功。現行アプリのinstrumentation、ホーム画面のWidget検証・撮影、診断artifact保存まで成功した。9/20の未開始失敗という古い状態を更新済み。実Google/実機の合格を意味しない。
