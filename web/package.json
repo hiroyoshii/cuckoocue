@@ -11,6 +11,7 @@
     "pretest:e2e": "next build",
     "test:e2e": "playwright test",
     "test:e2e:critical": "playwright test tests/e2e/reuse-quality.spec.ts tests/e2e/workspace.spec.ts tests/e2e/handoff.spec.ts tests/e2e/owner-cycle.spec.ts",
+    "test:e2e:auth": "playwright test --config playwright.auth.config.ts",
     "capture:quality": "node scripts/capture-web-quality.mjs",
     "bq:init": "node scripts/create-bq-table.mjs",
     "bq:init-cuebooks": "node scripts/create-bq-cuebooks.mjs",

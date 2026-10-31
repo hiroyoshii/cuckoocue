@@ -2,7 +2,7 @@
 
 Status: Implementation / 合意済みUI基準に沿って段階実装中
 
-Updated: 2026-10-26
+Updated: 2026-10-31
 
 ## 1. この文書の役割
 
@@ -1290,3 +1290,18 @@ P1は次の入口実装の受入前に解消、P2は同じ改修で操作・情�
 - build（TypeScriptを含む）、lint、diff whitespace検査が成功。通常検索からの直接遷移・ブラウザ復帰・実配置一致・配置なし・参加/fork・既存の例の入力保持を含むPC/mobileの20件が成功。所属リンクを消すために改変した既存テストの期待値と経路を元に戻した上で検証した。
 - 実Firebase匿名認証と実Vertex/BQ検索で「猫2匹と来月引っ越す。車がない」を検索。2件の手順に、それぞれ「猫2匹と暮らす家」「引っ越しの段取り」への実配置リンクを確認。運営の例の本文は自動表示されない。API応答は差し替えていない。検証用匿名アカウントは削除済み。保存・本番配備は行っていない。
 - [通常検索PC](review-screenshots/web/context-search-restored/01-results-1440.png)、[展開後](review-screenshots/web/context-search-restored/02-expanded-1440.png)、[mobile](review-screenshots/web/context-search-restored/04-results-390.png)、[実検索の記録](review-screenshots/web/context-search-restored/result.json)。検索条件のうち「車がない」への適合は、このUI復元で改善されたものではない。
+
+## 37. 認証前の検索下書きの復元（2026-10-31）
+
+本番確認で、第35節の再読み込み時の入力保持に漏れを確認した。Firebase認証前のゲストはWorkspaceの一時保存対象外であり、運営例の選択だけ復元されて検索文が消えていた。従来のUIテストはFirebase設定なしの開発認証経路だったため、この状態を検証できていなかった。関連IDはC01・W18-2。
+
+- 認証前は、検索入力だけを同一タブのsessionStorageへ保存する。再読み込み後は選択中の例とともに復元し、明示的に消した入力は復活させない。保存のために匿名アカウントを作らない。
+- 初回検索で匿名認証されたら、現在の入力を引き継いで検索し、既存のユーザー別Workspace保存へ移る。ゲスト下書きは削除する。登録アカウントの復元・切り替え・ログアウト時に古いゲスト下書きを読み戻さない。
+- ブラウザが一時保存を拒否した場合は画面内の入力を維持し、保存できないことを表示する。検索対象・検索結果の関連グループ・運営例の選定・保存APIは変更しない。
+- `npm run test:e2e:auth` はFirebaseブラウザSDKを有効にし、未認証・匿名認証への移行・登録済みセッションからのログアウトをPC/mobileで検証する。認証HTTPと業務APIの応答はfixtureであり、実Google OAuth・BQ・Firestoreの検証ではない。CIの既存UIテストに加えて実行する。
+
+検証結果:
+
+- Firebase設定ありの本番ビルドで追加6件（PC/mobile）が成功。入力復元・明示消去・初回の匿名認証と検索・登録済みセッションの復元とログアウトを確認した。認証設定なしの通常ビルド、TypeScript、lintも成功。
+- 既存のcontext-presets / public-context / residual-fixes / reuse-qualityは71件成功、mobile専用のdesktop実行1件をskip、2件失敗。失敗はG14の単独グループ作成で、PC/mobileとも「新しい状況」ボタンを表示できない。修正前から`ExploreWorkspace`が作成フォームを開いた場合だけ`ShelfWorkspace`を描画し、その内部にしか作成開始ボタンがない。前回のトップ変更で入口を失った別件として未解決に残す。今回、この導線やテストの期待値は変更していない。
+- 再読み込み後の[PC画面](review-screenshots/web/guest-search-fix/guest-reload-desktop.png)・[mobile画面](review-screenshots/web/guest-search-fix/guest-reload-mobile.png)を確認。認証ありの回帰テストも開発サーバーではなく、本番ビルド＋startで実行する。

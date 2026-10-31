@@ -125,6 +125,7 @@ type PersistedWorkspace = {
 };
 
 const WorkspaceStorageKey = "cuckoo-cue:web-workspace:v1";
+const GuestSearchStorageKey = "cuckoo-cue:guest-search:v1";
 
 const emptyTask = (): TaskDraft => ({
   text: "", default_priority: null, relative_start_day: null, relative_end_day: null,
@@ -166,6 +167,18 @@ export function CuckooCueWebApp({ importRunId }: { importRunId?: string } = {}) 
       if (previousUser.current && !previousUser.current.isAnonymous && previousUser.current.uid !== next?.uid) {
         setSearchMessage(""); editedSearch.current = false; setQueuedSearch(false); searchFocus.current = null;
       }
+      try {
+        if (next || previousUser.current) {
+          // Once authenticated, only the account's workspace may restore input.
+          sessionStorage.removeItem(GuestSearchStorageKey);
+        } else if (!editedSearch.current) {
+          const draft = sessionStorage.getItem(GuestSearchStorageKey);
+          if (draft !== null) {
+            setSearchMessage(draft);
+            editedSearch.current = true;
+          }
+        }
+      } catch { /* Keep the current input when browser storage is unavailable. */ }
       previousUser.current = next;
       setUser(next); setAuthReady(true);
     });
@@ -225,7 +238,15 @@ export function CuckooCueWebApp({ importRunId }: { importRunId?: string } = {}) 
     onClose={closeMenu} onGoogleLogin={() => void signIn("google")} onAppleLogin={() => void signIn("apple")} onLogout={() => void logOut()} onDelete={() => void deleteAccount()} />;
   return <AccountWorkspace key={user?.uid ?? devUserId} user={user} authReady={authReady}
     devUserId={user?.uid ?? devUserId} setDevUserId={(id) => { editedSearch.current = false; setSearchMessage(""); setDevUserId(id); }} importRunId={importRunId}
-    searchMessage={searchMessage} setSearchMessage={value => { editedSearch.current = true; setSearchMessage(value); }}
+    searchMessage={searchMessage} setSearchMessage={value => {
+      editedSearch.current = true; setSearchMessage(value);
+      if (hasFirebaseClientConfig() && !firebaseAuth().currentUser) {
+        try {
+          if (value) sessionStorage.setItem(GuestSearchStorageKey, value);
+          else sessionStorage.removeItem(GuestSearchStorageKey);
+        } catch { setError("このブラウザには入力を一時保存できません。ページを閉じると入力が失われます。"); }
+      }
+    }}
     restoreSearch={value => { if (!editedSearch.current) setSearchMessage(value); }} searchFocus={searchFocus}
     onConnect={connect} onSignIn={() => signIn("google")} sessionError={error} queuedSearch={queuedSearch}
     onQueueSearch={() => { setQueuedSearch(true); if (hasFirebaseClientConfig()) void connect(); }} onConsumeSearch={() => setQueuedSearch(false)}
